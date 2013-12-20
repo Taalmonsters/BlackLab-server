@@ -1,18 +1,34 @@
 package nl.inl.blacklab.server;
 
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import nl.inl.blacklab.server.dataobject.DataObject;
+
 public class Bloodhound extends HttpServlet {
 	//private static final Logger logger = Logger.getLogger(Bloodhound.class);
 
 	@Override
-	protected void doGet(HttpServletRequest req, HttpServletResponse responseObject) {
-		Response response = RequestHandler.handle(req);
-		response.output(responseObject, ServletUtil.getOutputType(req));
+	protected void doGet(HttpServletRequest request, HttpServletResponse responseObject) {
+		try {
+			// Handle the request
+			DataObject response = RequestHandler.handle(request);
+
+			// Output the response in the correct type
+			responseObject.addHeader("Content-Type", ServletUtil.getOutputContentType(request));
+			OutputStreamWriter out = new OutputStreamWriter(responseObject.getOutputStream(), "utf-8");
+			response.serializeDocument("bloodhound-response", out, ServletUtil.getOutputType(request), true);
+			out.flush();
+
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
@@ -22,7 +38,6 @@ public class Bloodhound extends HttpServlet {
 
 	@Override
 	public void destroy() {
-		// TODO Auto-generated method stub
 		super.destroy();
 	}
 

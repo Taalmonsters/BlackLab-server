@@ -11,6 +11,7 @@ import java.util.TimeZone;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.util.ExUtil;
 
 import org.apache.log4j.Logger;
@@ -90,24 +91,19 @@ public class ServletUtil {
 		return value;
 	}
 
-	/** Possible output types */
-	static enum OutputType {
-		JSON, XML,
-	}
-
 	/**
 	 * Returns the type of content the user would like as output (HTML, CSV, ...)
 	 * This is based on the "outputformat" parameter.
 	 * @param request the request object
 	 * @return the type of content the user would like
 	 */
-	public static OutputType getOutputType(HttpServletRequest request) {
+	public static DataFormat getOutputType(HttpServletRequest request) {
 		// See if we want non-HTML output (XML or CSV)
 		String outputTypeString = getParameter(request, "outputformat", "").toLowerCase();
 		if (outputTypeString.length() > 0) {
 			return getOutputTypeFromString(outputTypeString);
 		}
-		return OutputType.JSON;
+		return DataFormat.JSON;
 	}
 
 	/**
@@ -131,13 +127,13 @@ public class ServletUtil {
 	 *            the outputType string
 	 * @return the OutputType enum value
 	 */
-	static OutputType getOutputTypeFromString(String typeString) {
+	static DataFormat getOutputTypeFromString(String typeString) {
 		if (typeString.equalsIgnoreCase("xml"))
-			return OutputType.XML;
+			return DataFormat.XML;
 		if (typeString.equalsIgnoreCase("json"))
-			return OutputType.JSON;
+			return DataFormat.JSON;
 		logger.warn("Onbekend outputtype gevraagd: " + typeString);
-		return OutputType.JSON;
+		return DataFormat.JSON;
 	}
 
 	public static PrintStream getPrintStream(HttpServletResponse responseObject) {

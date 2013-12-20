@@ -7,6 +7,9 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.server.dataobject.DataObject;
+import nl.inl.blacklab.server.dataobject.DataObjectMap;
+import nl.inl.blacklab.server.dataobject.DataObjectString;
 import nl.inl.util.ExUtil;
 
 /**
@@ -14,9 +17,6 @@ import nl.inl.util.ExUtil;
  */
 public abstract class RequestHandler {
 	//private static final Logger logger = Logger.getLogger(RequestHandler.class);
-
-	/** The HTTP request object */
-	HttpServletRequest request;
 
 	/** The available request handlers by name */
 	static Map<String, Class<? extends RequestHandler>> availableHandlers;
@@ -26,7 +26,7 @@ public abstract class RequestHandler {
 		availableHandlers.put("debug", RequestHandlerDebug.class);
 	}
 
-	public static Response handle(HttpServletRequest request) {
+	public static DataObject handle(HttpServletRequest request) {
 		String pathPart = "debug";
 		try {
 			Class<? extends RequestHandler> handlerClass = availableHandlers.get(pathPart);
@@ -34,11 +34,20 @@ public abstract class RequestHandler {
 			RequestHandler requestHandler = ctor.newInstance(request);
 			return requestHandler.handle();
 		} catch (NoSuchMethodException e) {
-			return new ResponseError("No handler for request type " + pathPart);
+			return errorResponse("No handler for request type " + pathPart);
 		} catch (Exception e) {
 			throw ExUtil.wrapRuntimeException(e);
 		}
 	}
+
+	private static DataObject errorResponse(String msg) {
+		DataObjectMap rv = new DataObjectMap();
+		rv.put("errorMessage", new DataObjectString(msg));
+		return rv;
+	}
+
+	/** The HTTP request object */
+	HttpServletRequest request;
 
 	RequestHandler(HttpServletRequest request) {
 		this.request = request;
@@ -67,6 +76,6 @@ public abstract class RequestHandler {
 	 * @return the response object
 	 * @throws IOException
 	 */
-	public abstract Response handle() throws IOException;
+	public abstract DataObject handle() throws IOException;
 
 }

@@ -1,9 +1,9 @@
 package nl.inl.blacklab.server;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import javax.servlet.http.HttpServletRequest;
+
+import nl.inl.blacklab.server.dataobject.DataObject;
+import nl.inl.blacklab.server.dataobject.DataObjectMap;
 
 public class RequestHandlerDebug extends RequestHandler {
 
@@ -12,12 +12,10 @@ public class RequestHandlerDebug extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() {
-		Map<String, String> response = new LinkedHashMap<String, String>(); // Linked to preserve insertion order
+	public DataObject handle() {
 		String servletPath = request.getServletPath();
 		if (servletPath == null)
 			servletPath = "";
-		response.put("servlet path", servletPath);
 		if (servletPath.startsWith("/"))
 			servletPath = servletPath.substring(1);
 		if (servletPath.endsWith("/"))
@@ -26,12 +24,14 @@ public class RequestHandlerDebug extends RequestHandler {
 		String indexName = parts.length >= 1 ? parts[0] : "";
 		String resource = parts.length >= 2 ? parts[1] : "";
 		String rest = parts.length >= 3 ? parts[2] : "";
-		response.put("index name", indexName);
+
+		DataObjectMap response = new DataObjectMap();
+		response.put("servlet-path", servletPath);
+		response.put("index-name", indexName);
 		response.put("resource", resource);
 		response.put("rest", rest);
-		response.put("query string", request.getQueryString());
-
-		return new ResponseDebug(response);
+		response.put("query-string", request.getQueryString());
+		return response;
 	}
 
 }
