@@ -61,8 +61,7 @@ public class ServletUtil {
 	 *            default value
 	 * @return value of the paramater
 	 */
-	@SuppressWarnings("unused")
-	private static boolean getParameter(HttpServletRequest request, String name, boolean defaultValue) {
+	public static boolean getParameter(HttpServletRequest request, String name, boolean defaultValue) {
 		String defStr = defaultValue ? "true" : "false";
 		String value = getParameter(request, name, defStr);
 		if (value.equalsIgnoreCase("true"))

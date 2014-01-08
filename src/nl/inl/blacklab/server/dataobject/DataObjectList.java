@@ -3,6 +3,7 @@ package nl.inl.blacklab.server.dataobject;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -18,8 +19,9 @@ public class DataObjectList extends DataObject {
 		return elementName;
 	}
 
-	public DataObjectList(String elementName) {
+	public DataObjectList(String elementName, DataObject... items) {
 		this.elementName = elementName;
+		list.addAll(Arrays.asList(items));
 	}
 
 	@Override

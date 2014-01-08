@@ -1,4 +1,4 @@
-package nl.inl.blacklab.server.dataformat;
+package nl.inl.blacklab.server.dataobject;
 
 import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
@@ -49,10 +49,12 @@ public class TestDataObject {
 		DataObjectMap d = new DataObjectMap();
 		Assert.assertEquals("{\n}", d.toString(DataFormat.JSON));
 		Assert.assertEquals("", d.toString(DataFormat.XML));
-		DataObjectList l = new DataObjectList("bla");
-		l.add(new DataObjectNumber(1));
-		l.add(new DataObjectNumber(2));
-		l.add(new DataObjectNumber(3));
+		DataObjectList l = new DataObjectList(
+			"bla",
+			new DataObjectNumber(1),
+			new DataObjectNumber(2),
+			new DataObjectNumber(3)
+		);
 		d.put("quick", l);
 		d.put("fox", new DataObjectString("lazy"));
 		Assert.assertEquals("{\n  \"quick\": [\n    1,\n    2,\n    3\n  ],\n  \"fox\": \"lazy\"\n}", d.toString(DataFormat.JSON));
