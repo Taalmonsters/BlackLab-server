@@ -7,7 +7,7 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
-import nl.inl.blacklab.server.Bloodhound;
+import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMap;
 import nl.inl.blacklab.server.dataobject.DataObjectString;
@@ -31,7 +31,7 @@ public abstract class RequestHandler {
 		availableHandlers.put("hitset", RequestHandlerHitset.class);
 	}
 
-	public static DataObject handle(Bloodhound servlet, HttpServletRequest request) {
+	public static DataObject handle(BlackLabServer servlet, HttpServletRequest request) {
 
 		// Parse the URL
 		String servletPath = request.getServletPath();
@@ -79,7 +79,7 @@ public abstract class RequestHandler {
 	}
 
 	/** The servlet object */
-	Bloodhound servlet;
+	BlackLabServer servlet;
 
 	/** The HTTP request object */
 	HttpServletRequest request;
@@ -100,7 +100,7 @@ public abstract class RequestHandler {
 		this.urlPathInfo = urlPathInfo;
 	}
 
-	public void setServlet(Bloodhound servlet) {
+	public void setServlet(BlackLabServer servlet) {
 		this.servlet = servlet;
 	}
 

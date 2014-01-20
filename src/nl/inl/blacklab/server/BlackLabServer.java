@@ -16,8 +16,8 @@ import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.requesthandlers.RequestHandler;
 
-public class Bloodhound extends HttpServlet {
-	//private static final Logger logger = Logger.getLogger(Bloodhound.class);
+public class BlackLabServer extends HttpServlet {
+	//private static final Logger logger = Logger.getLogger(BlackLabServer.class);
 
 	/**
 	 * Whether we're debugging or not. In debug mode, output is pretty printed by default.
@@ -34,7 +34,7 @@ public class Bloodhound extends HttpServlet {
 			responseObject.addHeader("Content-Type", ServletUtil.getOutputContentType(request));
 			OutputStreamWriter out = new OutputStreamWriter(responseObject.getOutputStream(), "utf-8");
 			boolean prettyPrint = ServletUtil.getParameter(request, "prettyprint", isDebug);
-			response.serializeDocument("bloodhound-response", out, ServletUtil.getOutputType(request), prettyPrint);
+			response.serializeDocument("blacklab-response", out, ServletUtil.getOutputType(request), prettyPrint);
 			out.flush();
 
 		} catch (IOException e) {
