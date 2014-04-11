@@ -8,7 +8,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-public class DataObjectMap extends DataObject {
+/**
+ * A collection of names mapping to DataObjects.
+ *
+ * The XML representation uses the key names as element names.
+ */
+public class DataObjectMapElement extends DataObject {
 
 	Map<String, DataObject> map = new LinkedHashMap<String, DataObject>();
 
@@ -96,18 +101,26 @@ public class DataObjectMap extends DataObject {
 	}
 
 	public DataObject put(String key, String value) {
-		return map.put(key, new DataObjectString(value));
+		return map.put(key, DataObject.from(value));
 	}
 
 	public DataObject put(String key, int value) {
-		return map.put(key, new DataObjectNumber(value));
+		return map.put(key, DataObject.from(value));
+	}
+
+	public DataObject put(String key, long value) {
+		return map.put(key, DataObject.from(value));
 	}
 
 	public DataObject put(String key, double value) {
-		return map.put(key, new DataObjectNumber(value));
+		return map.put(key, DataObject.from(value));
 	}
 
-	public DataObject remove(Object key) {
+	public DataObject put(String key, boolean value) {
+		return map.put(key, DataObject.from(value));
+	}
+
+	public DataObject remove(String key) {
 		return map.remove(key);
 	}
 

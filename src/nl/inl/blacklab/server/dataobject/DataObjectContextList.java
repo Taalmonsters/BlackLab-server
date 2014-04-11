@@ -7,6 +7,9 @@ import java.util.List;
 
 import nl.inl.util.StringUtil;
 
+/**
+ * A list of KWIC context values.
+ */
 public class DataObjectContextList extends DataObject {
 
 	List<String> names = new ArrayList<String>();

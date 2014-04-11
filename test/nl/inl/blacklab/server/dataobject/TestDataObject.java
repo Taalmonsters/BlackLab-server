@@ -3,7 +3,7 @@ package nl.inl.blacklab.server.dataobject;
 import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
-import nl.inl.blacklab.server.dataobject.DataObjectMap;
+import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectNumber;
 import nl.inl.blacklab.server.dataobject.DataObjectString;
 
@@ -46,7 +46,7 @@ public class TestDataObject {
 
 	@Test
 	public void dataObjMap() {
-		DataObjectMap d = new DataObjectMap();
+		DataObjectMapElement d = new DataObjectMapElement();
 		Assert.assertEquals("{\n}", d.toString(DataFormat.JSON));
 		Assert.assertEquals("", d.toString(DataFormat.XML));
 		DataObjectList l = new DataObjectList(

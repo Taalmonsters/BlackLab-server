@@ -5,6 +5,9 @@ import java.io.Writer;
 
 import nl.inl.util.StringUtil;
 
+/**
+ * A string value.
+ */
 public class DataObjectString extends DataObject {
 
 	String value;

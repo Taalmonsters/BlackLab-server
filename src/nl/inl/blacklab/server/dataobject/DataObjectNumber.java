@@ -3,15 +3,18 @@ package nl.inl.blacklab.server.dataobject;
 import java.io.IOException;
 import java.io.Writer;
 
+/**
+ * A long integer or a double precision float value.
+ */
 public class DataObjectNumber extends DataObject {
 
 	double fNum;
 
-	int iNum;
+	long iNum;
 
 	boolean isInt;
 
-	public DataObjectNumber(int iNum) {
+	public DataObjectNumber(long iNum) {
 		this.iNum = iNum;
 		isInt = true;
 	}

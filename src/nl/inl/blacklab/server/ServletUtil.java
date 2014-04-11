@@ -93,6 +93,9 @@ public class ServletUtil {
 	/**
 	 * Returns the type of content the user would like as output (HTML, CSV, ...)
 	 * This is based on the "outputformat" parameter.
+	 *
+	 * TODO: Also support HTTP Accept header!
+	 *
 	 * @param request the request object
 	 * @return the type of content the user would like
 	 */
@@ -135,6 +138,11 @@ public class ServletUtil {
 		return DataFormat.JSON;
 	}
 
+	/**
+	 * Get a PrintStream for writing the response
+	 * @param responseObject the response object
+	 * @return the PrintStream
+	 */
 	public static PrintStream getPrintStream(HttpServletResponse responseObject) {
 		try {
 			return new PrintStream(responseObject.getOutputStream(), true, "utf-8");
@@ -146,19 +154,26 @@ public class ServletUtil {
 	/** Output character encoding */
 	static final String OUTPUT_ENCODING = "UTF-8";
 
+	/** For how long returned pages are valid (30 minutes) */
+	private static final int CACHE_TIME_SECONDS = 30 * 60;
+
+	/** The HTTP date format, to use for the cache header */
 	static DateFormat httpDateFormat;
 
+	// Initialize the HTTP date format
 	static {
 		httpDateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
 		httpDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 	}
 
+	/**
+	 * Write cache headers for the configured cache time.
+	 * @param response the response object to write the headers to
+	 */
 	@SuppressWarnings("unused")
-	private void setCacheHalfAnHour(HttpServletResponse response) {
-		// Determine the expires moment (30 minutes)
-		int seconds = 60 * 30;
+	private void setCacheHeaders(HttpServletResponse response) {
 		GregorianCalendar cal = new GregorianCalendar();
-		cal.add(Calendar.SECOND, seconds);
+		cal.add(Calendar.SECOND, CACHE_TIME_SECONDS);
 
 		String expires;
 		synchronized (httpDateFormat) {
@@ -166,7 +181,7 @@ public class ServletUtil {
 		}
 
 		// Output headers
-		response.setHeader("Cache-Control", "PUBLIC, max-age=" + seconds + ", must-revalidate");
+		response.setHeader("Cache-Control", "PUBLIC, max-age=" + CACHE_TIME_SECONDS + ", must-revalidate");
 		response.setHeader("Expires", expires);
 	}
 

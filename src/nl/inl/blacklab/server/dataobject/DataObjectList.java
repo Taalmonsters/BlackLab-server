@@ -9,18 +9,21 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
+/**
+ * A list of DataObjects.
+ */
 public class DataObjectList extends DataObject {
 
 	List<DataObject> list = new ArrayList<DataObject>();
 
-	String elementName;
+	String xmlElementName;
 
 	public String getElementName() {
-		return elementName;
+		return xmlElementName;
 	}
 
-	public DataObjectList(String elementName, DataObject... items) {
-		this.elementName = elementName;
+	public DataObjectList(String xmlElementName, DataObject... items) {
+		this.xmlElementName = xmlElementName;
 		list.addAll(Arrays.asList(items));
 	}
 
@@ -49,12 +52,12 @@ public class DataObjectList extends DataObject {
 			case XML:
 				if (prettyPrint)
 					indent(out, depth);
-				out.append("<").append(elementName).append(">");
+				out.append("<").append(xmlElementName).append(">");
 				if (!value.isSimple()) {
 					out.append("\n");
 				}
 				value.serialize(out, fmt, prettyPrint, depth);
-				out.append("</").append(elementName).append(">");
+				out.append("</").append(xmlElementName).append(">");
 				if (prettyPrint)
 					out.append("\n");
 				break;
@@ -101,6 +104,26 @@ public class DataObjectList extends DataObject {
 
 	public boolean add(DataObject e) {
 		return list.add(e);
+	}
+
+	public boolean add(String value) {
+		return list.add(DataObject.from(value));
+	}
+
+	public boolean add(int value) {
+		return list.add(DataObject.from(value));
+	}
+
+	public boolean add(long value) {
+		return list.add(DataObject.from(value));
+	}
+
+	public boolean add(double value) {
+		return list.add(DataObject.from(value));
+	}
+
+	public boolean add(boolean value) {
+		return list.add(DataObject.from(value));
 	}
 
 	public boolean remove(Object o) {
