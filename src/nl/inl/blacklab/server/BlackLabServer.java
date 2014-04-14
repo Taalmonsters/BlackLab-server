@@ -2,8 +2,7 @@ package nl.inl.blacklab.server;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.util.Arrays;
-import java.util.List;
+import java.util.Properties;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -25,27 +24,32 @@ public class BlackLabServer extends HttpServlet {
 	/** Whether we're debugging or not. In debug mode, output is pretty printed by default. */
 	public static boolean DEBUG_MODE = true;
 
-	/** Parameters involved in search */
-	List<String> searchParameterNames;
-
 	/** Manages all our searches */
 	private SearchManager searchManager;
 
 	@Override
 	public void init() throws ServletException {
 		// Default init if no log4j.properties found
-		LogUtil.initLog4jIfNotAlready(Level.DEBUG);
+		LogUtil.initLog4jIfNotAlready(DEBUG_MODE ? Level.DEBUG : Level.INFO);
 
 		logger.info("Starting BlackLab Server...");
 
 		super.init();
 
-		// Keep a list of searchparameters.
-		searchParameterNames = Arrays.asList(
-				"resultsType", "patt", "pattlang", "pattfield", "filter", "filterlang",
-				"sort", "group", "collator", "first", "number");
+		Properties properties = new Properties();
+		if (DEBUG_MODE) {
+			properties.setProperty("debugMode", "true");
 
-		searchManager = new SearchManager(DEBUG_MODE);
+			// Some test indices
+			properties.put("indexNames", "brown folia gysseling");
+			properties.put("indexDir_brown", "D:/dev/blacklab/brown/index");
+			properties.put("indexDir_folia", "D:/dev/blacklab/folia/index");
+			properties.put("indexDir_gysseling", "D:/dev/blacklab/gysseling/index");
+		} else {
+			// Read from file
+		}
+
+		searchManager = new SearchManager(properties);
 
 		logger.info("BlackLab Server ready.");
 
@@ -108,7 +112,7 @@ public class BlackLabServer extends HttpServlet {
 	public SearchParameters getSearchParameters(HttpServletRequest request, String indexName) {
 		SearchParameters param = new SearchParameters();
 		param.put("indexname", indexName);
-		for (String name: searchParameterNames) {
+		for (String name: searchManager.getSearchParameterNames()) {
 			String value = ServletUtil.getParameter(request, name, searchManager.getParameterDefaultValue(name)).trim();
 			if (value.length() == 0)
 				continue;

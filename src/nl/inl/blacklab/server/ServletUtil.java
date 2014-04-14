@@ -115,10 +115,9 @@ public class ServletUtil {
 	 * @return the MIME content type
 	 */
 	public static String getOutputContentType(HttpServletRequest request) {
-		String outputTypeString = getParameter(request, "outputformat", "").toLowerCase();
-		if (outputTypeString.equals("xml"))
+		DataFormat outputType = getOutputType(request);
+		if (outputType == DataFormat.XML)
 			return "application/xml";
-		// TODO: check HTTP Accept header
 		return "application/json";
 	}
 

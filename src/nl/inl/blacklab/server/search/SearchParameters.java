@@ -30,7 +30,7 @@ public class SearchParameters extends HashMap<String, String> {
 		return "{ " + b.toString() + " }";
 	}
 
-	public int iget(String name) {
+	public int getInteger(String name) {
 		String value = get(name);
 		try {
 			return SearchUtil.strToInt(value);
@@ -40,7 +40,7 @@ public class SearchParameters extends HashMap<String, String> {
 		}
 	}
 
-	public boolean bget(String name) {
+	public boolean getBoolean(String name) {
 		String value = get(name);
 		try {
 			return SearchUtil.strToBool(value);

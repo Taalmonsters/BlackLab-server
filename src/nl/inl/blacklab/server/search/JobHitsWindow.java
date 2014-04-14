@@ -21,16 +21,19 @@ public class JobHitsWindow extends Job {
 
 		// Now, create a HitsWindow on these hits.
 		Hits hits = hitsSearch.getHits();
-		if (hits == null) {
-			System.err.println("MAG NIET GEBEUREN!");
-		}
-		int first = par.iget("first");
-		int number = par.iget("number");
+		int first = par.getInteger("first");
+		int number = par.getInteger("number");
 		if (!hits.sizeAtLeast(first + 1)) {
 			logger.debug("Parameter first (" + first + ") out of range; setting to 0");
 			first = 0;
 		}
 		window = hits.window(first, number);
+		int contextSize = par.getInteger("wordsaroundhit");
+		if (contextSize > searchMan.maxContextSize) {
+			logger.debug("Clamping context size to " + searchMan.maxContextSize + " (" + contextSize + " requested)");
+			contextSize = searchMan.maxContextSize;
+		}
+		window.setContextSize(contextSize);
 
 	}
 

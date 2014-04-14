@@ -11,9 +11,9 @@ import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectContextList;
-import nl.inl.blacklab.server.dataobject.DataObjectMapInt;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.dataobject.DataObjectMapInt;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.JobHitsTotal;
 import nl.inl.blacklab.server.search.JobHitsWindow;
@@ -36,7 +36,6 @@ public class RequestHandlerHitset extends RequestHandler {
 	@Override
 	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
 
-		// TODO: configurable context size
 		// TODO: sort
 
 		// Get the window we're interested in

@@ -1,9 +1,12 @@
 package nl.inl.blacklab.server.search;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import nl.inl.blacklab.analysis.BLDutchAnalyzer;
 import nl.inl.blacklab.queryParser.corpusql.CorpusQueryLanguageParser;
@@ -14,6 +17,7 @@ import nl.inl.blacklab.search.TextPattern;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectString;
+import nl.inl.util.PropertiesUtil;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -28,58 +32,105 @@ public class SearchManager  {
 	/** How long the server should wait for a quick answer when starting
 	 * a nonblocking request. If the answer is found within this time,
 	 * the client needs only one request even in nonblocking mode. */
-	public int waitTimeInNonblockingMode = 100;
+	public int waitTimeInNonblockingModeMs;
 
 	/** The default advice to give for when to check status of search again.
-	 * TODO Make configurable; also, the longer a search has been running, the
+	 * TODO the longer a search has been running, the
 	 *   higher the advised wait time should be.
 	 */
-	public int defaultCheckAgainAdviceMs = 200;
+	public int defaultCheckAgainAdviceMs;
+
+	/** Maximum context size allowed */
+	public int maxContextSize;
+
+	/** Parameters involved in search */
+	List<String> searchParameterNames;
 
 	/** Default values for request parameters */
 	Map<String, String> defaultParameterValues;
 
-	/** All running searches as well as recently run searches */
-	SearchCache cache;
-
-	/** The Searcher objects, one for each of the indices we can search. */
-	Map<String, Searcher> searchers = new HashMap<String, Searcher>();
-
+	/** Run in debug mode or not? */
 	boolean debugMode;
+
+	/** Default number of hits/results per page */
+	private boolean defaultPageSize;
 
 	/** Available indices and their directories */
 	Map<String, File> indexDirs;
 
-	public SearchManager(boolean debugMode)  {
+	/** The Searcher objects, one for each of the indices we can search. */
+	Map<String, Searcher> searchers = new HashMap<String, Searcher>();
+
+	/** All running searches as well as recently run searches */
+	SearchCache cache;
+
+	private String defaultPatternLanguage;
+
+	private String defaultFilterLanguage;
+
+	private boolean defaultBlockingMode;
+
+	private int defaultContextSize;
+
+	public SearchManager(Properties properties)  {
 		logger.debug("SearchManager created");
 
-		this.debugMode = debugMode;
+		debugMode = PropertiesUtil.getBooleanProp(properties, "debugMode", false);
+		defaultPageSize = PropertiesUtil.getBooleanProp(properties, "defaultPageSize", false);
+		defaultPatternLanguage = properties.getProperty("defaultPatternLanguage", "corpusql");
+		defaultFilterLanguage = properties.getProperty("defaultPatternLanguage", "luceneql");
+		defaultBlockingMode = PropertiesUtil.getBooleanProp(properties, "defaultBlockingMode", true);
+		defaultContextSize = PropertiesUtil.getIntProp(properties, "defaultContextSize", 5);
+		maxContextSize = PropertiesUtil.getIntProp(properties, "maxContextSize", 20);
+		int cacheMaxSearchAgeSec = PropertiesUtil.getIntProp(properties, "cacheMaxSearchAgeSec", 3600);
+		int cacheMaxNumberOfSearches = PropertiesUtil.getIntProp(properties, "cacheMaxNumberOfSearches", 20);
+		int cacheMaxSizeBytes = PropertiesUtil.getIntProp(properties, "cacheMaxSizeBytes", -1);
+		defaultCheckAgainAdviceMs = PropertiesUtil.getIntProp(properties, "defaultCheckAgainAdviceMs", 200);
+		waitTimeInNonblockingModeMs = PropertiesUtil.getIntProp(properties, "waitTimeInNonblockingModeMs", 100);
+
+		String propIndexNames = properties.getProperty("indexNames");
+		if (propIndexNames != null) {
+			String[] indexNames = propIndexNames.trim().split("\\s+");
+			indexDirs = new HashMap<String, File>();
+			for (String indexName: indexNames) {
+				File dir = PropertiesUtil.getFileProp(properties, "indexDir_" + indexName);
+				if (dir == null) {
+					logger.error("No index directory given for index '" + indexName + "' (supply indexDir_" + indexName + " setting)");
+					continue;
+				}
+				if (!dir.exists()) {
+					logger.error("Index directory for index '" + indexName + "' does not exist: " + dir);
+					continue;
+				}
+				indexDirs.put(indexName, dir);
+			}
+		}
+		if (indexDirs.size() == 0)
+			throw new RuntimeException("Configuration error: no indices available. Specify indexNames (space-separated) and indexDir_<name> for each index!");
+
+		// Keep a list of searchparameters.
+		searchParameterNames = Arrays.asList(
+				"resultsType", "patt", "pattlang", "pattfield", "filter", "filterlang",
+				"sort", "group", "collator", "first", "number", "wordsaroundhit");
 
 		// Set up the parameter default values
-		// TODO read from file
 		defaultParameterValues = new HashMap<String, String>();
-		defaultParameterValues.put("filterlang", "luceneql");
-		defaultParameterValues.put("pattlang", "corpusql");
+		defaultParameterValues.put("filterlang", defaultFilterLanguage);
+		defaultParameterValues.put("pattlang", defaultPatternLanguage);
 		defaultParameterValues.put("first", "0");
-		defaultParameterValues.put("number", "10");
-		defaultParameterValues.put("block", "yes");
+		defaultParameterValues.put("number", "" + defaultPageSize);
+		defaultParameterValues.put("block", defaultBlockingMode ? "yes" : "no");
+		defaultParameterValues.put("wordsaroundhit", "" + defaultContextSize);
 
 		// Start with empty cache
 		cache = new SearchCache();
-//		if (debugMode) {
-//			// Testing: cache for max. 20s; don't cache more than 1 search
-//			cache.setMaxSearchAgeSec(10);
-//			cache.setMaxSearchesToCache(5);
-//		}
+		cache.setMaxSearchAgeSec(cacheMaxSearchAgeSec);
+		cache.setMaxSearchesToCache(cacheMaxNumberOfSearches);
+		cache.setMaxSizeBytes(cacheMaxSizeBytes);
+	}
 
-		// TODO: make configurable
-		indexDirs = new HashMap<String, File>();
-		if (debugMode) {
-			indexDirs.put("opensonar", new File("G:/Jan_OpenSonar/index"));
-			indexDirs.put("brown", new File("D:/dev/blacklab/brown/index"));
-			indexDirs.put("folia", new File("D:/dev/blacklab/folia/index"));
-			indexDirs.put("gysseling", new File("D:/dev/blacklab/gysseling/index"));
-		}
+	public List<String> getSearchParameterNames() {
+		return searchParameterNames;
 	}
 
 	/**
@@ -110,8 +161,6 @@ public class SearchManager  {
 	 *
 	 * @param indexName short name of the index
 	 * @return the index directory, or null if not found
-	 *
-	 * TODO: make configurable
 	 */
 	private File getIndexDir(String indexName) {
 		return indexDirs.get(indexName);
@@ -132,7 +181,7 @@ public class SearchManager  {
 	}
 
 	public JobHitsWindow searchHitsWindow(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
-		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "first", "number");
+		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "first", "number", "wordsaroundhit");
 		parBasic.put("jobclass", "JobHitsWindow");
 		return (JobHitsWindow)search(parBasic, blockUntilFinished);
 	}
@@ -165,7 +214,7 @@ public class SearchManager  {
 
 			// Start the search (and, depending on the block parameter,
 			// wait for it to finish, or return immediately)
-			search.perform(blockUntilFinished ? -1 : waitTimeInNonblockingMode);
+			search.perform(blockUntilFinished ? -1 : waitTimeInNonblockingModeMs);
 		}
 
 		// If the search thread threw an exception, rethrow it now.

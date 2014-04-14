@@ -93,7 +93,7 @@ public class SearchCache {
 	 */
 	private void removeOldSearches() {
 
-		// TODO: maybe optimize a little bit
+		// OPT: could be optimized a little bit
 
 		// Sort cache by last access time
 		List<Job> lastAccessOrder = new ArrayList<Job>(cachedSearches.values());

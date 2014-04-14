@@ -21,9 +21,6 @@ public class JobHitsTotal extends Job {
 		// Get the total number of hits (we ignore the value because you can monitor progress
 		// and get the final total through the getHits() method yourself.
 		Hits hits = hitsSearch.getHits();
-		if (hits == null) {
-			System.err.println("MAG NIET KUNNEN!");
-		}
 		hits.size();
 	}
 
