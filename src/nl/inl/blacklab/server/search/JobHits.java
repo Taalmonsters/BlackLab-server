@@ -1,6 +1,5 @@
 package nl.inl.blacklab.server.search;
 
-import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.TextPattern;
 
 import org.apache.lucene.search.BooleanQuery.TooManyClauses;
@@ -9,16 +8,13 @@ import org.apache.lucene.search.Filter;
 /**
  * Represents a hit search operation.
  */
-public class JobHits extends Job {
+public class JobHits extends JobWithHits {
 
 	/** The parsed pattern */
 	protected TextPattern textPattern;
 
 	/** The parsed filter */
 	protected Filter filterQuery;
-
-	/** The hits found */
-	protected Hits hits;
 
 	public JobHits(SearchManager searchMan, SearchParameters par) throws IndexOpenException {
 		super(searchMan, par);
@@ -41,10 +37,6 @@ public class JobHits extends Job {
 
 	public Filter getDocumentFilter() {
 		return filterQuery;
-	}
-
-	public Hits getHits() {
-		return hits;
 	}
 
 }

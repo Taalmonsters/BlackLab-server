@@ -58,11 +58,20 @@ public class SearchParameters extends HashMap<String, String> {
 	}
 
 	public SearchParameters copyWithOnly(String... keys) {
-		SearchParameters par = new SearchParameters();
+		SearchParameters copy = new SearchParameters();
 		for (String key: keys) {
-			par.put(key, get(key));
+			copy.put(key, get(key));
 		}
-		return par;
+		return copy;
+	}
+
+	public SearchParameters copyWithout(String... remove) {
+		SearchParameters copy = new SearchParameters();
+		copy.putAll(this);
+		for (String key: remove) {
+			copy.remove(key);
+		}
+		return copy;
 	}
 
 }

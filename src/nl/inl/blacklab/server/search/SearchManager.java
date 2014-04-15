@@ -53,7 +53,7 @@ public class SearchManager  {
 	boolean debugMode;
 
 	/** Default number of hits/results per page */
-	private boolean defaultPageSize;
+	private int defaultPageSize;
 
 	/** Available indices and their directories */
 	Map<String, File> indexDirs;
@@ -76,7 +76,7 @@ public class SearchManager  {
 		logger.debug("SearchManager created");
 
 		debugMode = PropertiesUtil.getBooleanProp(properties, "debugMode", false);
-		defaultPageSize = PropertiesUtil.getBooleanProp(properties, "defaultPageSize", false);
+		defaultPageSize = PropertiesUtil.getIntProp(properties, "defaultPageSize", 20);
 		defaultPatternLanguage = properties.getProperty("defaultPatternLanguage", "corpusql");
 		defaultFilterLanguage = properties.getProperty("defaultPatternLanguage", "luceneql");
 		defaultBlockingMode = PropertiesUtil.getBooleanProp(properties, "defaultBlockingMode", true);
@@ -117,6 +117,7 @@ public class SearchManager  {
 		defaultParameterValues = new HashMap<String, String>();
 		defaultParameterValues.put("filterlang", defaultFilterLanguage);
 		defaultParameterValues.put("pattlang", defaultPatternLanguage);
+		defaultParameterValues.put("sort", "");
 		defaultParameterValues.put("first", "0");
 		defaultParameterValues.put("number", "" + defaultPageSize);
 		defaultParameterValues.put("block", defaultBlockingMode ? "yes" : "no");
@@ -151,6 +152,7 @@ public class SearchManager  {
 		try {
 			searcher = Searcher.open(indexDir);
 		} catch (Exception e) {
+			e.printStackTrace();
 			throw new IndexOpenException("Could not open index '" + indexName + "'", e);
 		}
 		searchers.put(indexName, searcher);
@@ -174,14 +176,23 @@ public class SearchManager  {
 		return indexDirs.keySet();
 	}
 
-	public JobHits searchHits(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
-		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang");
+	public JobWithHits searchHits(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort");
+		String sort = parBasic.get("sort");
+		if (sort != null && sort.length() > 0) {
+			// Sorted hits
+			parBasic.put("jobclass", "JobHitsSorted");
+			return (JobHitsSorted)search(parBasic, blockUntilFinished);
+		}
+
+		// No sort
+		parBasic.remove("sort"); // unsorted must not include sort parameter, or it's cached wrong
 		parBasic.put("jobclass", "JobHits");
 		return (JobHits)search(parBasic, blockUntilFinished);
 	}
 
 	public JobHitsWindow searchHitsWindow(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
-		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "first", "number", "wordsaroundhit");
+		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort", "first", "number", "wordsaroundhit");
 		parBasic.put("jobclass", "JobHitsWindow");
 		return (JobHitsWindow)search(parBasic, blockUntilFinished);
 	}

@@ -36,8 +36,6 @@ public class RequestHandlerHitset extends RequestHandler {
 	@Override
 	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
 
-		// TODO: sort
-
 		// Get the window we're interested in
 		JobHitsWindow search = searchMan.searchHitsWindow(searchParam, getBoolParameter("block"));
 

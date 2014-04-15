@@ -25,6 +25,8 @@ public abstract class Job implements Comparable<Job> {
 		String jobClass = par.get("jobclass");
 		if (jobClass.equals("JobHits")) {
 			search = new JobHits(searchMan, par);
+		} else if (jobClass.equals("JobHitsSorted")) {
+			search = new JobHitsSorted(searchMan, par);
 		} else if (jobClass.equals("JobHitsWindow")) {
 			search = new JobHitsWindow(searchMan, par);
 		} else if (jobClass.equals("JobHitsTotal")) {

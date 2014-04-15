@@ -7,7 +7,7 @@ import nl.inl.blacklab.search.Hits;
  */
 public class JobHitsTotal extends Job {
 
-	private JobHits hitsSearch;
+	private JobWithHits hitsSearch;
 
 	public JobHitsTotal(SearchManager searchMan, SearchParameters par) throws IndexOpenException {
 		super(searchMan, par);
