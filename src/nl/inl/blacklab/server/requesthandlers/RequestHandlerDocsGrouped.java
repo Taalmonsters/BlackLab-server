@@ -2,33 +2,33 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.perdocument.DocGroup;
+import nl.inl.blacklab.perdocument.DocGroups;
 import nl.inl.blacklab.search.Hits;
-import nl.inl.blacklab.search.grouping.HitGroup;
-import nl.inl.blacklab.search.grouping.HitGroups;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
-import nl.inl.blacklab.server.search.JobHitsGrouped;
+import nl.inl.blacklab.server.search.JobDocsGrouped;
 import nl.inl.blacklab.server.search.QueryException;
 
 /**
- * Request handler for grouped hit results.
+ * Request handler for grouped doc results.
  */
-public class RequestHandlerHitsGrouped extends RequestHandler {
+public class RequestHandlerDocsGrouped extends RequestHandler {
 	//private static final Logger logger = Logger.getLogger(RequestHandlerHitset.class);
 
-	public RequestHandlerHitsGrouped(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
+	public RequestHandlerDocsGrouped(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
 	}
 
 	@Override
 	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
-		logger.debug("REQ hitsgrouped: " + searchParam);
+		logger.debug("REQ docsgrouped: " + searchParam);
 
 		// Get the window we're interested in
-		JobHitsGrouped search = searchMan.searchHitsGrouped(searchParam, getBoolParameter("block"));
+		JobDocsGrouped search = searchMan.searchDocsGrouped(searchParam, getBoolParameter("block"));
 
 		// If search is not done yet, indicate this to the user
 		if (!search.finished()) {
@@ -36,7 +36,7 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 		}
 
 		// Search is done; construct the results object
-		HitGroups groups = search.getGroups();
+		DocGroups groups = search.getGroups();
 
 		DataObjectList doGroups = null;
 		// The list of groups found
@@ -45,7 +45,7 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 		int first = getIntParameter("first");
 		int number = getIntParameter("number");
 		int i = 0;
-		for (HitGroup group: groups) {
+		for (DocGroup group: groups) {
 			if (i >= first && i < first + number) {
 				DataObjectMapElement doGroup = new DataObjectMapElement();
 				doGroup.put("identity", group.getIdentity().serialize());
@@ -58,7 +58,7 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 
 		// The summary
 		DataObjectMapElement summary = new DataObjectMapElement();
-		Hits hits = search.getHits();
+		Hits hits = search.getDocResults().getOriginalHits();
 		summary.put("search-time", search.executionTimeMillis());
 		summary.put("still-counting", false);
 		summary.put("number-of-hits", hits.countSoFarHitsCounted());

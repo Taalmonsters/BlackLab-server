@@ -35,6 +35,9 @@ public abstract class RequestHandler {
 		availableHandlers.put("debug", RequestHandlerDebug.class);
 		availableHandlers.put("hits", RequestHandlerHits.class);
 		availableHandlers.put("hitsgrouped", RequestHandlerHitsGrouped.class);
+		availableHandlers.put("docs", RequestHandlerDocs.class);
+		availableHandlers.put("docsgrouped", RequestHandlerDocsGrouped.class);
+		availableHandlers.put("doc", RequestHandlerDoc.class);
 		availableHandlers.put("", RequestHandlerIndexStructure.class);
 	}
 
@@ -69,6 +72,18 @@ public abstract class RequestHandler {
 			// Choose based on urlResource
 			try {
 				String handlerName = urlResource;
+
+				// HACK to avoid having a different url resource for
+				// the lists of (hit|doc) groups: instantiate a different
+				// request handler class in this case.
+				if (handlerName.equals("hits") || handlerName.equals("docs")) {
+					if (request.getParameter("group") != null) {
+						String viewgroup = request.getParameter("viewgroup");
+						if (viewgroup == null || viewgroup.length() == 0)
+							handlerName += "grouped"; // list of groups instead of contents
+					}
+				}
+
 				if (handlerName.equals("error") && BlackLabServer.DEBUG_MODE)
 					return DataObject.errorObject("TEST_ERROR", "Testing error system");
 				if (!availableHandlers.containsKey(handlerName))

@@ -28,7 +28,7 @@ import nl.inl.blacklab.server.search.QueryException;
 import org.apache.lucene.document.Document;
 
 /**
- * Request handler for the "hitset" request.
+ * Request handler for hit results.
  */
 public class RequestHandlerHits extends RequestHandler {
 	//private static final Logger logger = Logger.getLogger(RequestHandlerHitset.class);
@@ -113,7 +113,7 @@ public class RequestHandlerHits extends RequestHandler {
 		DataObjectMapInt docInfos = new DataObjectMapInt("docinfo", "id");
 		for (Hit hit: window) {
 			DataObjectMapElement hitMap = new DataObjectMapElement();
-			hitMap.put("doc", hit.doc);
+			hitMap.put("docid", hit.doc);
 			hitMap.put("start", hit.start);
 			hitMap.put("end", hit.end);
 
@@ -144,8 +144,8 @@ public class RequestHandlerHits extends RequestHandler {
 		if (total != null)
 			summary.put("count-time", total.executionTimeMillis());
 		summary.put("still-counting", !done);
-		summary.put("number-of-results", hits.countSoFarHitsCounted());
-		summary.put("number-of-results-retrieved", hits.countSoFarHitsRetrieved());
+		summary.put("number-of-hits", hits.countSoFarHitsCounted());
+		summary.put("number-of-hits-retrieved", hits.countSoFarHitsRetrieved());
 		summary.put("number-of-docs", hits.countSoFarDocsCounted());
 		summary.put("number-of-docs-retrieved", hits.countSoFarDocsRetrieved());
 		summary.put("window-first-result", window.first());

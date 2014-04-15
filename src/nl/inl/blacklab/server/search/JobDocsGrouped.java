@@ -1,20 +1,20 @@
 package nl.inl.blacklab.server.search;
 
-import nl.inl.blacklab.search.Hits;
-import nl.inl.blacklab.search.grouping.GroupProperty;
-import nl.inl.blacklab.search.grouping.HitGroups;
-import nl.inl.blacklab.search.grouping.HitProperty;
+import nl.inl.blacklab.perdocument.DocGroupProperty;
+import nl.inl.blacklab.perdocument.DocGroups;
+import nl.inl.blacklab.perdocument.DocProperty;
+import nl.inl.blacklab.perdocument.DocResults;
 
 /**
  * Represents a hits search and sort operation.
  */
-public class JobHitsGrouped extends Job {
+public class JobDocsGrouped extends Job {
 
-	private HitGroups groups;
+	private DocGroups groups;
 
-	private Hits hits;
+	private DocResults docResults;
 
-	public JobHitsGrouped(SearchManager searchMan, SearchParameters par) throws IndexOpenException {
+	public JobDocsGrouped(SearchManager searchMan, SearchParameters par) throws IndexOpenException {
 		super(searchMan, par);
 	}
 
@@ -22,18 +22,18 @@ public class JobHitsGrouped extends Job {
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking hits search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
-		JobWithHits hitsSearch = searchMan.searchHits(parNoGroup, true);
+		JobWithDocs docsSearch = searchMan.searchDocs(parNoGroup, true);
 
 		// Now, group the hits.
-		hits = hitsSearch.getHits();
+		docResults = docsSearch.getDocResults();
 		String groupBy = par.get("group");
-		HitProperty groupProp = null;
+		DocProperty groupProp = null;
 		if (groupBy == null)
 			groupBy = "";
-		groupProp = HitProperty.deserialize(hits, groupBy);
+		groupProp = DocProperty.deserialize(groupBy);
 		if (groupProp == null)
 			throw new QueryException("UNKNOWN_GROUP_PROPERTY", "Unknown group property '" + groupBy + "'");
-		HitGroups theGroups = hits.groupedBy(groupProp);
+		DocGroups theGroups = docResults.groupedBy(groupProp);
 
 		String sortBy = par.get("sort");
 		if (sortBy == null)
@@ -43,18 +43,18 @@ public class JobHitsGrouped extends Job {
 			reverse = true;
 			sortBy = sortBy.substring(1);
 		}
-		GroupProperty sortProp = GroupProperty.deserialize(sortBy);
+		DocGroupProperty sortProp = DocGroupProperty.deserialize(sortBy);
 		theGroups.sortGroups(sortProp, reverse);
 
 		groups = theGroups; // we're done, caller can use the groups now
 	}
 
-	public HitGroups getGroups() {
+	public DocGroups getGroups() {
 		return groups;
 	}
 
-	public Hits getHits() {
-		return hits;
+	public DocResults getDocResults() {
+		return docResults;
 	}
 
 }

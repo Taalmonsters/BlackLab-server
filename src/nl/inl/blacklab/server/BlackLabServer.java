@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import nl.inl.blacklab.server.dataobject.DataObject;
+import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.requesthandlers.RequestHandler;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.SearchParameters;
@@ -68,7 +69,11 @@ public class BlackLabServer extends HttpServlet {
 			DataObject response = RequestHandler.handle(this, request);
 
 			// Output the response in the correct type
-			responseObject.addHeader("Content-Type", ServletUtil.getOutputContentType(request));
+			String outputContentType = ServletUtil.getOutputContentType(request);
+			if (response instanceof DataObjectPlain) {
+				outputContentType = ((DataObjectPlain) response).getMimeType();
+			}
+			responseObject.addHeader("Content-Type", outputContentType);
 			OutputStreamWriter out = new OutputStreamWriter(responseObject.getOutputStream(), "utf-8");
 			boolean prettyPrint = ServletUtil.getParameter(request, "prettyprint", DEBUG_MODE);
 			response.serializeDocument("blacklab-response", out, ServletUtil.getOutputType(request), prettyPrint);

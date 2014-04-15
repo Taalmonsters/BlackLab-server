@@ -75,6 +75,12 @@ public class SearchManager  {
 	public SearchManager(Properties properties)  {
 		logger.debug("SearchManager created");
 
+		// TODO: interrupt long search (both automatically and manually)
+		//   problem: searches depend on one another. we need reference counting or something to
+		//            be able to cancel searches no-one is interested in anymore.
+
+		// TODO: snel F5 achter elkaar drukken geeft "Search cache already contains different search object"
+
 		debugMode = PropertiesUtil.getBooleanProp(properties, "debugMode", false);
 		defaultPageSize = PropertiesUtil.getIntProp(properties, "defaultPageSize", 20);
 		defaultPatternLanguage = properties.getProperty("defaultPatternLanguage", "corpusql");
@@ -118,6 +124,8 @@ public class SearchManager  {
 		defaultParameterValues.put("filterlang", defaultFilterLanguage);
 		defaultParameterValues.put("pattlang", defaultPatternLanguage);
 		defaultParameterValues.put("sort", "");
+		defaultParameterValues.put("group", "");
+		defaultParameterValues.put("viewgroup", "");
 		defaultParameterValues.put("first", "0");
 		defaultParameterValues.put("number", "" + defaultPageSize);
 		defaultParameterValues.put("block", defaultBlockingMode ? "yes" : "no");
@@ -191,10 +199,31 @@ public class SearchManager  {
 		return (JobHits)search(parBasic, blockUntilFinished);
 	}
 
+	public JobWithDocs searchDocs(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort");
+		String sort = parBasic.get("sort");
+		if (sort != null && sort.length() > 0) {
+			// Sorted hits
+			parBasic.put("jobclass", "JobDocsSorted");
+			return (JobDocsSorted)search(parBasic, blockUntilFinished);
+		}
+
+		// No sort
+		parBasic.remove("sort"); // unsorted must not include sort parameter, or it's cached wrong
+		parBasic.put("jobclass", "JobDocs");
+		return (JobDocs)search(parBasic, blockUntilFinished);
+	}
+
 	public JobHitsWindow searchHitsWindow(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort", "first", "number", "wordsaroundhit");
 		parBasic.put("jobclass", "JobHitsWindow");
 		return (JobHitsWindow)search(parBasic, blockUntilFinished);
+	}
+
+	public JobDocsWindow searchDocsWindow(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort", "first", "number", "wordsaroundhit");
+		parBasic.put("jobclass", "JobDocsWindow");
+		return (JobDocsWindow)search(parBasic, blockUntilFinished);
 	}
 
 	public JobHitsTotal searchHitsTotal(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
@@ -203,10 +232,22 @@ public class SearchManager  {
 		return (JobHitsTotal)search(parBasic, blockUntilFinished);
 	}
 
+	public JobDocsTotal searchDocsTotal(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang");
+		parBasic.put("jobclass", "JobDocsTotal");
+		return (JobDocsTotal)search(parBasic, blockUntilFinished);
+	}
+
 	public JobHitsGrouped searchHitsGrouped(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "group", "sort");
 		parBasic.put("jobclass", "JobHitsGrouped");
 		return (JobHitsGrouped)search(parBasic, blockUntilFinished);
+	}
+
+	public JobDocsGrouped searchDocsGrouped(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "group", "sort");
+		parBasic.put("jobclass", "JobDocsGrouped");
+		return (JobDocsGrouped)search(parBasic, blockUntilFinished);
 	}
 
 	/**

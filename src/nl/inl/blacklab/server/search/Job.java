@@ -25,14 +25,24 @@ public abstract class Job implements Comparable<Job> {
 		String jobClass = par.get("jobclass");
 		if (jobClass.equals("JobHits")) {
 			search = new JobHits(searchMan, par);
+		} else if (jobClass.equals("JobDocs")) {
+			search = new JobDocs(searchMan, par);
 		} else if (jobClass.equals("JobHitsSorted")) {
 			search = new JobHitsSorted(searchMan, par);
+		} else if (jobClass.equals("JobDocsSorted")) {
+			search = new JobDocsSorted(searchMan, par);
 		} else if (jobClass.equals("JobHitsWindow")) {
 			search = new JobHitsWindow(searchMan, par);
+		} else if (jobClass.equals("JobDocsWindow")) {
+			search = new JobDocsWindow(searchMan, par);
 		} else if (jobClass.equals("JobHitsTotal")) {
 			search = new JobHitsTotal(searchMan, par);
+		} else if (jobClass.equals("JobDocsTotal")) {
+			search = new JobDocsTotal(searchMan, par);
 		} else if (jobClass.equals("JobHitsGrouped")) {
 			search = new JobHitsGrouped(searchMan, par);
+		} else if (jobClass.equals("JobDocsGrouped")) {
+			search = new JobDocsGrouped(searchMan, par);
 		} else
 			throw new QueryException("INTERNAL_ERROR", "Unknown job class '" + jobClass + "'");
 
