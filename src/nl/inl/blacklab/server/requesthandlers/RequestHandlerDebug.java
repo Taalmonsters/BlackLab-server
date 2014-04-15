@@ -18,6 +18,8 @@ public class RequestHandlerDebug extends RequestHandler {
 
 	@Override
 	public DataObject handle() {
+		logger.debug("REQ Debug");
+
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("index-name", indexName);
 		response.put("resource", urlResource);

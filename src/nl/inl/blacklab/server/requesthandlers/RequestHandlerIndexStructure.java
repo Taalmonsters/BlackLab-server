@@ -25,6 +25,8 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 
 	@Override
 	public DataObject handle() throws IndexOpenException {
+		logger.debug("REQ struct: " + indexName);
+
 		Searcher searcher = searchMan.getSearcher(indexName);
 		IndexStructure struct = searcher.getIndexStructure();
 

@@ -35,7 +35,7 @@ public class SearchCache {
 	 */
 	public SearchCache() {
 		cachedSearches = new HashMap<SearchParameters, Job>();
-		logger.debug("Cache created.");
+		//logger.debug("Cache created.");
 	}
 
 	/**
@@ -46,10 +46,10 @@ public class SearchCache {
 	 */
 	public Job get(SearchParameters searchParameters) {
 		Job search = cachedSearches.get(searchParameters);
-		if (search == null)
-			logger.debug("Cache miss: " + searchParameters);
-		else {
-			logger.debug("Cache hit: " + searchParameters);
+		if (search == null) {
+			//logger.debug("Cache miss: " + searchParameters);
+		} else {
+			//logger.debug("Cache hit: " + searchParameters);
 			search.resetLastAccessed();
 		}
 		return search;
@@ -74,7 +74,7 @@ public class SearchCache {
 		}
 
 		// Put search in cache
-		logger.debug("Put in cache: " + searchParameters);
+		//logger.debug("Put in cache: " + searchParameters);
 		cachedSearches.put(searchParameters, search);
 		removeOldSearches();
 	}
@@ -105,7 +105,7 @@ public class SearchCache {
 		for (Job search: lastAccessOrder) {
 			if (!cacheTooBig() && !searchTooOld(search))
 				break; // We're done
-			logger.debug("Remove from cache: " + search);
+			//logger.debug("Remove from cache: " + search);
 			cachedSearches.remove(search.getParameters());
 		}
 	}
@@ -129,12 +129,12 @@ public class SearchCache {
 	private boolean cacheTooBig() {
 		boolean tooManySearches = maxNumberOfSearches >= 0
 				&& cachedSearches.size() > maxNumberOfSearches;
-		if (tooManySearches)
+		/*if (tooManySearches)
 			logger.debug("Cache has too many searches (" + cachedSearches.size() + " > "
-					+ maxNumberOfSearches + ").");
+					+ maxNumberOfSearches + ").");*/
 		boolean tooMuchMemory = maxSizeBytes >= 0 && cacheSizeBytes > maxSizeBytes;
-		if (tooMuchMemory)
-			logger.debug("Cache takes too much memory (" + cacheSizeBytes + " > " + maxSizeBytes + ").");
+		/*if (tooMuchMemory)
+			logger.debug("Cache takes too much memory (" + cacheSizeBytes + " > " + maxSizeBytes + ").");*/
 		boolean tooBig = tooManySearches || tooMuchMemory;
 		return tooBig;
 	}
@@ -149,8 +149,7 @@ public class SearchCache {
 	 */
 	private boolean searchTooOld(Job search) {
 		boolean tooOld = maxSearchAgeSec >= 0 && search.ageInSeconds() > maxSearchAgeSec;
-		if (tooOld)
-			logger.debug("Search is too old: " + search);
+		//if (tooOld) logger.debug("Search is too old: " + search);
 		return tooOld;
 	}
 

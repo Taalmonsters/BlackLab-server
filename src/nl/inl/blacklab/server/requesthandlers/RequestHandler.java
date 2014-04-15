@@ -24,7 +24,7 @@ import org.apache.log4j.Logger;
  * appropriate subclass.
  */
 public abstract class RequestHandler {
-	private static final Logger logger = Logger.getLogger(RequestHandler.class);
+	static final Logger logger = Logger.getLogger(RequestHandler.class);
 
 	/** The available request handlers by name */
 	static Map<String, Class<? extends RequestHandler>> availableHandlers;
@@ -33,7 +33,8 @@ public abstract class RequestHandler {
 	static {
 		availableHandlers = new HashMap<String, Class<? extends RequestHandler>>();
 		availableHandlers.put("debug", RequestHandlerDebug.class);
-		availableHandlers.put("hitset", RequestHandlerHitset.class);
+		availableHandlers.put("hits", RequestHandlerHits.class);
+		availableHandlers.put("hitsgrouped", RequestHandlerHitsGrouped.class);
 		availableHandlers.put("", RequestHandlerIndexStructure.class);
 	}
 

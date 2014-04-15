@@ -111,7 +111,7 @@ public class SearchManager  {
 		// Keep a list of searchparameters.
 		searchParameterNames = Arrays.asList(
 				"resultsType", "patt", "pattlang", "pattfield", "filter", "filterlang",
-				"sort", "group", "collator", "first", "number", "wordsaroundhit");
+				"sort", "group", "viewgroup", "collator", "first", "number", "wordsaroundhit");
 
 		// Set up the parameter default values
 		defaultParameterValues = new HashMap<String, String>();
@@ -201,6 +201,12 @@ public class SearchManager  {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang");
 		parBasic.put("jobclass", "JobHitsTotal");
 		return (JobHitsTotal)search(parBasic, blockUntilFinished);
+	}
+
+	public JobHitsGrouped searchHitsGrouped(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "group", "sort");
+		parBasic.put("jobclass", "JobHitsGrouped");
+		return (JobHitsGrouped)search(parBasic, blockUntilFinished);
 	}
 
 	/**

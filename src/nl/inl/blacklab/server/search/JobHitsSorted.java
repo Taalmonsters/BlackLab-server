@@ -20,8 +20,18 @@ public class JobHitsSorted extends JobWithHits {
 
 		// Now, sort the hits.
 		Hits hitsUnsorted = hitsSearch.getHits();
-		HitProperty sortProp = HitProperty.deserialize(hitsUnsorted, par.get("sort"));
-		hits = hitsUnsorted.sortedBy(sortProp);
+		String sortBy = par.get("sort");
+		if (sortBy == null)
+			sortBy = "";
+		boolean reverse = false;
+		if (sortBy.length() > 0 && sortBy.charAt(0) == '-') {
+			reverse = true;
+			sortBy = sortBy.substring(1);
+		}
+		HitProperty sortProp = HitProperty.deserialize(hitsUnsorted, sortBy);
+		if (sortProp == null)
+			throw new QueryException("UNKNOWN_SORT_PROPERTY", "Unknown sort property '" + sortBy + "'");
+		hits = hitsUnsorted.sortedBy(sortProp, reverse);
 	}
 
 }

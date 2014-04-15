@@ -31,6 +31,8 @@ public abstract class Job implements Comparable<Job> {
 			search = new JobHitsWindow(searchMan, par);
 		} else if (jobClass.equals("JobHitsTotal")) {
 			search = new JobHitsTotal(searchMan, par);
+		} else if (jobClass.equals("JobHitsGrouped")) {
+			search = new JobHitsGrouped(searchMan, par);
 		} else
 			throw new QueryException("INTERNAL_ERROR", "Unknown job class '" + jobClass + "'");
 

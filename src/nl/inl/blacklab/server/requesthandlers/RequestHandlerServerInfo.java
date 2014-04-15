@@ -21,6 +21,7 @@ public class RequestHandlerServerInfo extends RequestHandler {
 
 	@Override
 	public DataObject handle() {
+		logger.debug("REQ serverinfo");
 
 		Collection<String> indices = searchMan.getAvailableIndices();
 		DataObjectList doIndices = new DataObjectList("index");

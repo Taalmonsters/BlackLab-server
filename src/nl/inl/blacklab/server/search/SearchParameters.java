@@ -1,9 +1,7 @@
 package nl.inl.blacklab.server.search;
 
-import java.util.HashMap;
 import java.util.Map;
-
-import nl.inl.blacklab.server.BlackLabServer;
+import java.util.TreeMap;
 
 import org.apache.log4j.Logger;
 
@@ -11,12 +9,14 @@ import org.apache.log4j.Logger;
  * Uniquely describes a search operation.
  *
  * Used for caching and nonblocking operation.
+ *
+ * Derives from TreeMap because it keeps entries in sorted order, which can  be convenient.
  */
-public class SearchParameters extends HashMap<String, String> {
-	private static final Logger logger = Logger.getLogger(BlackLabServer.class);
+public class SearchParameters extends TreeMap<String, String> {
+	private static final Logger logger = Logger.getLogger(SearchParameters.class);
 
 	public SearchParameters() {
-
+		// (nothing to do)
 	}
 
 	@Override
