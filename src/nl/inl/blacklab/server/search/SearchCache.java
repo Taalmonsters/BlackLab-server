@@ -12,6 +12,9 @@ import org.apache.log4j.Logger;
 public class SearchCache {
 	private static final Logger logger = Logger.getLogger(SearchCache.class);
 
+	/** Max time searches are allowed to run (5 minutes) */
+	public static  int MAX_SEARCH_TIME_SEC = 5 * 60;
+
 	/** The cached search objects. */
 	Map<SearchParameters, Job> cachedSearches;
 
@@ -102,11 +105,27 @@ public class SearchCache {
 		calculateSizeBytes(lastAccessOrder);
 
 		// Get rid of old searches
+		boolean lookAtCacheSizeAndSearchAccessTime = true;
 		for (Job search: lastAccessOrder) {
-			if (!cacheTooBig() && !searchTooOld(search))
-				break; // We're done
-			//logger.debug("Remove from cache: " + search);
-			cachedSearches.remove(search.getParameters());
+			if (!search.finished() && search.executionTimeMillis() / 1000 > MAX_SEARCH_TIME_SEC) {
+				// Search is taking too long. Cancel it.
+				logger.debug("Search is taking too long, cancelling: " + search);
+				search.cancelJob();
+
+				// For now, remove from cache, but we should really blacklist these
+				// kinds of searches so repeating them doesn't matter.
+				// TODO blacklist
+				cachedSearches.remove(search.getParameters());
+
+			} else if (lookAtCacheSizeAndSearchAccessTime && cacheTooBig() || searchTooOld(search)) {
+				// Search is too old or cache is too big. Keep removing searches until that's no longer the case
+				//logger.debug("Remove from cache: " + search);
+				cachedSearches.remove(search.getParameters());
+			} else {
+				// Cache is no longer too big and these searches are not too old. Stop checking that,
+				// just check for long-running searches
+				lookAtCacheSizeAndSearchAccessTime = false;
+			}
 		}
 	}
 

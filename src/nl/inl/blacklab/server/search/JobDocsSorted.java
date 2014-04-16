@@ -16,7 +16,8 @@ public class JobDocsSorted extends JobWithDocs {
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking docs search.
 		SearchParameters parNoSort = par.copyWithout("sort");
-		JobWithDocs search = searchMan.searchDocs(parNoSort, true);
+		JobWithDocs search = searchMan.searchDocs(parNoSort);
+		waitForJobToFinish(search);
 
 		// Now, sort the docs.
 		DocResults docsUnsorted = search.getDocResults();

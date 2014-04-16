@@ -22,7 +22,8 @@ public class JobHitsGrouped extends Job {
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking hits search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
-		JobWithHits hitsSearch = searchMan.searchHits(parNoGroup, true);
+		JobWithHits hitsSearch = searchMan.searchHits(parNoGroup);
+		waitForJobToFinish(hitsSearch);
 
 		// Now, group the hits.
 		hits = hitsSearch.getHits();

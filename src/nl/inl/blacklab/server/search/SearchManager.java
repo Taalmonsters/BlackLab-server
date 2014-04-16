@@ -184,70 +184,70 @@ public class SearchManager  {
 		return indexDirs.keySet();
 	}
 
-	public JobWithHits searchHits(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+	public JobWithHits searchHits(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort");
 		String sort = parBasic.get("sort");
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits
 			parBasic.put("jobclass", "JobHitsSorted");
-			return (JobHitsSorted)search(parBasic, blockUntilFinished);
+			return (JobHitsSorted)search(parBasic);
 		}
 
 		// No sort
 		parBasic.remove("sort"); // unsorted must not include sort parameter, or it's cached wrong
 		parBasic.put("jobclass", "JobHits");
-		return (JobHits)search(parBasic, blockUntilFinished);
+		return (JobHits)search(parBasic);
 	}
 
-	public JobWithDocs searchDocs(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+	public JobWithDocs searchDocs(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort");
 		String sort = parBasic.get("sort");
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits
 			parBasic.put("jobclass", "JobDocsSorted");
-			return (JobDocsSorted)search(parBasic, blockUntilFinished);
+			return (JobDocsSorted)search(parBasic);
 		}
 
 		// No sort
 		parBasic.remove("sort"); // unsorted must not include sort parameter, or it's cached wrong
 		parBasic.put("jobclass", "JobDocs");
-		return (JobDocs)search(parBasic, blockUntilFinished);
+		return (JobDocs)search(parBasic);
 	}
 
-	public JobHitsWindow searchHitsWindow(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+	public JobHitsWindow searchHitsWindow(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort", "first", "number", "wordsaroundhit");
 		parBasic.put("jobclass", "JobHitsWindow");
-		return (JobHitsWindow)search(parBasic, blockUntilFinished);
+		return (JobHitsWindow)search(parBasic);
 	}
 
-	public JobDocsWindow searchDocsWindow(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+	public JobDocsWindow searchDocsWindow(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort", "first", "number", "wordsaroundhit");
 		parBasic.put("jobclass", "JobDocsWindow");
-		return (JobDocsWindow)search(parBasic, blockUntilFinished);
+		return (JobDocsWindow)search(parBasic);
 	}
 
-	public JobHitsTotal searchHitsTotal(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+	public JobHitsTotal searchHitsTotal(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang");
 		parBasic.put("jobclass", "JobHitsTotal");
-		return (JobHitsTotal)search(parBasic, blockUntilFinished);
+		return (JobHitsTotal)search(parBasic);
 	}
 
-	public JobDocsTotal searchDocsTotal(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+	public JobDocsTotal searchDocsTotal(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang");
 		parBasic.put("jobclass", "JobDocsTotal");
-		return (JobDocsTotal)search(parBasic, blockUntilFinished);
+		return (JobDocsTotal)search(parBasic);
 	}
 
-	public JobHitsGrouped searchHitsGrouped(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+	public JobHitsGrouped searchHitsGrouped(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "group", "sort");
 		parBasic.put("jobclass", "JobHitsGrouped");
-		return (JobHitsGrouped)search(parBasic, blockUntilFinished);
+		return (JobHitsGrouped)search(parBasic);
 	}
 
-	public JobDocsGrouped searchDocsGrouped(SearchParameters par, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+	public JobDocsGrouped searchDocsGrouped(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "group", "sort");
 		parBasic.put("jobclass", "JobDocsGrouped");
-		return (JobDocsGrouped)search(parBasic, blockUntilFinished);
+		return (JobDocsGrouped)search(parBasic);
 	}
 
 	/**
@@ -261,7 +261,7 @@ public class SearchManager  {
 	 * @throws IndexOpenException if the index couldn't be opened
 	 * @throws InterruptedException if the search thread was interrupted
 	 */
-	private Job search(SearchParameters searchParameters, boolean blockUntilFinished) throws IndexOpenException, QueryException, InterruptedException {
+	private Job search(SearchParameters searchParameters) throws IndexOpenException, QueryException, InterruptedException {
 		// Search the cache / running jobs for this search
 		Job search = cache.get(searchParameters);
 
@@ -270,9 +270,8 @@ public class SearchManager  {
 			search = Job.create(this, searchParameters);
 			cache.put(search);
 
-			// Start the search (and, depending on the block parameter,
-			// wait for it to finish, or return immediately)
-			search.perform(blockUntilFinished ? -1 : waitTimeInNonblockingModeMs);
+			// Start the search, waiting a short time in case it's a fast search
+			search.perform(waitTimeInNonblockingModeMs);
 		}
 
 		// If the search thread threw an exception, rethrow it now.
@@ -421,5 +420,6 @@ public class SearchManager  {
 	public SearchCache getCache() {
 		return cache;
 	}
+
 
 }

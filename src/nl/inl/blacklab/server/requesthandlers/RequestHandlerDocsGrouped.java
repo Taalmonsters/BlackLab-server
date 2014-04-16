@@ -12,6 +12,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.JobDocsGrouped;
 import nl.inl.blacklab.server.search.QueryException;
+import nl.inl.blacklab.server.search.SearchCache;
 
 /**
  * Request handler for grouped doc results.
@@ -28,7 +29,12 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 		logger.debug("REQ docsgrouped: " + searchParam);
 
 		// Get the window we're interested in
-		JobDocsGrouped search = searchMan.searchDocsGrouped(searchParam, getBoolParameter("block"));
+		JobDocsGrouped search = searchMan.searchDocsGrouped(searchParam);
+		if (getBoolParameter("block")) {
+			search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+			if (!search.finished())
+				return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+		}
 
 		// If search is not done yet, indicate this to the user
 		if (!search.finished()) {

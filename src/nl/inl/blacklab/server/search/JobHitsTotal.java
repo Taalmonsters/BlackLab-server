@@ -16,7 +16,8 @@ public class JobHitsTotal extends Job {
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking hits search.
-		hitsSearch = searchMan.searchHits(par, true);
+		hitsSearch = searchMan.searchHits(par);
+		waitForJobToFinish(hitsSearch);
 
 		// Get the total number of hits (we ignore the value because you can monitor progress
 		// and get the final total through the getHits() method yourself.

@@ -1,9 +1,11 @@
 package nl.inl.blacklab.server.search;
 
+import java.lang.Thread.UncaughtExceptionHandler;
+
 /**
  * A (background) thread the search is executed in.
  */
-final class SearchThread extends Thread {
+final class SearchThread extends Thread implements UncaughtExceptionHandler {
 	/** The search to execute */
 	private final Job search;
 
@@ -16,6 +18,7 @@ final class SearchThread extends Thread {
 	 */
 	SearchThread(Job search) {
 		this.search = search;
+		setUncaughtExceptionHandler(this);
 	}
 
 	/**
@@ -32,6 +35,11 @@ final class SearchThread extends Thread {
 			//  our thread crashed or not. The Throwable will be re-thrown by the
 			//  main thread, so any non-Exception Throwables will then go uncaught
 			//  as they "should".
+
+			// We've also set an UncaughtExceptionHandler (the thread object itself)
+			// which does the same thing, because apparently some exceptions can occur
+			// outside the run() method or aren't caught here for some other reason).
+			// Even then, some low-level ones (like OutOfMemoryException) seem to slip by.
 			thrownException = e;
 		}
 	}
@@ -59,6 +67,11 @@ final class SearchThread extends Thread {
 	 */
 	public Throwable getThrownException() {
 		return thrownException;
+	}
+
+	@Override
+	public void uncaughtException(Thread t, Throwable e) {
+		thrownException = e;
 	}
 
 }

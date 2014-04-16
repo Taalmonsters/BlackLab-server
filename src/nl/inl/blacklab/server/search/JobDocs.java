@@ -14,7 +14,8 @@ public class JobDocs extends JobWithDocs {
 	public void performSearch() throws QueryException, IndexOpenException, InterruptedException {
 		// First, execute blocking hits search.
 		SearchParameters parNoSort = par.copyWithout("sort");
-		JobWithHits hitsSearch = searchMan.searchHits(parNoSort, true);
+		JobWithHits hitsSearch = searchMan.searchHits(parNoSort);
+		waitForJobToFinish(hitsSearch);
 
 		// Now, get per document results
 		docResults = hitsSearch.getHits().perDocResults();

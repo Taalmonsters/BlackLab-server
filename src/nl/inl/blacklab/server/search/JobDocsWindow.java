@@ -17,7 +17,8 @@ public class JobDocsWindow extends Job {
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking hits search.
-		JobWithDocs docsSearch = searchMan.searchDocs(par, true);
+		JobWithDocs docsSearch = searchMan.searchDocs(par);
+		waitForJobToFinish(docsSearch);
 
 		// Now, create a HitsWindow on these hits.
 		DocResults docResults = docsSearch.getDocResults();
@@ -28,6 +29,7 @@ public class JobDocsWindow extends Job {
 			first = 0;
 		}
 		window = docResults.window(first, number);
+		//TODO context size
 //		int contextSize = par.getInteger("wordsaroundhit");
 //		if (contextSize > searchMan.maxContextSize) {
 //			logger.debug("Clamping context size to " + searchMan.maxContextSize + " (" + contextSize + " requested)");

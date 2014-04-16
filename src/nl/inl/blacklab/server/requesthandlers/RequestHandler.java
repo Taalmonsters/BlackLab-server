@@ -7,9 +7,11 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.search.IndexStructure;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.ServletUtil;
 import nl.inl.blacklab.server.dataobject.DataObject;
+import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchManager;
@@ -17,6 +19,7 @@ import nl.inl.blacklab.server.search.SearchParameters;
 import nl.inl.blacklab.server.search.SearchUtil;
 
 import org.apache.log4j.Logger;
+import org.apache.lucene.document.Document;
 
 /**
  * Base class for request handlers, to handle the different types of
@@ -233,5 +236,22 @@ public abstract class RequestHandler {
 		}
 	}
 
+	/**
+	 * Get document information (metadata, contents authorization)
+	 *
+	 * @param struct the index structure
+	 * @param document Lucene document
+	 * @return the document information
+	 */
+	public static DataObjectMapElement getDocumentInfo(IndexStructure struct, Document document) {
+		DataObjectMapElement docInfo = new DataObjectMapElement();
+		for (String metadataFieldName: struct.getMetadataFields()) {
+			String value = document.get(metadataFieldName);
+			if (value != null)
+				docInfo.put(metadataFieldName, value);
+		}
+		docInfo.put("mayView", "yes"); // TODO: decide based on config/auth
+		return docInfo;
+	}
 
 }

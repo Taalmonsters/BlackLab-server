@@ -5,8 +5,10 @@ import javax.servlet.http.HttpServletRequest;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
+import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.search.IndexOpenException;
+import nl.inl.blacklab.server.search.QueryException;
 
 import org.apache.lucene.document.Document;
 
@@ -20,13 +22,40 @@ public class RequestHandlerDoc extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() throws IndexOpenException {
-		logger.debug("REQ doc: " + indexName + "-" + urlPathInfo);
+	public DataObject handle() throws IndexOpenException, QueryException {
+
+		int i = urlPathInfo.indexOf('/');
+		String subOperation = "";
+		if (i >= 0)
+			subOperation = urlPathInfo.substring(i + 1);
+		if (subOperation.endsWith("/"))
+			subOperation = subOperation.substring(0, subOperation.length() - 1);
+		String docId = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;
+		if (docId.length() == 0)
+			throw new QueryException("NO_DOC_ID", "Specify document pid.");
 
 		Searcher searcher = searchMan.getSearcher(indexName);
-		Document document = searcher.document(Integer.parseInt(urlPathInfo));
-		String content = searcher.getContent(document);
-		return new DataObjectPlain(content, "text/xml");
+		Document document = searcher.document(Integer.parseInt(docId)); // TODO: PIDs instead of Lucene doc id!
+
+		if (subOperation.equals("contents")) {
+			// Document contents
+			logger.debug("REQ doc contents: " + indexName + "-" + docId);
+
+			String content = searcher.getContent(document);
+			return new DataObjectPlain(content, "text/xml");
+		}
+
+		if (subOperation.length() == 0) {
+			// Document info
+			logger.debug("REQ doc info: " + indexName + "-" + docId);
+
+			DataObjectMapElement response = new DataObjectMapElement();
+			response.put("doc-id", docId);
+			response.put("doc-info", getDocumentInfo(searcher.getIndexStructure(), document));
+			return response;
+		}
+
+		throw new QueryException("UNKNOWN_DOC_OPERATION", "Unknown document operation: '" + subOperation + "'");
 	}
 
 }

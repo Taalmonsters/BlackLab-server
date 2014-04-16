@@ -12,6 +12,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.JobHitsGrouped;
 import nl.inl.blacklab.server.search.QueryException;
+import nl.inl.blacklab.server.search.SearchCache;
 
 /**
  * Request handler for grouped hit results.
@@ -28,7 +29,12 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 		logger.debug("REQ hitsgrouped: " + searchParam);
 
 		// Get the window we're interested in
-		JobHitsGrouped search = searchMan.searchHitsGrouped(searchParam, getBoolParameter("block"));
+		JobHitsGrouped search = searchMan.searchHitsGrouped(searchParam);
+		if (getBoolParameter("block")) {
+			search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+			if (!search.finished())
+				return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+		}
 
 		// If search is not done yet, indicate this to the user
 		if (!search.finished()) {

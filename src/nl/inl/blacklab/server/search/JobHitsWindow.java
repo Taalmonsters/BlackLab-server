@@ -17,7 +17,8 @@ public class JobHitsWindow extends Job {
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking hits search.
-		JobWithHits hitsSearch = searchMan.searchHits(par, true);
+		JobWithHits hitsSearch = searchMan.searchHits(par);
+		waitForJobToFinish(hitsSearch);
 
 		// Now, create a HitsWindow on these hits.
 		Hits hits = hitsSearch.getHits();

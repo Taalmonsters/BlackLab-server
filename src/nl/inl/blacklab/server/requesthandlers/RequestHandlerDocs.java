@@ -25,6 +25,7 @@ import nl.inl.blacklab.server.search.JobDocsGrouped;
 import nl.inl.blacklab.server.search.JobDocsTotal;
 import nl.inl.blacklab.server.search.JobDocsWindow;
 import nl.inl.blacklab.server.search.QueryException;
+import nl.inl.blacklab.server.search.SearchCache;
 
 import org.apache.lucene.document.Document;
 
@@ -55,12 +56,18 @@ public class RequestHandlerDocs extends RequestHandler {
 		DocResultsWindow window;
 		DocGroup group = null;
 		JobDocsTotal total = null;
+		boolean block = getBoolParameter("block");
 		if (groupBy.length() > 0 && viewGroup.length() > 0) {
 
 			// TODO: clean up, do using JobHitsGroupedViewGroup or something (also cache sorted group!)
 
 			// Yes. Group, then show hits from the specified group
-			search = searchGrouped = searchMan.searchDocsGrouped(searchParam, getBoolParameter("block"));
+			search = searchGrouped = searchMan.searchDocsGrouped(searchParam);
+			if (block) {
+				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+				if (!search.finished())
+					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+			}
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
@@ -93,10 +100,15 @@ public class RequestHandlerDocs extends RequestHandler {
 		} else {
 			// Regular set of hits (no grouping first)
 
-			search = searchWindow = searchMan.searchDocsWindow(searchParam, getBoolParameter("block"));
+			search = searchWindow = searchMan.searchDocsWindow(searchParam);
+			if (block) {
+				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+				if (!search.finished())
+					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+			}
 
 			// Also determine the total number of hits (nonblocking)
-			total = searchMan.searchDocsTotal(searchParam, false);
+			total = searchMan.searchDocsTotal(searchParam);
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
@@ -114,13 +126,13 @@ public class RequestHandlerDocs extends RequestHandler {
 		DataObjectList docList = new DataObjectList("doc");
 		for (DocResult result: window) {
 			DataObjectMapElement docMap = new DataObjectMapElement();
-			docMap.put("docid", result.getDocId());
+			docMap.put("doc-id", result.getDocId());
 			docMap.put("number-of-hits", result.getNumberOfHits());
 
 			// Doc info (metadata, etc.)
 			Document document = result.getDocument();
-			DataObjectMapElement docInfo = getDocumentInfo(struct, document);
-			docMap.put("document-info", docInfo);
+			DataObjectMapElement docInfo = RequestHandler.getDocumentInfo(struct, document);
+			docMap.put("doc-info", docInfo);
 
 			// Snippets
 			Hits hits = result.getHits(5); // TODO: make num. snippets configurable
@@ -164,17 +176,6 @@ public class RequestHandlerDocs extends RequestHandler {
 		response.put("docs", docList);
 
 		return response;
-	}
-
-	public static DataObjectMapElement getDocumentInfo(IndexStructure struct, Document document) {
-		DataObjectMapElement docInfo = new DataObjectMapElement();
-		for (String metadataFieldName: struct.getMetadataFields()) {
-			String value = document.get(metadataFieldName);
-			if (value != null)
-				docInfo.put(metadataFieldName, value);
-		}
-		docInfo.put("mayView", "yes"); // TODO: decide based on config/auth
-		return docInfo;
 	}
 
 

@@ -24,8 +24,7 @@ import nl.inl.blacklab.server.search.JobHitsGrouped;
 import nl.inl.blacklab.server.search.JobHitsTotal;
 import nl.inl.blacklab.server.search.JobHitsWindow;
 import nl.inl.blacklab.server.search.QueryException;
-
-import org.apache.lucene.document.Document;
+import nl.inl.blacklab.server.search.SearchCache;
 
 /**
  * Request handler for hit results.
@@ -42,10 +41,10 @@ public class RequestHandlerHits extends RequestHandler {
 		logger.debug("REQ hits: " + searchParam);
 
 		// Do we want to view a single group after grouping?
-		String groupBy = getStringParameter("group");
+		String groupBy = searchParam.get("group");
 		if (groupBy == null)
 			groupBy = "";
-		String viewGroup = getStringParameter("viewgroup");
+		String viewGroup = searchParam.get("viewgroup");
 		if (viewGroup == null)
 			viewGroup = "";
 		Job search;
@@ -59,7 +58,12 @@ public class RequestHandlerHits extends RequestHandler {
 			// TODO: clean up, do using JobHitsGroupedViewGroup or something (also cache sorted group!)
 
 			// Yes. Group, then show hits from the specified group
-			search = searchGrouped = searchMan.searchHitsGrouped(searchParam, getBoolParameter("block"));
+			search = searchGrouped = searchMan.searchHitsGrouped(searchParam);
+			if (getBoolParameter("block")) {
+				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+				if (!search.finished())
+					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+			}
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
@@ -78,7 +82,7 @@ public class RequestHandlerHits extends RequestHandler {
 			if (group == null)
 				return DataObject.errorObject("GROUP_NOT_FOUND", "Group not found: " + viewGroup);
 
-			String sortBy = getStringParameter("sort");
+			String sortBy = searchParam.get("sort");
 			HitProperty sortProp = sortBy != null && sortBy.length() > 0 ? HitProperty.deserialize(group.getHits(), sortBy) : null;
 			Hits hitsSorted;
 			if (sortProp != null)
@@ -86,15 +90,20 @@ public class RequestHandlerHits extends RequestHandler {
 			else
 				hitsSorted = group.getHits();
 
-			window = hitsSorted.window(getIntParameter("first"), getIntParameter("number"));
+			window = hitsSorted.window(searchParam.getInteger("first"), searchParam.getInteger("number"));
 
 		} else {
 			// Regular set of hits (no grouping first)
 
-			search = searchWindow = searchMan.searchHitsWindow(searchParam, getBoolParameter("block"));
+			search = searchWindow = searchMan.searchHitsWindow(searchParam);
+			if (getBoolParameter("block")) {
+				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+				if (!search.finished())
+					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+			}
 
 			// Also determine the total number of hits (nonblocking)
-			total = searchMan.searchHitsTotal(searchParam, false);
+			total = searchMan.searchHitsTotal(searchParam);
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
@@ -110,29 +119,25 @@ public class RequestHandlerHits extends RequestHandler {
 
 		// The hits and document info
 		DataObjectList hitList = new DataObjectList("hit");
-		DataObjectMapInt docInfos = new DataObjectMapInt("docinfo", "id");
+		DataObjectMapInt docInfos = new DataObjectMapInt("doc-info", "id");
 		for (Hit hit: window) {
 			DataObjectMapElement hitMap = new DataObjectMapElement();
-			hitMap.put("docid", hit.doc);
+
+			// Add basic hit info
+			hitMap.put("doc-id", hit.doc);
 			hitMap.put("start", hit.start);
 			hitMap.put("end", hit.end);
 
+			// Add KWIC info
 			Kwic c = window.getKwic(hit);
 			hitMap.put("left", new DataObjectContextList(c.properties, c.left));
 			hitMap.put("match", new DataObjectContextList(c.properties, c.match));
 			hitMap.put("right", new DataObjectContextList(c.properties, c.right));
 			hitList.add(hitMap);
 
+			// Add document info if we didn't already
 			if (!docInfos.containsKey(hit.doc)) {
-				Document document = searcher.document(hit.doc);
-				DataObjectMapElement docInfo = new DataObjectMapElement();
-				for (String metadataFieldName: struct.getMetadataFields()) {
-					String value = document.get(metadataFieldName);
-					if (value != null)
-						docInfo.put(metadataFieldName, value);
-				}
-				docInfo.put("mayView", "yes"); // TODO: decide based on config/auth
-				docInfos.put(hit.doc, docInfo);
+				docInfos.put(hit.doc, getDocumentInfo(struct, searcher.document(hit.doc)));
 			}
 		}
 
@@ -157,7 +162,7 @@ public class RequestHandlerHits extends RequestHandler {
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("summary", summary);
 		response.put("hits", hitList);
-		response.put("docinfos", docInfos);
+		response.put("doc-infos", docInfos);
 
 		return response;
 	}

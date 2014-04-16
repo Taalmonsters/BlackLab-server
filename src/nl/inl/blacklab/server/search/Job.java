@@ -1,5 +1,8 @@
 package nl.inl.blacklab.server.search;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.util.ExUtil;
 
@@ -9,6 +12,46 @@ public abstract class Job implements Comparable<Job> {
 
 	/** Log4j logger object */
 	protected static final Logger logger = Logger.getLogger(JobHits.class);
+
+	/** Number of clients waiting for the results of this job.
+	 * This is used to allow clients to cancel long searches: if this number reaches
+	 * 0 before the search is done, it may be cancelled. Jobs that use other Jobs will
+	 * also count as a client of that Job, and will tell that Job they're no longer interested
+	 * if they are cancelled themselves.
+	 */
+	int clientsWaiting = 0;
+
+	/**
+	 * The jobs we're waiting for, so we can notify them in case we get cancelled.
+	 */
+	Set<Job> waitingFor = new HashSet<Job>();
+
+	/**
+	 * Add a job we're waiting for.
+	 * @param j the job
+	 */
+	protected void addToWaitingFor(Job j) {
+		waitingFor.add(j);
+	}
+
+	/**
+	 * Add a job we're waiting for.
+	 * @param j the job
+	 */
+	protected void removeFromWaitingFor(Job j) {
+		waitingFor.remove(j);
+	}
+
+	/**
+	 * Wait for the specified job to finish
+	 * @param job the job to wait for
+	 * @throws InterruptedException
+	 */
+	protected void waitForJobToFinish(Job job) throws InterruptedException {
+		waitingFor.add(job);
+		job.waitUntilFinished();
+		waitingFor.remove(job);
+	}
 
 	/**
 	 * Create a new Search (subclass) object to carry out the specified search,
@@ -137,17 +180,9 @@ public abstract class Job implements Comparable<Job> {
 		searchThread = new SearchThread(this);
 		searchThread.start();
 		performCalled = true;
+		clientsWaiting++; // someone wants to know the answer
 
-		// Block until either...
-		// * finished
-		// * specified wait time elapsed (if waitTimeMs >= 0)
-		int defaultWaitStep = 100;
-		while (waitTimeMs != 0 && !searchThread.finished()) {
-			int w = waitTimeMs < 0 ? defaultWaitStep : (waitTimeMs > defaultWaitStep ? defaultWaitStep : waitTimeMs);
-			Thread.sleep(w);
-			if (waitTimeMs >= 0)
-				waitTimeMs -= w;
-		}
+		waitUntilFinished(waitTimeMs);
 	}
 
 	@SuppressWarnings("unused")
@@ -206,12 +241,80 @@ public abstract class Job implements Comparable<Job> {
 	 * Return this search's age in seconds.
 	 *
 	 * Age is defined as the time between now and the last time
-	 * it was accessed.
+	 * it was accessed, but only for finished searches. Running
+	 * searches always have a zero age. Check executionTimeMillis() for
+	 * search time.
 	 *
 	 * @return the age in seconds
 	 */
 	public int ageInSeconds() {
-		return (int) (System.currentTimeMillis() - lastAccessed) / 1000;
+		if (finished())
+			return (int) (System.currentTimeMillis() - lastAccessed) / 1000;
+		return 0;
+	}
+
+	/**
+	 * Wait until this job's finished, an Exception is thrown or the specified
+	 * time runs out.
+	 *
+	 * @param maxWaitMs maximum time to wait, or a negative number for no limit
+	 * @throws InterruptedException if the thread was interrupted
+	 */
+	public void waitUntilFinished(int maxWaitMs) throws InterruptedException {
+		int defaultWaitStep = 100;
+		while (maxWaitMs != 0 && !searchThread.finished()) {
+			int w = maxWaitMs < 0 ? defaultWaitStep : (maxWaitMs > defaultWaitStep ? defaultWaitStep : maxWaitMs);
+			Thread.sleep(w);
+			if (maxWaitMs >= 0)
+				maxWaitMs -= w;
+		}
+	}
+
+	/**
+	 * Wait until this job is finished (or an Exception is thrown)
+	 *
+	 * @throws InterruptedException
+	 */
+	public void waitUntilFinished() throws InterruptedException {
+		waitUntilFinished(-1);
+	}
+
+	/**
+	 * Should this job be cancelled?
+	 *
+	 * True if the job hasn't finished and there are no more clients
+	 * waiting for its results.
+	 *
+	 * @return true iff the job should be cancelled
+	 */
+	public boolean shouldBeCancelled() {
+		return !finished() && clientsWaiting == 0;
+	}
+
+	/**
+	 * Change how many clients are waiting for the results of this job.
+	 * @param delta how many clients to add or subtract
+	 */
+	public void changeClientsWaiting(int delta) {
+		clientsWaiting += delta;
+		if (clientsWaiting < 0)
+			logger.error("clientsWaiting < 0 for job: " + this);
+		if (shouldBeCancelled()) {
+			cancelJob();
+		}
+	}
+
+	/**
+	 * Try to cancel this job.
+	 */
+	public void cancelJob() {
+		searchThread.interrupt();
+
+		// Tell the jobs we were waiting for we're no longer interested
+		for (Job j: waitingFor) {
+			j.changeClientsWaiting(-1);
+		}
+		waitingFor.clear();
 	}
 
 	/**

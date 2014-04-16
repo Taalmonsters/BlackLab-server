@@ -16,7 +16,8 @@ public class JobHitsSorted extends JobWithHits {
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking hits search.
 		SearchParameters parNoSort = par.copyWithout("sort");
-		JobWithHits hitsSearch = searchMan.searchHits(parNoSort, true);
+		JobWithHits hitsSearch = searchMan.searchHits(parNoSort);
+		waitForJobToFinish(hitsSearch);
 
 		// Now, sort the hits.
 		Hits hitsUnsorted = hitsSearch.getHits();
