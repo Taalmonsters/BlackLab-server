@@ -3,27 +3,33 @@ package nl.inl.blacklab.server.search;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import nl.inl.blacklab.analysis.BLDutchAnalyzer;
+import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.queryParser.corpusql.CorpusQueryLanguageParser;
 import nl.inl.blacklab.queryParser.corpusql.ParseException;
 import nl.inl.blacklab.queryParser.corpusql.TokenMgrError;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.TextPattern;
+import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectString;
 import nl.inl.util.PropertiesUtil;
 
 import org.apache.log4j.Logger;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryWrapperFilter;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.Version;
 
 public class SearchManager  {
@@ -32,37 +38,36 @@ public class SearchManager  {
 	/** How long the server should wait for a quick answer when starting
 	 * a nonblocking request. If the answer is found within this time,
 	 * the client needs only one request even in nonblocking mode. */
-	public int waitTimeInNonblockingModeMs;
+	private int waitTimeInNonblockingModeMs;
 
 	/** The default advice to give for when to check status of search again.
 	 * TODO the longer a search has been running, the
 	 *   higher the advised wait time should be.
 	 */
-	public int defaultCheckAgainAdviceMs;
+	private int defaultCheckAgainAdviceMs;
 
 	/** Maximum context size allowed */
-	public int maxContextSize;
+	private int maxContextSize;
 
 	/** Parameters involved in search */
-	List<String> searchParameterNames;
+	private List<String> searchParameterNames;
 
 	/** Default values for request parameters */
-	Map<String, String> defaultParameterValues;
+	private Map<String, String> defaultParameterValues;
 
 	/** Run in debug mode or not? */
-	boolean debugMode;
+	private boolean debugMode;
 
 	/** Default number of hits/results per page */
 	private int defaultPageSize;
 
-	/** Available indices and their directories */
-	Map<String, File> indexDirs;
+	private Map<String, IndexParam> indexParam;
 
 	/** The Searcher objects, one for each of the indices we can search. */
-	Map<String, Searcher> searchers = new HashMap<String, Searcher>();
+	private Map<String, Searcher> searchers = new HashMap<String, Searcher>();
 
 	/** All running searches as well as recently run searches */
-	SearchCache cache;
+	private SearchCache cache;
 
 	private String defaultPatternLanguage;
 
@@ -94,24 +99,30 @@ public class SearchManager  {
 		defaultCheckAgainAdviceMs = PropertiesUtil.getIntProp(properties, "defaultCheckAgainAdviceMs", 200);
 		waitTimeInNonblockingModeMs = PropertiesUtil.getIntProp(properties, "waitTimeInNonblockingModeMs", 100);
 
-		String propIndexNames = properties.getProperty("indexNames");
-		if (propIndexNames != null) {
-			String[] indexNames = propIndexNames.trim().split("\\s+");
-			indexDirs = new HashMap<String, File>();
-			for (String indexName: indexNames) {
-				File dir = PropertiesUtil.getFileProp(properties, "indexDir_" + indexName);
-				if (dir == null) {
-					logger.error("No index directory given for index '" + indexName + "' (supply indexDir_" + indexName + " setting)");
-					continue;
-				}
+		// Find the indices
+		Enumeration<Object> keys = properties.keys();
+		indexParam = new HashMap<String, IndexParam>();
+		while (keys.hasMoreElements()) {
+			String name = (String)keys.nextElement();
+			if (name.startsWith("index.") && name.indexOf('.', 6) < 0) {
+				String indexName = name.substring(6);
+				File dir = PropertiesUtil.getFileProp(properties, name);
 				if (!dir.exists()) {
 					logger.error("Index directory for index '" + indexName + "' does not exist: " + dir);
 					continue;
 				}
-				indexDirs.put(indexName, dir);
+
+				String pid = properties.getProperty("index." + indexName + ".pid", "");
+				if (pid.length() == 0) {
+					logger.warn("No pid given for index '" + indexName + "'; using Lucene doc ids.");
+				}
+
+				boolean mayViewContent = PropertiesUtil.getBooleanProp(properties, "index." + indexName + ".may-view-content", false);
+
+				indexParam.put(indexName, new IndexParam(dir, pid, mayViewContent));
 			}
 		}
-		if (indexDirs.size() == 0)
+		if (indexParam.size() == 0)
 			throw new RuntimeException("Configuration error: no indices available. Specify indexNames (space-separated) and indexDir_<name> for each index!");
 
 		// Keep a list of searchparameters.
@@ -173,7 +184,73 @@ public class SearchManager  {
 	 * @return the index directory, or null if not found
 	 */
 	private File getIndexDir(String indexName) {
-		return indexDirs.get(indexName);
+		IndexParam p = indexParam.get(indexName);
+		return p.getDir();
+	}
+
+	/** Get the persistent identifier field for an index.
+	 *
+	 * @param indexName the index
+	 * @return the persistent identifier field, or empty if none (use Lucene doc id)
+	 */
+	public String getIndexPidField(String indexName) {
+		IndexParam p = indexParam.get(indexName);
+		return p.getPidField();
+	}
+
+	/**
+	 * Get the pid for the specified document
+	 * @param indexName index name
+	 * @param luceneDocId Lucene document id
+	 * @param document the document object
+	 * @return the pid string (or Lucene doc id in string form if index has no pid field)
+	 */
+	public String getDocumentPid(String indexName, int luceneDocId, Document document) {
+		String pidField = getIndexPidField(indexName);
+		if (pidField.length() == 0)
+			return "" + luceneDocId;
+		return document.get(pidField);
+	}
+
+	/**
+	 * Get the Lucene Document given the pid
+	 * @param indexName index name
+	 * @param pid the pid string (or Lucene doc id if we don't use a pid)
+	 * @return the document
+	 * @throws IndexOpenException
+	 */
+	public Document getDocumentFromPid(String indexName, String pid) throws IndexOpenException {
+		String pidField = getIndexPidField(indexName);
+		Searcher searcher = getSearcher(indexName);
+		if (pidField.length() == 0) {
+			int luceneDocId;
+			try {
+				luceneDocId = Integer.parseInt(pid);
+			} catch (NumberFormatException e) {
+				throw new IllegalArgumentException("Pid must be a Lucene doc id, but it's not a number: " + pid);
+			}
+			return searcher.document(luceneDocId);
+		}
+		boolean lowerCase = false; // HACK in case pid field is incorrectly lowercased
+		DocResults docResults;
+		while (true) {
+			String p = lowerCase ? pid.toLowerCase() : pid;
+			TermQuery documentFilterQuery = new TermQuery(new Term(pidField, p));
+			docResults = searcher.queryDocuments(documentFilterQuery);
+			if (docResults.size() > 1) {
+				// HACK: temporarily turned off because some documents are indexed twice..
+				//throw new IllegalArgumentException("Pid must uniquely identify a document, but it has " + docResults.size() + " hits: " + pid);
+			}
+			if (docResults.size() == 0) {
+				if (lowerCase)
+					return null; // tried with and without lowercasing; doesn't exist
+				lowerCase = true; // try lowercase now
+			} else {
+				// size == 1, found!
+				break;
+			}
+		}
+		return docResults.get(0).getDocument();
 	}
 
 	/**
@@ -181,7 +258,7 @@ public class SearchManager  {
 	 * @return the list of index names
 	 */
 	public Collection<String> getAvailableIndices() {
-		return indexDirs.keySet();
+		return indexParam.keySet();
 	}
 
 	public JobWithHits searchHits(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
@@ -262,14 +339,20 @@ public class SearchManager  {
 	 * @throws InterruptedException if the search thread was interrupted
 	 */
 	private Job search(SearchParameters searchParameters) throws IndexOpenException, QueryException, InterruptedException {
-		// Search the cache / running jobs for this search
-		Job search = cache.get(searchParameters);
+		// Search the cache / running jobs for this search, create new if not found.
+		boolean performSearch = false;
+		Job search;
+		synchronized(this) {
+			search = cache.get(searchParameters);
+			if (search == null) {
+				// Not found; create a new search object with these parameters and place it in the cache
+				search = Job.create(this, searchParameters);
+				cache.put(search);
+				performSearch = true;
+			}
+		}
 
-		// Not found; create a new search object with these parameters and place it in the cache
-		if (search == null) {
-			search = Job.create(this, searchParameters);
-			cache.put(search);
-
+		if (performSearch) {
 			// Start the search, waiting a short time in case it's a fast search
 			search.perform(waitTimeInNonblockingModeMs);
 		}
@@ -419,6 +502,19 @@ public class SearchManager  {
 
 	public SearchCache getCache() {
 		return cache;
+	}
+
+	public boolean mayViewContents(String indexName, Document document) {
+		IndexParam p = indexParam.get(indexName);
+		return p.mayViewContents();
+	}
+
+	public DataFormat getContentsFormat(String indexName) {
+		return DataFormat.XML; // could be made configurable
+	}
+
+	public int getMaxContextSize() {
+		return maxContextSize;
 	}
 
 

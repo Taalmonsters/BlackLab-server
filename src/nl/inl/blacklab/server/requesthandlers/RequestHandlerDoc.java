@@ -4,6 +4,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.BlackLabServer;
+import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
@@ -35,14 +36,22 @@ public class RequestHandlerDoc extends RequestHandler {
 			throw new QueryException("NO_DOC_ID", "Specify document pid.");
 
 		Searcher searcher = searchMan.getSearcher(indexName);
-		Document document = searcher.document(Integer.parseInt(docId)); // TODO: PIDs instead of Lucene doc id!
+		Document document = searchMan.getDocumentFromPid(indexName, docId);
+		if (document == null)
+			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 
 		if (subOperation.equals("contents")) {
 			// Document contents
 			logger.debug("REQ doc contents: " + indexName + "-" + docId);
 
-			String content = searcher.getContent(document);
-			return new DataObjectPlain(content, "text/xml");
+			DataFormat type = searchMan.getContentsFormat(indexName);
+			if (searchMan.mayViewContents(indexName, document)) {
+				String content = searcher.getContent(document);
+				return new DataObjectPlain(content, type);
+			}
+			DataObject errObj = DataObject.errorObject("NOT_AUTHORIZED", "Sorry, you're not authorized to retrieve the full contents of this document.");
+			errObj.overrideType(type); // Application expects this MIME type, don't disappoint
+			return errObj;
 		}
 
 		if (subOperation.length() == 0) {
@@ -50,8 +59,8 @@ public class RequestHandlerDoc extends RequestHandler {
 			logger.debug("REQ doc info: " + indexName + "-" + docId);
 
 			DataObjectMapElement response = new DataObjectMapElement();
-			response.put("doc-id", docId);
-			response.put("doc-info", getDocumentInfo(searcher.getIndexStructure(), document));
+			response.put("doc-pid", docId);
+			response.put("doc-info", getDocumentInfo(indexName, searcher.getIndexStructure(), document));
 			return response;
 		}
 

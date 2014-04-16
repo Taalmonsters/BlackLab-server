@@ -6,7 +6,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
-import nl.inl.blacklab.server.dataobject.DataObjectList;
+import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.SearchCache;
 
@@ -24,9 +24,12 @@ public class RequestHandlerServerInfo extends RequestHandler {
 		logger.debug("REQ serverinfo");
 
 		Collection<String> indices = searchMan.getAvailableIndices();
-		DataObjectList doIndices = new DataObjectList("index");
+		DataObjectMapAttribute doIndices = new DataObjectMapAttribute("index", "name");
 		for (String indexName: indices) {
-			doIndices.add(indexName);
+			DataObjectMapElement doIndex = new DataObjectMapElement();
+			doIndex.put("pid-field", searchMan.getIndexPidField(indexName));
+
+			doIndices.put(indexName, doIndex);
 		}
 
 		SearchCache cache = searchMan.getCache();

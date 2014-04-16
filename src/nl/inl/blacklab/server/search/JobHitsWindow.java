@@ -30,9 +30,10 @@ public class JobHitsWindow extends Job {
 		}
 		window = hits.window(first, number);
 		int contextSize = par.getInteger("wordsaroundhit");
-		if (contextSize > searchMan.maxContextSize) {
-			logger.debug("Clamping context size to " + searchMan.maxContextSize + " (" + contextSize + " requested)");
-			contextSize = searchMan.maxContextSize;
+		int maxContextSize = searchMan.getMaxContextSize();
+		if (contextSize > maxContextSize) {
+			logger.debug("Clamping context size to " + maxContextSize + " (" + contextSize + " requested)");
+			contextSize = maxContextSize;
 		}
 		window.setContextSize(contextSize);
 

@@ -239,18 +239,19 @@ public abstract class RequestHandler {
 	/**
 	 * Get document information (metadata, contents authorization)
 	 *
+	 * @param indexName name of the index
 	 * @param struct the index structure
 	 * @param document Lucene document
 	 * @return the document information
 	 */
-	public static DataObjectMapElement getDocumentInfo(IndexStructure struct, Document document) {
+	public DataObjectMapElement getDocumentInfo(String indexName, IndexStructure struct, Document document) {
 		DataObjectMapElement docInfo = new DataObjectMapElement();
 		for (String metadataFieldName: struct.getMetadataFields()) {
 			String value = document.get(metadataFieldName);
 			if (value != null)
 				docInfo.put(metadataFieldName, value);
 		}
-		docInfo.put("mayView", "yes"); // TODO: decide based on config/auth
+		docInfo.put("mayView", searchMan.mayViewContents(indexName, document));
 		return docInfo;
 	}
 

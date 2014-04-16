@@ -111,14 +111,24 @@ public class ServletUtil {
 	/**
 	 * Returns the desired content type for the output.
 	 * This is based on the "outputformat" parameter.
-	 * @param request the request object
+	 * @param outputType the request object
+	 * @param charSet the charset to use (default utf-8)
 	 * @return the MIME content type
 	 */
-	public static String getOutputContentType(HttpServletRequest request) {
-		DataFormat outputType = getOutputType(request);
+	public static String getContentType(DataFormat outputType, String charSet) {
 		if (outputType == DataFormat.XML)
-			return "application/xml";
-		return "application/json";
+			return "application/xml; charset=" + charSet;
+		return "application/json; charset=" + charSet;
+	}
+
+	/**
+	 * Returns the desired content type for the output.
+	 * This is based on the "outputformat" parameter.
+	 * @param outputType the request object
+	 * @return the MIME content type
+	 */
+	public static String getContentType(DataFormat outputType) {
+		return getContentType(outputType, "utf-8");
 	}
 
 	/**
@@ -210,7 +220,7 @@ public class ServletUtil {
 
 		// Set the content headers for the response
 		response.setCharacterEncoding(OUTPUT_ENCODING);
-		response.setContentType(ServletUtil.getOutputContentType(request));
+		response.setContentType(ServletUtil.getContentType(getOutputType(request)));
 	}
 
 

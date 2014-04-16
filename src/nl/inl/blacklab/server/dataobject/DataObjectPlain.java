@@ -10,19 +10,13 @@ public class DataObjectPlain extends DataObject {
 
 	String value;
 
-	String mimeType;
-
-	public DataObjectPlain(String value, String mimeType) {
+	public DataObjectPlain(String value, DataFormat type) {
 		this.value = value;
-		this.mimeType = mimeType;
+		overrideType = type;
 	}
 
 	public DataObjectPlain(String value) {
-		this(value, "text/plain");
-	}
-
-	public String getMimeType() {
-		return mimeType;
+		this(value, DataFormat.XML);
 	}
 
 	@Override

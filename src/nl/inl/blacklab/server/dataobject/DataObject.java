@@ -9,6 +9,16 @@ import java.io.Writer;
  */
 public abstract class DataObject {
 
+	DataFormat overrideType = null;
+
+	public DataFormat getOverrideType() {
+		return overrideType;
+	}
+
+	public void overrideType(DataFormat type) {
+		overrideType = type;
+	}
+
 	/**
 	 * Serialize the data to either XML or JSON
 	 * @param out where to serialize to

@@ -125,14 +125,9 @@ public class RequestHandlerDocs extends RequestHandler {
 		// The hits and document info
 		DataObjectList docList = new DataObjectList("doc");
 		for (DocResult result: window) {
-			DataObjectMapElement docMap = new DataObjectMapElement();
-			docMap.put("doc-id", result.getDocId());
-			docMap.put("number-of-hits", result.getNumberOfHits());
-
 			// Doc info (metadata, etc.)
 			Document document = result.getDocument();
-			DataObjectMapElement docInfo = RequestHandler.getDocumentInfo(struct, document);
-			docMap.put("doc-info", docInfo);
+			DataObjectMapElement docInfo = getDocumentInfo(indexName, struct, document);
 
 			// Snippets
 			Hits hits = result.getHits(5); // TODO: make num. snippets configurable
@@ -145,6 +140,15 @@ public class RequestHandlerDocs extends RequestHandler {
 				hitMap.put("right", new DataObjectContextList(c.properties, c.right));
 				doSnippetList.add(hitMap);
 			}
+
+			// Find pid
+			String pid = searchMan.getDocumentPid(indexName, result.getDocId(), document);
+
+			// Combine all
+			DataObjectMapElement docMap = new DataObjectMapElement();
+			docMap.put("doc-pid", pid);
+			docMap.put("number-of-hits", result.getNumberOfHits());
+			docMap.put("doc-info", docInfo);
 			docMap.put("snippets", doSnippetList);
 
 			docList.add(docMap);

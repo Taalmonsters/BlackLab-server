@@ -16,8 +16,8 @@ import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectContextList;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
+import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
-import nl.inl.blacklab.server.dataobject.DataObjectMapInt;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.Job;
 import nl.inl.blacklab.server.search.JobHitsGrouped;
@@ -25,6 +25,8 @@ import nl.inl.blacklab.server.search.JobHitsTotal;
 import nl.inl.blacklab.server.search.JobHitsWindow;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
+
+import org.apache.lucene.document.Document;
 
 /**
  * Request handler for hit results.
@@ -119,12 +121,16 @@ public class RequestHandlerHits extends RequestHandler {
 
 		// The hits and document info
 		DataObjectList hitList = new DataObjectList("hit");
-		DataObjectMapInt docInfos = new DataObjectMapInt("doc-info", "id");
+		DataObjectMapAttribute docInfos = new DataObjectMapAttribute("doc-info", "pid");
 		for (Hit hit: window) {
 			DataObjectMapElement hitMap = new DataObjectMapElement();
 
+			// Find pid
+			Document document = searcher.document(hit.doc);
+			String pid = searchMan.getDocumentPid(indexName, hit.doc, document);
+
 			// Add basic hit info
-			hitMap.put("doc-id", hit.doc);
+			hitMap.put("doc-pid", pid);
 			hitMap.put("start", hit.start);
 			hitMap.put("end", hit.end);
 
@@ -137,7 +143,7 @@ public class RequestHandlerHits extends RequestHandler {
 
 			// Add document info if we didn't already
 			if (!docInfos.containsKey(hit.doc)) {
-				docInfos.put(hit.doc, getDocumentInfo(struct, searcher.document(hit.doc)));
+				docInfos.put(pid, getDocumentInfo(indexName, struct, searcher.document(hit.doc)));
 			}
 		}
 

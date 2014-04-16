@@ -13,20 +13,20 @@ public class SearchCache {
 	private static final Logger logger = Logger.getLogger(SearchCache.class);
 
 	/** Max time searches are allowed to run (5 minutes) */
-	public static  int MAX_SEARCH_TIME_SEC = 5 * 60;
+	public final static int MAX_SEARCH_TIME_SEC = 5 * 60;
 
 	/** The cached search objects. */
-	Map<SearchParameters, Job> cachedSearches;
+	private Map<SearchParameters, Job> cachedSearches;
 
 	/** Maximum size in bytes to target, or -1 for no limit. NOT IMPLEMENTED YET. */
-	long maxSizeBytes = -1;
+	private long maxSizeBytes = -1;
 
 	/** Maximum number of searches to cache, or -1 for no limit. Defaults to (a fairly low) 20.*/
-	int maxNumberOfSearches = 20;
+	private int maxNumberOfSearches = 20;
 
 	/** Maximum age of a cached search in seconds. May be exceeded because it is only cleaned up when
 	 *  adding new searches. Defaults to one hour. */
-	int maxSearchAgeSec = 3600;
+	private int maxSearchAgeSec = 3600;
 
 	/** (Estimated) size of the cache. Only updated in removeOldSearches, so may not
 	 * always be accurate. */

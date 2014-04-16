@@ -9,8 +9,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
-import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.requesthandlers.RequestHandler;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.SearchParameters;
@@ -42,10 +42,14 @@ public class BlackLabServer extends HttpServlet {
 			properties.setProperty("debugMode", "true");
 
 			// Some test indices
-			properties.put("indexNames", "brown folia gysseling");
-			properties.put("indexDir_brown", "D:/dev/blacklab/brown/index");
-			properties.put("indexDir_folia", "D:/dev/blacklab/folia/index");
-			properties.put("indexDir_gysseling", "D:/dev/blacklab/gysseling/index");
+			properties.put("index.brown",     "D:/dev/blacklab/brown/index");
+			properties.put("index.brown.may-view-content", "true");
+			properties.put("index.opensonar", "D:/dev/blacklab/opensonar/index");
+			properties.put("index.opensonar.pid", "id");
+			properties.put("index.opensonar.may-view-content", "true");
+			properties.put("index.gysseling", "D:/dev/blacklab/gysseling/index");
+			properties.put("index.gysseling.pid", "idno");
+			properties.put("index.gysseling.may-view-content", "true");
 		} else {
 			// Read from file
 		}
@@ -69,14 +73,13 @@ public class BlackLabServer extends HttpServlet {
 			DataObject response = RequestHandler.handle(this, request);
 
 			// Output the response in the correct type
-			String outputContentType = ServletUtil.getOutputContentType(request);
-			if (response instanceof DataObjectPlain) {
-				outputContentType = ((DataObjectPlain) response).getMimeType();
-			}
-			responseObject.addHeader("Content-Type", outputContentType);
+			DataFormat outputType = response.getOverrideType();
+			if (outputType == null)
+				outputType = ServletUtil.getOutputType(request);
+			responseObject.addHeader("Content-Type", ServletUtil.getContentType(outputType));
 			OutputStreamWriter out = new OutputStreamWriter(responseObject.getOutputStream(), "utf-8");
 			boolean prettyPrint = ServletUtil.getParameter(request, "prettyprint", DEBUG_MODE);
-			response.serializeDocument("blacklab-response", out, ServletUtil.getOutputType(request), prettyPrint);
+			response.serializeDocument("blacklab-response", out, outputType, prettyPrint);
 			out.flush();
 
 		} catch (IOException e) {
