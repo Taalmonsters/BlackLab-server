@@ -163,12 +163,17 @@ public class RequestHandlerDocs extends RequestHandler {
 		if (total != null)
 			summary.put("count-time", total.executionTimeMillis());
 		summary.put("still-counting", !done);
-		if (searchGrouped == null) {
+		if (searchGrouped == null && hits != null) {
 			summary.put("number-of-hits", hits.countSoFarHitsCounted());
 			summary.put("number-of-hits-retrieved", hits.countSoFarHitsRetrieved());
 		}
-		summary.put("number-of-docs", hits == null ? group.getResults().size() : hits.countSoFarDocsCounted());
-		summary.put("number-of-docs-retrieved", hits == null ? group.getResults().size() : hits.countSoFarDocsRetrieved());
+		if (hits != null || group != null) {
+			summary.put("number-of-docs", hits == null ? group.getResults().size() : hits.countSoFarDocsCounted());
+			summary.put("number-of-docs-retrieved", hits == null ? group.getResults().size() : hits.countSoFarDocsRetrieved());
+		} else {
+			// TODO: DocResults.countSoFarDocsCounted/Retrieved?
+			summary.put("number-of-docs", docs.size());
+		}
 		summary.put("window-first-result", window.first());
 		summary.put("window-size", window.size());
 		summary.put("window-has-previous", window.hasPrevious());

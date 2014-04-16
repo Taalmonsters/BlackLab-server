@@ -26,9 +26,7 @@ import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.QueryWrapperFilter;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.Version;
 
@@ -213,13 +211,13 @@ public class SearchManager  {
 	}
 
 	/**
-	 * Get the Lucene Document given the pid
+	 * Get the Lucene Document id given the pid
 	 * @param indexName index name
 	 * @param pid the pid string (or Lucene doc id if we don't use a pid)
-	 * @return the document
+	 * @return the document id, or -1 if it doesn't exist
 	 * @throws IndexOpenException
 	 */
-	public Document getDocumentFromPid(String indexName, String pid) throws IndexOpenException {
+	public int getLuceneDocIdFromPid(String indexName, String pid) throws IndexOpenException {
 		String pidField = getIndexPidField(indexName);
 		Searcher searcher = getSearcher(indexName);
 		if (pidField.length() == 0) {
@@ -229,7 +227,7 @@ public class SearchManager  {
 			} catch (NumberFormatException e) {
 				throw new IllegalArgumentException("Pid must be a Lucene doc id, but it's not a number: " + pid);
 			}
-			return searcher.document(luceneDocId);
+			return luceneDocId;
 		}
 		boolean lowerCase = false; // HACK in case pid field is incorrectly lowercased
 		DocResults docResults;
@@ -243,14 +241,14 @@ public class SearchManager  {
 			}
 			if (docResults.size() == 0) {
 				if (lowerCase)
-					return null; // tried with and without lowercasing; doesn't exist
+					return -1; // tried with and without lowercasing; doesn't exist
 				lowerCase = true; // try lowercase now
 			} else {
 				// size == 1, found!
 				break;
 			}
 		}
-		return docResults.get(0).getDocument();
+		return docResults.get(0).getDocId();
 	}
 
 	/**
@@ -454,11 +452,11 @@ public class SearchManager  {
 		throw new QueryException("UNKNOWN_PATT_LANG", "Unknown pattern language '" + language + "'. Supported: corpusql, contextql, luceneql");
 	}
 
-	public static Filter parseFilter(String filter, String filterLang) throws QueryException {
+	public static Query parseFilter(String filter, String filterLang) throws QueryException {
 		return parseFilter(filter, filterLang, false);
 	}
 
-	public static Filter parseFilter(String filter, String filterLang, boolean required) throws QueryException {
+	public static Query parseFilter(String filter, String filterLang, boolean required) throws QueryException {
 		if (filter == null || filter.length() == 0) {
 			if (required)
 				throw new QueryException("NO_FILTER_GIVEN", "Document filter required. Please specify 'filter' parameter.");
@@ -471,7 +469,7 @@ public class SearchManager  {
 		try {
 			QueryParser parser = new QueryParser(Version.LUCENE_42, "", new BLDutchAnalyzer());
 			Query query = parser.parse(filter);
-			return new QueryWrapperFilter(query);
+			return query;
 		} catch (org.apache.lucene.queryparser.classic.ParseException e) {
 			throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing document filter query: " + e.getMessage());
 		} catch (org.apache.lucene.queryparser.classic.TokenMgrError e) {

@@ -37,10 +37,11 @@ public abstract class RequestHandler {
 		availableHandlers = new HashMap<String, Class<? extends RequestHandler>>();
 		availableHandlers.put("debug", RequestHandlerDebug.class);
 		availableHandlers.put("hits", RequestHandlerHits.class);
-		availableHandlers.put("hitsgrouped", RequestHandlerHitsGrouped.class);
+		availableHandlers.put("hits-grouped", RequestHandlerHitsGrouped.class);
 		availableHandlers.put("docs", RequestHandlerDocs.class);
-		availableHandlers.put("docsgrouped", RequestHandlerDocsGrouped.class);
-		availableHandlers.put("doc", RequestHandlerDoc.class);
+		availableHandlers.put("docs-grouped", RequestHandlerDocsGrouped.class);
+		availableHandlers.put("doc-contents", RequestHandlerDocContents.class);
+		availableHandlers.put("doc-info", RequestHandlerDocInfo.class);
 		availableHandlers.put("", RequestHandlerIndexStructure.class);
 	}
 
@@ -79,11 +80,23 @@ public abstract class RequestHandler {
 				// HACK to avoid having a different url resource for
 				// the lists of (hit|doc) groups: instantiate a different
 				// request handler class in this case.
-				if (handlerName.equals("hits") || handlerName.equals("docs")) {
+				if (!handlerName.equals("hits") && !handlerName.equals("docs")) {
+					handlerName = "debug";
+				}
+				else if (handlerName.equals("docs") && urlPathInfo.length() > 0) {
+					handlerName = "doc-info";
+					String p = urlPathInfo;
+					if (p.endsWith("/"))
+						p = p.substring(0, p.length() - 1);
+					if (urlPathInfo.endsWith("/contents")) {
+						handlerName = "doc-contents";
+					}
+				}
+				else if (handlerName.equals("hits") || handlerName.equals("docs")) {
 					if (request.getParameter("group") != null) {
 						String viewgroup = request.getParameter("viewgroup");
 						if (viewgroup == null || viewgroup.length() == 0)
-							handlerName += "grouped"; // list of groups instead of contents
+							handlerName += "-grouped"; // list of groups instead of contents
 					}
 				}
 
@@ -92,7 +105,7 @@ public abstract class RequestHandler {
 				if (!availableHandlers.containsKey(handlerName))
 					handlerName = "debug";
 				if (handlerName.equals("debug") && !BlackLabServer.DEBUG_MODE)
-					return DataObject.errorObject("UNKNOWN_OPERATION", "Unknown operation '" + handlerName + "'. Check your search URL.");
+					return DataObject.errorObject("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
 				Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
 				Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, String.class, String.class, String.class);
 				requestHandler = ctor.newInstance(servlet, request, indexName, urlResource, urlPathInfo);

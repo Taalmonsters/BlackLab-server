@@ -44,9 +44,11 @@ public class BlackLabServer extends HttpServlet {
 			// Some test indices
 			properties.put("index.brown",     "D:/dev/blacklab/brown/index");
 			properties.put("index.brown.may-view-content", "true");
+
 			properties.put("index.opensonar", "D:/dev/blacklab/opensonar/index");
 			properties.put("index.opensonar.pid", "id");
 			properties.put("index.opensonar.may-view-content", "true");
+
 			properties.put("index.gysseling", "D:/dev/blacklab/gysseling/index");
 			properties.put("index.gysseling.pid", "idno");
 			properties.put("index.gysseling.may-view-content", "true");
