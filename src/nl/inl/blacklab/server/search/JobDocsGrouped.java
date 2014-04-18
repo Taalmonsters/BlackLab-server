@@ -4,6 +4,7 @@ import nl.inl.blacklab.perdocument.DocGroupProperty;
 import nl.inl.blacklab.perdocument.DocGroups;
 import nl.inl.blacklab.perdocument.DocProperty;
 import nl.inl.blacklab.perdocument.DocResults;
+import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 
 /**
  * Represents a hits search and sort operation.
@@ -14,15 +15,15 @@ public class JobDocsGrouped extends Job {
 
 	private DocResults docResults;
 
-	public JobDocsGrouped(SearchManager searchMan, SearchParameters par) throws IndexOpenException {
-		super(searchMan, par);
+	public JobDocsGrouped(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
+		super(searchMan, userId, par);
 	}
 
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking hits search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
-		JobWithDocs docsSearch = searchMan.searchDocs(parNoGroup);
+		JobWithDocs docsSearch = searchMan.searchDocs(userId, parNoGroup);
 		waitForJobToFinish(docsSearch);
 
 		// Now, group the hits.
@@ -56,6 +57,14 @@ public class JobDocsGrouped extends Job {
 
 	public DocResults getDocResults() {
 		return docResults;
+	}
+
+	@Override
+	public DataObjectMapElement toDataObject() {
+		DataObjectMapElement d = super.toDataObject();
+		d.put("number-of-doc-results", docResults == null ? -1 : docResults.size());
+		d.put("number-of-groups", groups == null ? -1 : groups.numberOfGroups());
+		return d;
 	}
 
 }

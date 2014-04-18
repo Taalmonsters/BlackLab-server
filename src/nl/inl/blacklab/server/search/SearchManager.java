@@ -3,24 +3,30 @@ package nl.inl.blacklab.server.search;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
+import java.util.Set;
 
 import nl.inl.blacklab.analysis.BLDutchAnalyzer;
+import nl.inl.blacklab.index.BLDefaultAnalyzer;
 import nl.inl.blacklab.perdocument.DocResults;
+import nl.inl.blacklab.queryParser.contextql.ContextualQueryLanguageParser;
 import nl.inl.blacklab.queryParser.corpusql.CorpusQueryLanguageParser;
 import nl.inl.blacklab.queryParser.corpusql.ParseException;
 import nl.inl.blacklab.queryParser.corpusql.TokenMgrError;
+import nl.inl.blacklab.queryParser.lucene.LuceneQueryParser;
+import nl.inl.blacklab.search.CompleteQuery;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.TextPattern;
+import nl.inl.blacklab.server.ServletUtil;
 import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectString;
-import nl.inl.util.PropertiesUtil;
+import nl.inl.util.MemoryUtil;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
@@ -29,9 +35,17 @@ import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.Version;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class SearchManager  {
 	private static final Logger logger = Logger.getLogger(SearchManager.class);
+
+	/**
+	 * When the SearchManager was created. Used in logging to show ms since
+	 * server start instead of all-time.
+	 */
+	long createdAt = System.currentTimeMillis();
 
 	/** How long the server should wait for a quick answer when starting
 	 * a nonblocking request. If the answer is found within this time,
@@ -47,16 +61,19 @@ public class SearchManager  {
 	/** Maximum context size allowed */
 	private int maxContextSize;
 
+	/** Maximum snippet size allowed */
+	private int maxSnippetSize;
+
 	/** Parameters involved in search */
 	private List<String> searchParameterNames;
 
 	/** Default values for request parameters */
 	private Map<String, String> defaultParameterValues;
 
-	/** Run in debug mode or not? */
-	private boolean debugMode;
+//	/** Run in debug mode or not? [no] */
+//	private boolean debugMode;
 
-	/** Default number of hits/results per page */
+	/** Default number of hits/results per page [20] */
 	private int defaultPageSize;
 
 	private Map<String, IndexParam> indexParam;
@@ -67,58 +84,109 @@ public class SearchManager  {
 	/** All running searches as well as recently run searches */
 	private SearchCache cache;
 
+	/** Keeps track of running jobs per user, so we can limit this. */
+	private Map<String, Set<Job>> runningJobsPerUser = new HashMap<String, Set<Job>>();
+
+	/** Default pattern language to use. [corpusql] */
 	private String defaultPatternLanguage;
 
+	/** Default filter language to use. [luceneql] */
 	private String defaultFilterLanguage;
 
+	/** Should requests be blocking by default? [yes] */
 	private boolean defaultBlockingMode;
 
+	/** Default number of words around hit. [5] */
 	private int defaultContextSize;
 
-	public SearchManager(Properties properties)  {
+	/** Minimum amount of free memory (MB) to start a new search. [50] */
+	private int minFreeMemForSearchMegs;
+
+	/** Maximum number of simultaneously running jobs started by the same user. [20]
+	 *  Please note that a search may start 2-4 jobs, so don't set this too low. This
+	 *  is just meant to prevent over-eager scripts and other abuse. Regular users
+	 *  should never hit this limit. */
+	private long maxRunningJobsPerUser;
+
+	/** IP addresses for which debug mode will be turned on. */
+	private Set<String> debugModeIps;
+
+	/** The default output type, JSON or XML. */
+	private DataFormat defaultOutputType;
+
+	/** Which IPs are allowed to override the userId using a parameter
+	 *  (for other IPs, the session id is the userId) */
+	private Set<String> overrideUserIdIps;
+
+	/** How long the client may used a cached version of the results we give them.
+	 *  This is used to write HTTP cache headers. A value of an hour or so seems
+	 *  reasonable. */
+	private int clientCacheTimeSec;
+
+	//private JSONObject properties;
+
+	public SearchManager(JSONObject properties)  {
 		logger.debug("SearchManager created");
 
-		// TODO: interrupt long search (both automatically and manually)
-		//   problem: searches depend on one another. we need reference counting or something to
-		//            be able to cancel searches no-one is interested in anymore.
+		//this.properties = properties;
+		JSONArray jsonDebugModeIps = properties.getJSONArray("debugModeIps");
+		debugModeIps = new HashSet<String>();
+		for (int i = 0; i < jsonDebugModeIps.length(); i++) {
+			debugModeIps.add(jsonDebugModeIps.getString(i));
+		}
+		//debugMode = JsonUtil.getBooleanProp(properties, "debugMode", false);
 
-		// TODO: snel F5 achter elkaar drukken geeft "Search cache already contains different search object"
+		// Request properties
+		JSONObject reqProp = properties.getJSONObject("requests");
+		defaultOutputType = DataFormat.XML;
+		if (reqProp.has("defaultOutputType"))
+			defaultOutputType = ServletUtil.getOutputTypeFromString(reqProp.getString("defaultOutputType"), DataFormat.XML);
+		defaultPageSize = JsonUtil.getIntProp(reqProp, "defaultPageSize", 20);
+		defaultPatternLanguage = JsonUtil.getProperty(reqProp, "defaultPatternLanguage", "corpusql");
+		defaultFilterLanguage = JsonUtil.getProperty(reqProp, "defaultFilterLanguage", "luceneql");
+		defaultBlockingMode = JsonUtil.getBooleanProp(reqProp, "defaultBlockingMode", true);
+		defaultContextSize = JsonUtil.getIntProp(reqProp, "defaultContextSize", 5);
+		maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
+		maxSnippetSize = JsonUtil.getIntProp(reqProp, "maxSnippetSize", 100);
+		JSONArray jsonOverrideUserIdIps = reqProp.getJSONArray("overrideUserIdIps");
+		overrideUserIdIps = new HashSet<String>();
+		for (int i = 0; i < jsonOverrideUserIdIps.length(); i++) {
+			overrideUserIdIps.add(jsonOverrideUserIdIps.getString(i));
+		}
 
-		debugMode = PropertiesUtil.getBooleanProp(properties, "debugMode", false);
-		defaultPageSize = PropertiesUtil.getIntProp(properties, "defaultPageSize", 20);
-		defaultPatternLanguage = properties.getProperty("defaultPatternLanguage", "corpusql");
-		defaultFilterLanguage = properties.getProperty("defaultPatternLanguage", "luceneql");
-		defaultBlockingMode = PropertiesUtil.getBooleanProp(properties, "defaultBlockingMode", true);
-		defaultContextSize = PropertiesUtil.getIntProp(properties, "defaultContextSize", 5);
-		maxContextSize = PropertiesUtil.getIntProp(properties, "maxContextSize", 20);
-		int cacheMaxSearchAgeSec = PropertiesUtil.getIntProp(properties, "cacheMaxSearchAgeSec", 3600);
-		int cacheMaxNumberOfSearches = PropertiesUtil.getIntProp(properties, "cacheMaxNumberOfSearches", 20);
-		int cacheMaxSizeBytes = PropertiesUtil.getIntProp(properties, "cacheMaxSizeBytes", -1);
-		defaultCheckAgainAdviceMs = PropertiesUtil.getIntProp(properties, "defaultCheckAgainAdviceMs", 200);
-		waitTimeInNonblockingModeMs = PropertiesUtil.getIntProp(properties, "waitTimeInNonblockingModeMs", 100);
+		// Performance properties
+		JSONObject perfProp = properties.getJSONObject("performance");
+		minFreeMemForSearchMegs = JsonUtil.getIntProp(perfProp, "minFreeMemForSearchMegs", 50);
+		maxRunningJobsPerUser = JsonUtil.getIntProp(perfProp, "maxRunningJobsPerUser", 20);
+		defaultCheckAgainAdviceMs = JsonUtil.getIntProp(perfProp, "defaultCheckAgainAdviceMs", 200);
+		waitTimeInNonblockingModeMs = JsonUtil.getIntProp(perfProp, "waitTimeInNonblockingModeMs", 100);
+		clientCacheTimeSec = JsonUtil.getIntProp(perfProp, "clientCacheTimeSec", 3600);
+
+		// Cache properties
+		JSONObject cacheProp = perfProp.getJSONObject("cache");
 
 		// Find the indices
-		Enumeration<Object> keys = properties.keys();
 		indexParam = new HashMap<String, IndexParam>();
-		while (keys.hasMoreElements()) {
-			String name = (String)keys.nextElement();
-			if (name.startsWith("index.") && name.indexOf('.', 6) < 0) {
-				String indexName = name.substring(6);
-				File dir = PropertiesUtil.getFileProp(properties, name);
-				if (!dir.exists()) {
-					logger.error("Index directory for index '" + indexName + "' does not exist: " + dir);
-					continue;
-				}
+		JSONObject indicesMap = properties.getJSONObject("indices");
+		Iterator<?> it = indicesMap.keys();
+		while (it.hasNext()) {
+			String indexName = (String)it.next();
+			JSONObject indexConfig = indicesMap.getJSONObject(indexName);
 
-				String pid = properties.getProperty("index." + indexName + ".pid", "");
-				if (pid.length() == 0) {
-					logger.warn("No pid given for index '" + indexName + "'; using Lucene doc ids.");
-				}
-
-				boolean mayViewContent = PropertiesUtil.getBooleanProp(properties, "index." + indexName + ".may-view-content", false);
-
-				indexParam.put(indexName, new IndexParam(dir, pid, mayViewContent));
+			File dir = JsonUtil.getFileProp(indexConfig, "dir", null);
+			if (dir == null || !dir.exists()) {
+				logger.error("Index directory for index '" + indexName + "' does not exist: " + dir);
+				continue;
 			}
+
+			String pid = JsonUtil.getProperty(indexConfig, "pid", "");
+			if (pid.length() == 0) {
+				logger.warn("No pid given for index '" + indexName + "'; using Lucene doc ids.");
+			}
+
+			boolean mayViewContent = JsonUtil.getBooleanProp(indexConfig, "mayViewContent", false);
+
+			indexParam.put(indexName, new IndexParam(dir, pid, mayViewContent));
 		}
 		if (indexParam.size() == 0)
 			throw new RuntimeException("Configuration error: no indices available. Specify indexNames (space-separated) and indexDir_<name> for each index!");
@@ -126,7 +194,8 @@ public class SearchManager  {
 		// Keep a list of searchparameters.
 		searchParameterNames = Arrays.asList(
 				"resultsType", "patt", "pattlang", "pattfield", "filter", "filterlang",
-				"sort", "group", "viewgroup", "collator", "first", "number", "wordsaroundhit");
+				"sort", "group", "viewgroup", "collator", "first", "number", "wordsaroundhit",
+				"hitstart", "hitend");
 
 		// Set up the parameter default values
 		defaultParameterValues = new HashMap<String, String>();
@@ -136,15 +205,14 @@ public class SearchManager  {
 		defaultParameterValues.put("group", "");
 		defaultParameterValues.put("viewgroup", "");
 		defaultParameterValues.put("first", "0");
+		defaultParameterValues.put("hitstart", "0");
+		defaultParameterValues.put("hitend", "1");
 		defaultParameterValues.put("number", "" + defaultPageSize);
 		defaultParameterValues.put("block", defaultBlockingMode ? "yes" : "no");
 		defaultParameterValues.put("wordsaroundhit", "" + defaultContextSize);
 
 		// Start with empty cache
-		cache = new SearchCache();
-		cache.setMaxSearchAgeSec(cacheMaxSearchAgeSec);
-		cache.setMaxSearchesToCache(cacheMaxNumberOfSearches);
-		cache.setMaxSizeBytes(cacheMaxSizeBytes);
+		cache = new SearchCache(cacheProp);
 	}
 
 	public List<String> getSearchParameterNames() {
@@ -167,6 +235,7 @@ public class SearchManager  {
 		}
 		Searcher searcher;
 		try {
+			logger.debug("Opening index '" + indexName + "', dir = " + indexDir);
 			searcher = Searcher.open(indexDir);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -183,6 +252,8 @@ public class SearchManager  {
 	 */
 	private File getIndexDir(String indexName) {
 		IndexParam p = indexParam.get(indexName);
+		if (p == null)
+			return null;
 		return p.getDir();
 	}
 
@@ -193,6 +264,8 @@ public class SearchManager  {
 	 */
 	public String getIndexPidField(String indexName) {
 		IndexParam p = indexParam.get(indexName);
+		if (p == null)
+			return null;
 		return p.getPidField();
 	}
 
@@ -259,76 +332,77 @@ public class SearchManager  {
 		return indexParam.keySet();
 	}
 
-	public JobWithHits searchHits(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
-		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort");
+	public JobWithHits searchHits(String userId, SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
+		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort", "doc-pid");
 		String sort = parBasic.get("sort");
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits
 			parBasic.put("jobclass", "JobHitsSorted");
-			return (JobHitsSorted)search(parBasic);
+			return (JobHitsSorted)search(userId, parBasic);
 		}
 
 		// No sort
 		parBasic.remove("sort"); // unsorted must not include sort parameter, or it's cached wrong
 		parBasic.put("jobclass", "JobHits");
-		return (JobHits)search(parBasic);
+		return (JobHits)search(userId, parBasic);
 	}
 
-	public JobWithDocs searchDocs(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
+	public JobWithDocs searchDocs(String userId, SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort");
 		String sort = parBasic.get("sort");
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits
 			parBasic.put("jobclass", "JobDocsSorted");
-			return (JobDocsSorted)search(parBasic);
+			return (JobDocsSorted)search(userId, parBasic);
 		}
 
 		// No sort
 		parBasic.remove("sort"); // unsorted must not include sort parameter, or it's cached wrong
 		parBasic.put("jobclass", "JobDocs");
-		return (JobDocs)search(parBasic);
+		return (JobDocs)search(userId, parBasic);
 	}
 
-	public JobHitsWindow searchHitsWindow(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
+	public JobHitsWindow searchHitsWindow(String userId, SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort", "first", "number", "wordsaroundhit");
 		parBasic.put("jobclass", "JobHitsWindow");
-		return (JobHitsWindow)search(parBasic);
+		return (JobHitsWindow)search(userId, parBasic);
 	}
 
-	public JobDocsWindow searchDocsWindow(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
+	public JobDocsWindow searchDocsWindow(String userId, SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "sort", "first", "number", "wordsaroundhit");
 		parBasic.put("jobclass", "JobDocsWindow");
-		return (JobDocsWindow)search(parBasic);
+		return (JobDocsWindow)search(userId, parBasic);
 	}
 
-	public JobHitsTotal searchHitsTotal(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
+	public JobHitsTotal searchHitsTotal(String userId, SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang");
 		parBasic.put("jobclass", "JobHitsTotal");
-		return (JobHitsTotal)search(parBasic);
+		return (JobHitsTotal)search(userId, parBasic);
 	}
 
-	public JobDocsTotal searchDocsTotal(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
+	public JobDocsTotal searchDocsTotal(String userId, SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang");
 		parBasic.put("jobclass", "JobDocsTotal");
-		return (JobDocsTotal)search(parBasic);
+		return (JobDocsTotal)search(userId, parBasic);
 	}
 
-	public JobHitsGrouped searchHitsGrouped(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
+	public JobHitsGrouped searchHitsGrouped(String userId, SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "group", "sort");
 		parBasic.put("jobclass", "JobHitsGrouped");
-		return (JobHitsGrouped)search(parBasic);
+		return (JobHitsGrouped)search(userId, parBasic);
 	}
 
-	public JobDocsGrouped searchDocsGrouped(SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
+	public JobDocsGrouped searchDocsGrouped(String userId, SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt", "pattlang", "filter", "filterlang", "group", "sort");
 		parBasic.put("jobclass", "JobDocsGrouped");
-		return (JobDocsGrouped)search(parBasic);
+		return (JobDocsGrouped)search(userId, parBasic);
 	}
 
 	/**
 	 * Start a new search or return an existing Search object corresponding
 	 * to these search parameters.
 	 *
+	 * @param userId user creating the job
 	 * @param searchParameters the search parameters
 	 * @param blockUntilFinished if true, wait until the search finishes; otherwise, return immediately
 	 * @return a Search object corresponding to these parameters
@@ -336,16 +410,51 @@ public class SearchManager  {
 	 * @throws IndexOpenException if the index couldn't be opened
 	 * @throws InterruptedException if the search thread was interrupted
 	 */
-	private Job search(SearchParameters searchParameters) throws IndexOpenException, QueryException, InterruptedException {
+	private Job search(String userId, SearchParameters searchParameters) throws IndexOpenException, QueryException, InterruptedException {
 		// Search the cache / running jobs for this search, create new if not found.
 		boolean performSearch = false;
 		Job search;
 		synchronized(this) {
 			search = cache.get(searchParameters);
 			if (search == null) {
-				// Not found; create a new search object with these parameters and place it in the cache
-				search = Job.create(this, searchParameters);
+				// Not found in cache
+
+				// Do we have enough memory to start a new search?
+				long freeMegs = MemoryUtil.getFree() / 1000000;
+				if (freeMegs < minFreeMemForSearchMegs) {
+					cache.removeOldSearches(); // try to free up space for next search
+					logger.warn("Can't start new search, not enough memory (" + freeMegs + "M < " + minFreeMemForSearchMegs + "M)");
+					throw new QueryException("SERVER_BUSY", "The server is under heavy load right now. Please try again later.");
+				}
+				logger.debug("Enough free memory: " + (freeMegs/1000000) + "M");
+
+				// Is this user allowed to start another search?
+				int numRunningJobs = 0;
+				Set<Job> runningJobs = runningJobsPerUser.get(userId);
+				Set<Job> newRunningJobs = new HashSet<Job>();
+				if (runningJobs != null) {
+					for (Job job: runningJobs) {
+						if (!job.finished()) {
+							numRunningJobs++;
+							newRunningJobs.add(job);
+						}
+					}
+				}
+				if (numRunningJobs >= maxRunningJobsPerUser) {
+					// User has too many running jobs. Can't start another one.
+					runningJobsPerUser.put(userId, newRunningJobs); // refresh the list
+					logger.warn("Can't start new search, user already has " + numRunningJobs + " jobs running.");
+					throw new QueryException("TOO_MANY_JOBS", "You already have too many running searches. Please wait for some previous searches to complete before starting new ones.");
+				}
+
+				// Create a new search object with these parameters and place it in the cache
+				search = Job.create(this, userId, searchParameters);
 				cache.put(search);
+
+				// Update running jobs
+				newRunningJobs.add(search);
+				runningJobsPerUser.put(userId, newRunningJobs);
+
 				performSearch = true;
 			}
 		}
@@ -361,6 +470,10 @@ public class SearchManager  {
 		}
 
 		return search;
+	}
+
+	public long getMinFreeMemForSearchMegs() {
+		return minFreeMemForSearchMegs;
 	}
 
 	public String getParameterDefaultValue(String paramName) {
@@ -426,11 +539,11 @@ public class SearchManager  {
 		return rv;
 	}
 
-	public static TextPattern parsePatt(String pattern, String language) throws QueryException {
-		return parsePatt(pattern, language, true);
+	public TextPattern parsePatt(String indexName, String pattern, String language) throws QueryException {
+		return parsePatt(indexName, pattern, language, true);
 	}
 
-	public static TextPattern parsePatt(String pattern, String language, boolean required) throws QueryException {
+	public TextPattern parsePatt(String indexName, String pattern, String language, boolean required) throws QueryException {
 		if (pattern == null || pattern.length() == 0) {
 			if (required)
 				throw new QueryException("NO_PATTERN_GIVEN", "Text search pattern required. Please specify 'patt' parameter.");
@@ -441,13 +554,32 @@ public class SearchManager  {
 			try {
 				return CorpusQueryLanguageParser.parse(pattern);
 			} catch (ParseException e) {
-				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in pattern: " + e.getMessage());
+				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in CorpusQL pattern: " + e.getMessage());
 			} catch (TokenMgrError e) {
-				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in pattern: " + e.getMessage());
+				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in CorpusQL pattern: " + e.getMessage());
+			}
+		} else if (language.equals("contextql")) {
+			try {
+				CompleteQuery q = ContextualQueryLanguageParser.parse(pattern);
+				return q.getContentsQuery();
+			} catch (nl.inl.blacklab.queryParser.contextql.TokenMgrError e) {
+				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in ContextQL pattern: " + e.getMessage());
+			} catch (nl.inl.blacklab.queryParser.contextql.ParseException e) {
+				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in ContextQL pattern: " + e.getMessage());
+			}
+		} else if (language.equals("luceneql")) {
+			try {
+				String field = getSearcher(indexName).getIndexStructure().getMainContentsField().getName();
+				LuceneQueryParser parser = new LuceneQueryParser(Version.LUCENE_42, field, new BLDefaultAnalyzer());
+				return parser.parse(pattern);
+			} catch (IndexOpenException e) {
+				throw new RuntimeException(e); // should never happen at this point
+			} catch (nl.inl.blacklab.queryParser.lucene.ParseException e) {
+				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in LuceneQL pattern: " + e.getMessage());
+			} catch (nl.inl.blacklab.queryParser.lucene.TokenMgrError e) {
+				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in LuceneQL pattern: " + e.getMessage());
 			}
 		}
-
-		// TODO: phrasequery?, contextql, luceneql, ...
 
 		throw new QueryException("UNKNOWN_PATT_LANG", "Unknown pattern language '" + language + "'. Supported: corpusql, contextql, luceneql");
 	}
@@ -463,30 +595,36 @@ public class SearchManager  {
 			return null; // not required
 		}
 
-		if (!filterLang.equals("luceneql"))
-			throw new QueryException("UNKNOWN_FILTER_LANG", "Unknown filter language '" + filterLang + "'. Only 'luceneql' supported.");
-
-		try {
-			QueryParser parser = new QueryParser(Version.LUCENE_42, "", new BLDutchAnalyzer());
-			Query query = parser.parse(filter);
-			return query;
-		} catch (org.apache.lucene.queryparser.classic.ParseException e) {
-			throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing document filter query: " + e.getMessage());
-		} catch (org.apache.lucene.queryparser.classic.TokenMgrError e) {
-			throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing document filter query: " + e.getMessage());
+		if (filterLang.equals("luceneql")) {
+			try {
+				QueryParser parser = new QueryParser(Version.LUCENE_42, "", new BLDutchAnalyzer());
+				Query query = parser.parse(filter);
+				return query;
+			} catch (org.apache.lucene.queryparser.classic.ParseException e) {
+				throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing document filter query: " + e.getMessage());
+			} catch (org.apache.lucene.queryparser.classic.TokenMgrError e) {
+				throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing document filter query: " + e.getMessage());
+			}
+		} else if (filterLang.equals("contextql")) {
+			try {
+				CompleteQuery q = ContextualQueryLanguageParser.parse(filter);
+				return q.getFilterQuery();
+			} catch (nl.inl.blacklab.queryParser.contextql.TokenMgrError e) {
+				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in ContextQL pattern: " + e.getMessage());
+			} catch (nl.inl.blacklab.queryParser.contextql.ParseException e) {
+				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in ContextQL pattern: " + e.getMessage());
+			}
 		}
+
+		throw new QueryException("UNKNOWN_FILTER_LANG", "Unknown filter language '" + filterLang + "'. Only 'luceneql' supported.");
 	}
 
 	public int getDefaultCheckAgainAdviceMs() {
 		return defaultCheckAgainAdviceMs;
 	}
 
-	public boolean isDebugMode() {
-		return debugMode;
-	}
-
-	public void setDebugMode(boolean debugMode) {
-		this.debugMode = debugMode;
+	public boolean isDebugMode(String ip) {
+		return debugModeIps.contains(ip);
 	}
 
 	static void debugWait() {
@@ -504,6 +642,8 @@ public class SearchManager  {
 
 	public boolean mayViewContents(String indexName, Document document) {
 		IndexParam p = indexParam.get(indexName);
+		if (p == null)
+			return false;
 		return p.mayViewContents();
 	}
 
@@ -515,5 +655,28 @@ public class SearchManager  {
 		return maxContextSize;
 	}
 
+	public DataObject getCacheStatusDataObject() {
+		return cache.getCacheStatusDataObject();
+	}
+
+	public DataObject getCacheContentsDataObject() {
+		return cache.getContentsDataObject();
+	}
+
+	public int getMaxSnippetSize() {
+		return maxSnippetSize;
+	}
+
+	public boolean mayOverrideUserId(String ip) {
+		return overrideUserIdIps.contains(ip);
+	}
+
+	public DataFormat getDefaultOutputType() {
+		return defaultOutputType;
+	}
+
+	public int getClientCacheTimeSec() {
+		return clientCacheTimeSec;
+	}
 
 }

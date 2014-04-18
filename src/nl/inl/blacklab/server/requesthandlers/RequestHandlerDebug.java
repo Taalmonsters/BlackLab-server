@@ -6,11 +6,15 @@ import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 
+import org.apache.log4j.Logger;
+
 /**
  * Get debug info about the servlet and index.
  * Only available in debug mode (BlackLabServer.DEBUG_MODE == true)
  */
 public class RequestHandlerDebug extends RequestHandler {
+	@SuppressWarnings("hiding")
+	private static final Logger logger = Logger.getLogger(RequestHandlerDebug.class);
 
 	public RequestHandlerDebug(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
@@ -18,7 +22,7 @@ public class RequestHandlerDebug extends RequestHandler {
 
 	@Override
 	public DataObject handle() {
-		logger.debug("REQ Debug");
+		debug(logger, "REQ Debug");
 
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("index-name", indexName);

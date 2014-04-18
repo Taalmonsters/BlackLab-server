@@ -7,7 +7,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import nl.inl.blacklab.server.dataobject.DataObject;
+import nl.inl.blacklab.server.dataobject.DataObjectList;
+import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.util.MemoryUtil;
+
 import org.apache.log4j.Logger;
+import org.json.JSONObject;
 
 public class SearchCache {
 	private static final Logger logger = Logger.getLogger(SearchCache.class);
@@ -18,27 +24,38 @@ public class SearchCache {
 	/** The cached search objects. */
 	private Map<SearchParameters, Job> cachedSearches;
 
-	/** Maximum size in bytes to target, or -1 for no limit. NOT IMPLEMENTED YET. */
-	private long maxSizeBytes = -1;
+	/** Maximum size in MB to target, or -1 for no limit. NOT IMPLEMENTED YET. */
+	private long maxSizeMegs = -1;
 
 	/** Maximum number of searches to cache, or -1 for no limit. Defaults to (a fairly low) 20.*/
-	private int maxNumberOfSearches = 20;
+	private int maxNumberOfJobs = 20;
 
 	/** Maximum age of a cached search in seconds. May be exceeded because it is only cleaned up when
 	 *  adding new searches. Defaults to one hour. */
-	private int maxSearchAgeSec = 3600;
+	private int maxJobAgeSec = 3600;
 
 	/** (Estimated) size of the cache. Only updated in removeOldSearches, so may not
 	 * always be accurate. */
 	private long cacheSizeBytes;
 
+	/** How much free memory we should try to target when cleaning the cache. */
+	private long minFreeMemTargetMegs;
+
+	/** If we're below target mem, how many jobs should we get rid of each time we add something to the cache? */
+	private int numberOfJobsToPurgeWhenBelowTargetMem;
+
 	/**
 	 * Initialize the cache.
 	 *
+	 * @param settings cache settings
 	 */
-	public SearchCache() {
+	public SearchCache(JSONObject settings) {
 		cachedSearches = new HashMap<SearchParameters, Job>();
-		//logger.debug("Cache created.");
+		maxJobAgeSec = JsonUtil.getIntProp(settings, "maxJobAgeSec", 3600);
+		maxNumberOfJobs = JsonUtil.getIntProp(settings, "maxNumberOfJobs", 20);
+		maxSizeMegs = JsonUtil.getIntProp(settings, "maxSizeMegs", -1);
+		minFreeMemTargetMegs = JsonUtil.getIntProp(settings, "targetFreeMemMegs", 100);
+		numberOfJobsToPurgeWhenBelowTargetMem = JsonUtil.getIntProp(settings, "numberOfJobsToPurgeWhenBelowTargetMem", 100);
 	}
 
 	/**
@@ -65,6 +82,8 @@ public class SearchCache {
 	 * @param search the search object
 	 */
 	public void put(Job search) {
+		removeOldSearches();
+
 		// Search already in cache?
 		SearchParameters searchParameters = search.getParameters();
 		if (cachedSearches.containsKey(searchParameters)) {
@@ -79,7 +98,6 @@ public class SearchCache {
 		// Put search in cache
 		//logger.debug("Put in cache: " + searchParameters);
 		cachedSearches.put(searchParameters, search);
-		removeOldSearches();
 	}
 
 	/**
@@ -94,7 +112,7 @@ public class SearchCache {
 	 * If the cache exceeds the given parameters, clean it up by
 	 * removing less recently used searches.
 	 */
-	private void removeOldSearches() {
+	void removeOldSearches() {
 
 		// OPT: could be optimized a little bit
 
@@ -104,8 +122,17 @@ public class SearchCache {
 
 		calculateSizeBytes(lastAccessOrder);
 
+		// If we're low on memory, always remove a few searches from cache.
+		int minSearchesToRemove = 0;
+		long freeMegs = MemoryUtil.getFree() / 1000000;
+		if (freeMegs < minFreeMemTargetMegs) {
+			minSearchesToRemove = numberOfJobsToPurgeWhenBelowTargetMem; // arbitrary, number but will keep on being removed every call until enough free mem has been reclaimed
+			logger.debug("Not enough free mem, will remove some searches.");
+		}
+
 		// Get rid of old searches
 		boolean lookAtCacheSizeAndSearchAccessTime = true;
+		boolean removed = false;
 		for (Job search: lastAccessOrder) {
 			if (!search.finished() && search.executionTimeMillis() / 1000 > MAX_SEARCH_TIME_SEC) {
 				// Search is taking too long. Cancel it.
@@ -116,16 +143,25 @@ public class SearchCache {
 				// kinds of searches so repeating them doesn't matter.
 				// TODO blacklist
 				cachedSearches.remove(search.getParameters());
+				cacheSizeBytes -= search.estimateSizeBytes();
+				removed = true;
 
-			} else if (lookAtCacheSizeAndSearchAccessTime && cacheTooBig() || searchTooOld(search)) {
+			} else if (minSearchesToRemove > 0 || lookAtCacheSizeAndSearchAccessTime && (cacheTooBig() || searchTooOld(search))) {
 				// Search is too old or cache is too big. Keep removing searches until that's no longer the case
-				//logger.debug("Remove from cache: " + search);
+				logger.debug("Remove from cache: " + search);
 				cachedSearches.remove(search.getParameters());
+				cacheSizeBytes -= search.estimateSizeBytes();
+				removed = true;
+				minSearchesToRemove--;
 			} else {
 				// Cache is no longer too big and these searches are not too old. Stop checking that,
 				// just check for long-running searches
 				lookAtCacheSizeAndSearchAccessTime = false;
 			}
+		}
+		if (removed) {
+			// Hint that we want GC to run
+			System.gc();
 		}
 	}
 
@@ -146,12 +182,13 @@ public class SearchCache {
 	 * @return true iff the cache is too big.
 	 */
 	private boolean cacheTooBig() {
-		boolean tooManySearches = maxNumberOfSearches >= 0
-				&& cachedSearches.size() > maxNumberOfSearches;
+		boolean tooManySearches = maxNumberOfJobs >= 0
+				&& cachedSearches.size() > maxNumberOfJobs;
 		/*if (tooManySearches)
 			logger.debug("Cache has too many searches (" + cachedSearches.size() + " > "
-					+ maxNumberOfSearches + ").");*/
-		boolean tooMuchMemory = maxSizeBytes >= 0 && cacheSizeBytes > maxSizeBytes;
+					+ maxNumberOfJobs + ").");*/
+		long cacheSizeMegs = cacheSizeBytes / 1000000;
+		boolean tooMuchMemory = maxSizeMegs >= 0 && cacheSizeMegs > maxSizeMegs;
 		/*if (tooMuchMemory)
 			logger.debug("Cache takes too much memory (" + cacheSizeBytes + " > " + maxSizeBytes + ").");*/
 		boolean tooBig = tooManySearches || tooMuchMemory;
@@ -161,13 +198,13 @@ public class SearchCache {
 	/**
 	 * Checks if the search is too old to remain in cache.
 	 *
-	 * Only applies if maxSearchAgeSec >= 0.
+	 * Only applies if maxJobAgeSec >= 0.
 	 *
 	 * @param search the search to check
 	 * @return true iff the search is too old
 	 */
 	private boolean searchTooOld(Job search) {
-		boolean tooOld = maxSearchAgeSec >= 0 && search.ageInSeconds() > maxSearchAgeSec;
+		boolean tooOld = maxJobAgeSec >= 0 && search.ageInSeconds() > maxJobAgeSec;
 		//if (tooOld) logger.debug("Search is too old: " + search);
 		return tooOld;
 	}
@@ -178,7 +215,7 @@ public class SearchCache {
 	 * @return targeted max. size of the cache in bytes, or -1 for no limit
 	 */
 	public long getMaxSizeBytes() {
-		return maxSizeBytes;
+		return maxSizeMegs;
 	}
 
 	/**
@@ -193,7 +230,7 @@ public class SearchCache {
 	 * @param maxSizeBytes targeted max. size of the cache in bytes, or -1 for no limit
 	 */
 	public void setMaxSizeBytes(long maxSizeBytes) {
-		this.maxSizeBytes = maxSizeBytes;
+		this.maxSizeMegs = maxSizeBytes;
 		removeOldSearches();
 	}
 
@@ -201,16 +238,16 @@ public class SearchCache {
 	 * Return the maximum size of the cache in number of searches.
 	 * @return the maximum size, or -1 for no limit
 	 */
-	public int getMaxNumberOfSearches() {
-		return maxNumberOfSearches;
+	public int getMaxJobsToCache() {
+		return maxNumberOfJobs;
 	}
 
 	/**
 	 * Set the maximum size of the cache in number of searches.
-	 * @param maxSizeSearches the maximum size, or -1 for no limit
+	 * @param maxJobs the maximum size, or -1 for no limit
 	 */
-	public void setMaxSearchesToCache(int maxSizeSearches) {
-		this.maxNumberOfSearches = maxSizeSearches;
+	public void setMaxJobsToCache(int maxJobs) {
+		this.maxNumberOfJobs = maxJobs;
 		removeOldSearches();
 	}
 
@@ -221,8 +258,8 @@ public class SearchCache {
 	 *
 	 * @return the maximum age, or -1 for no limit
 	 */
-	public int getMaxSearchAgeSec() {
-		return maxSearchAgeSec;
+	public int getMaxJobAgeSec() {
+		return maxJobAgeSec;
 	}
 
 	/**
@@ -230,10 +267,10 @@ public class SearchCache {
 	 *
 	 * The age is defined as the period of time since the last access.
 	 *
-	 * @param maxSearchAgeSec the maximum age, or -1 for no limit
+	 * @param maxJobAgeSec the maximum age, or -1 for no limit
 	 */
-	public void setMaxSearchAgeSec(int maxSearchAgeSec) {
-		this.maxSearchAgeSec = maxSearchAgeSec;
+	public void setMaxJobAgeSec(int maxJobAgeSec) {
+		this.maxJobAgeSec = maxJobAgeSec;
 	}
 
 	public long getSizeBytes() {
@@ -242,6 +279,28 @@ public class SearchCache {
 
 	public int getNumberOfSearches() {
 		return cachedSearches.size();
+	}
+
+	public void setMinFreeMemTargetBytes(long minFreeMemTargetBytes) {
+		this.minFreeMemTargetMegs = minFreeMemTargetBytes;
+	}
+
+	public DataObject getCacheStatusDataObject() {
+		DataObjectMapElement doCache = new DataObjectMapElement();
+		doCache.put("max-size-bytes", getMaxSizeBytes());
+		doCache.put("max-number-of-searches", getMaxJobsToCache());
+		doCache.put("max-search-age-sec", getMaxJobAgeSec());
+		doCache.put("size-bytes", getSizeBytes());
+		doCache.put("number-of-searches", getNumberOfSearches());
+		return doCache;
+	}
+
+	public DataObject getContentsDataObject() {
+		DataObjectList doCacheContents = new DataObjectList("job");
+		for (Job job: cachedSearches.values()) {
+			doCacheContents.add(job.toDataObject());
+		}
+		return doCacheContents;
 	}
 
 }

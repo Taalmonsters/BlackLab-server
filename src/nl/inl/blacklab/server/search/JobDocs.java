@@ -7,8 +7,8 @@ import org.apache.lucene.search.Query;
  */
 public class JobDocs extends JobWithDocs {
 
-	public JobDocs(SearchManager searchMan, SearchParameters par) throws IndexOpenException {
-		super(searchMan, par);
+	public JobDocs(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
+		super(searchMan, userId, par);
 	}
 
 	@Override
@@ -17,7 +17,7 @@ public class JobDocs extends JobWithDocs {
 		String patt = par.get("patt");
 		if (patt != null && patt.length() > 0) {
 			SearchParameters parNoSort = par.copyWithout("sort");
-			JobWithHits hitsSearch = searchMan.searchHits(parNoSort);
+			JobWithHits hitsSearch = searchMan.searchHits(userId, parNoSort);
 			waitForJobToFinish(hitsSearch);
 			// Now, get per document results
 			docResults = hitsSearch.getHits().perDocResults();

@@ -27,13 +27,15 @@ import nl.inl.blacklab.server.search.JobDocsWindow;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
 
+import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
 
 /**
  * Request handler for the doc results.
  */
 public class RequestHandlerDocs extends RequestHandler {
-	//private static final Logger logger = Logger.getLogger(RequestHandlerHitset.class);
+	@SuppressWarnings("hiding")
+	private static final Logger logger = Logger.getLogger(RequestHandlerDocs.class);
 
 	public RequestHandlerDocs(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
@@ -41,7 +43,7 @@ public class RequestHandlerDocs extends RequestHandler {
 
 	@Override
 	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
-		logger.debug("REQ docs: " + searchParam);
+		debug(logger, "REQ docs: " + searchParam);
 
 		// Do we want to view a single group after grouping?
 		String groupBy = getStringParameter("group");
@@ -62,7 +64,7 @@ public class RequestHandlerDocs extends RequestHandler {
 			// TODO: clean up, do using JobHitsGroupedViewGroup or something (also cache sorted group!)
 
 			// Yes. Group, then show hits from the specified group
-			search = searchGrouped = searchMan.searchDocsGrouped(searchParam);
+			search = searchGrouped = searchMan.searchDocsGrouped(getUserId(), searchParam);
 			if (block) {
 				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 				if (!search.finished())
@@ -95,12 +97,14 @@ public class RequestHandlerDocs extends RequestHandler {
 			} else
 				docsSorted = group.getResults();
 
-			window = docsSorted.window(getIntParameter("first"), getIntParameter("number"));
+			int first = getIntParameter("first");
+			int number = getIntParameter("number");
+			window = docsSorted.window(first, number);
 
 		} else {
 			// Regular set of hits (no grouping first)
 
-			search = searchWindow = searchMan.searchDocsWindow(searchParam);
+			search = searchWindow = searchMan.searchDocsWindow(getUserId(), searchParam);
 			if (block) {
 				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 				if (!search.finished())
@@ -108,7 +112,7 @@ public class RequestHandlerDocs extends RequestHandler {
 			}
 
 			// Also determine the total number of hits (nonblocking)
-			total = searchMan.searchDocsTotal(searchParam);
+			total = searchMan.searchDocsTotal(getUserId(), searchParam);
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
@@ -135,9 +139,9 @@ public class RequestHandlerDocs extends RequestHandler {
 			for (Hit hit: hits) {
 				Kwic c = hits.getKwic(hit);
 				DataObjectMapElement hitMap = new DataObjectMapElement();
-				hitMap.put("left", new DataObjectContextList(c.properties, c.left));
-				hitMap.put("match", new DataObjectContextList(c.properties, c.match));
-				hitMap.put("right", new DataObjectContextList(c.properties, c.right));
+				hitMap.put("left", new DataObjectContextList(c.getProperties(), c.getLeft()));
+				hitMap.put("match", new DataObjectContextList(c.getProperties(), c.getMatch()));
+				hitMap.put("right", new DataObjectContextList(c.getProperties(), c.getRight()));
 				doSnippetList.add(hitMap);
 			}
 

@@ -3,6 +3,9 @@ package nl.inl.blacklab.server.search;
 import java.util.Map;
 import java.util.TreeMap;
 
+import nl.inl.blacklab.server.dataobject.DataObject;
+import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+
 import org.apache.log4j.Logger;
 
 /**
@@ -72,6 +75,14 @@ public class SearchParameters extends TreeMap<String, String> {
 			copy.remove(key);
 		}
 		return copy;
+	}
+
+	public DataObject toDataObject() {
+		DataObjectMapElement d = new DataObjectMapElement();
+		for (Map.Entry<String, String> e: entrySet()) {
+			d.put(e.getKey(), e.getValue());
+		}
+		return d;
 	}
 
 }

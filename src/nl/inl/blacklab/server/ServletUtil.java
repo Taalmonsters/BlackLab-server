@@ -97,28 +97,16 @@ public class ServletUtil {
 	 * TODO: Also support HTTP Accept header!
 	 *
 	 * @param request the request object
+	 * @param defaultFormat what to return if not specified
 	 * @return the type of content the user would like
 	 */
-	public static DataFormat getOutputType(HttpServletRequest request) {
+	public static DataFormat getOutputType(HttpServletRequest request, DataFormat defaultFormat) {
 		// See if we want non-HTML output (XML or CSV)
 		String outputTypeString = getParameter(request, "outputformat", "").toLowerCase();
 		if (outputTypeString.length() > 0) {
-			return getOutputTypeFromString(outputTypeString);
+			return getOutputTypeFromString(outputTypeString, defaultFormat);
 		}
-		return DataFormat.JSON;
-	}
-
-	/**
-	 * Returns the desired content type for the output.
-	 * This is based on the "outputformat" parameter.
-	 * @param outputType the request object
-	 * @param charSet the charset to use (default utf-8)
-	 * @return the MIME content type
-	 */
-	public static String getContentType(DataFormat outputType, String charSet) {
-		if (outputType == DataFormat.XML)
-			return "application/xml; charset=" + charSet;
-		return "application/json; charset=" + charSet;
+		return defaultFormat;
 	}
 
 	/**
@@ -128,7 +116,9 @@ public class ServletUtil {
 	 * @return the MIME content type
 	 */
 	public static String getContentType(DataFormat outputType) {
-		return getContentType(outputType, "utf-8");
+		if (outputType == DataFormat.XML)
+			return "application/xml";
+		return "application/json";
 	}
 
 	/**
@@ -136,15 +126,16 @@ public class ServletUtil {
 	 *
 	 * @param typeString
 	 *            the outputType string
+	 * @param defaultValue what to use if neither matches
 	 * @return the OutputType enum value
 	 */
-	static DataFormat getOutputTypeFromString(String typeString) {
+	public static DataFormat getOutputTypeFromString(String typeString, DataFormat defaultValue) {
 		if (typeString.equalsIgnoreCase("xml"))
 			return DataFormat.XML;
 		if (typeString.equalsIgnoreCase("json"))
 			return DataFormat.JSON;
 		logger.warn("Onbekend outputtype gevraagd: " + typeString);
-		return DataFormat.JSON;
+		return defaultValue;
 	}
 
 	/**
@@ -178,11 +169,11 @@ public class ServletUtil {
 	/**
 	 * Write cache headers for the configured cache time.
 	 * @param response the response object to write the headers to
+	 * @param cacheTimeSeconds how long to cache the response
 	 */
-	@SuppressWarnings("unused")
-	private void setCacheHeaders(HttpServletResponse response) {
+	public static void writeCacheHeaders(HttpServletResponse response, int cacheTimeSeconds) {
 		GregorianCalendar cal = new GregorianCalendar();
-		cal.add(Calendar.SECOND, CACHE_TIME_SECONDS);
+		cal.add(Calendar.SECOND, cacheTimeSeconds);
 
 		String expires;
 		synchronized (httpDateFormat) {
@@ -190,7 +181,7 @@ public class ServletUtil {
 		}
 
 		// Output headers
-		response.setHeader("Cache-Control", "PUBLIC, max-age=" + CACHE_TIME_SECONDS + ", must-revalidate");
+		response.setHeader("Cache-Control", "PUBLIC, max-age=" + CACHE_TIME_SECONDS);
 		response.setHeader("Expires", expires);
 	}
 
@@ -199,11 +190,12 @@ public class ServletUtil {
 	 * encoding, save as file.
 	 * @param request the request object
 	 * @param response the response object
+	 * @param defaultFormat default output format to use
 	 * @param noCache
 	 *            if true, outputs headers to make sure the page isn't cached.
 	 */
 	@SuppressWarnings("unused")
-	private void writeResponseHeaders(HttpServletRequest request, HttpServletResponse response) {
+	private void writeResponseHeaders(HttpServletRequest request, HttpServletResponse response, DataFormat defaultFormat) {
 		boolean noCache = false;
 
 		// For the login page: set the no-cache headers for the response,
@@ -220,7 +212,7 @@ public class ServletUtil {
 
 		// Set the content headers for the response
 		response.setCharacterEncoding(OUTPUT_ENCODING);
-		response.setContentType(ServletUtil.getContentType(getOutputType(request)));
+		response.setContentType(ServletUtil.getContentType(getOutputType(request, defaultFormat)));
 	}
 
 

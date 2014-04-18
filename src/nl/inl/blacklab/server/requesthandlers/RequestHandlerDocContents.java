@@ -13,12 +13,15 @@ import nl.inl.blacklab.server.search.JobWithHits;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
 
+import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
 
 /**
  * Get information about the structure of an index.
  */
 public class RequestHandlerDocContents extends RequestHandler {
+	@SuppressWarnings("hiding")
+	private static final Logger logger = Logger.getLogger(RequestHandlerDocContents.class);
 
 	public RequestHandlerDocContents(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
@@ -30,7 +33,7 @@ public class RequestHandlerDocContents extends RequestHandler {
 		String docId = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;
 		if (docId.length() == 0)
 			throw new QueryException("NO_DOC_ID", "Specify document pid.");
-		logger.debug("REQ doc contents: " + indexName + "-" + docId);
+		debug(logger, "REQ doc contents: " + indexName + "-" + docId);
 
 		DataFormat type = searchMan.getContentsFormat(indexName);
 		int luceneDocId = searchMan.getLuceneDocIdFromPid(indexName, docId);
@@ -47,8 +50,8 @@ public class RequestHandlerDocContents extends RequestHandler {
 		Hits hits = null;
 		if (patt != null && patt.length() > 0) {
 			//@@@ TODO: filter on document!
-			//searchParam.put("filter", "");
-			JobWithHits search = searchMan.searchHits(searchParam);
+			searchParam.put("doc-pid", docId);
+			JobWithHits search = searchMan.searchHits(getUserId(), searchParam);
 			search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC);
 			if (!search.finished())
 				return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");

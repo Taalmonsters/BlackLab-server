@@ -41,7 +41,9 @@ public abstract class RequestHandler {
 		availableHandlers.put("docs", RequestHandlerDocs.class);
 		availableHandlers.put("docs-grouped", RequestHandlerDocsGrouped.class);
 		availableHandlers.put("doc-contents", RequestHandlerDocContents.class);
+		availableHandlers.put("doc-snippet", RequestHandlerDocSnippet.class);
 		availableHandlers.put("doc-info", RequestHandlerDocInfo.class);
+		availableHandlers.put("cache-info", RequestHandlerCacheInfo.class);
 		availableHandlers.put("", RequestHandlerIndexStructure.class);
 	}
 
@@ -50,9 +52,10 @@ public abstract class RequestHandler {
 	 *
 	 * @param servlet the servlet object
 	 * @param request the request object
+	 * @param debugMode whether we're in debug mode
 	 * @return the response data
 	 */
-	public static DataObject handle(BlackLabServer servlet, HttpServletRequest request) {
+	public static DataObject handle(BlackLabServer servlet, HttpServletRequest request, boolean debugMode) {
 
 		// Parse the URL
 		String servletPath = request.getServletPath();
@@ -67,9 +70,13 @@ public abstract class RequestHandler {
 		String urlResource = parts.length >= 2 ? parts[1] : "";
 		String urlPathInfo = parts.length >= 3 ? parts[2] : "";
 
+		logger.debug("IP: " + request.getRemoteAddr());
+
 		// Choose the RequestHandler subclass
 		RequestHandler requestHandler;
-		if (indexName.length() == 0) {
+		if (indexName.equals("cache-info") && debugMode) {
+			requestHandler = new RequestHandlerCacheInfo(servlet, request, indexName, urlResource, urlPathInfo);
+		} else if (indexName.length() == 0) {
 			// No index or operation given; server info
 			requestHandler = new RequestHandlerServerInfo(servlet, request, indexName, urlResource, urlPathInfo);
 		} else {
@@ -80,7 +87,7 @@ public abstract class RequestHandler {
 				// HACK to avoid having a different url resource for
 				// the lists of (hit|doc) groups: instantiate a different
 				// request handler class in this case.
-				if (!handlerName.equals("hits") && !handlerName.equals("docs")) {
+				if (handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs")) {
 					handlerName = "debug";
 				}
 				else if (handlerName.equals("docs") && urlPathInfo.length() > 0) {
@@ -90,6 +97,8 @@ public abstract class RequestHandler {
 						p = p.substring(0, p.length() - 1);
 					if (urlPathInfo.endsWith("/contents")) {
 						handlerName = "doc-contents";
+					} else if (urlPathInfo.endsWith("/snippet")) {
+						handlerName = "doc-snippet";
 					}
 				}
 				else if (handlerName.equals("hits") || handlerName.equals("docs")) {
@@ -100,28 +109,31 @@ public abstract class RequestHandler {
 					}
 				}
 
-				if (handlerName.equals("error") && BlackLabServer.DEBUG_MODE)
-					return DataObject.errorObject("TEST_ERROR", "Testing error system");
 				if (!availableHandlers.containsKey(handlerName))
-					handlerName = "debug";
-				if (handlerName.equals("debug") && !BlackLabServer.DEBUG_MODE)
 					return DataObject.errorObject("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
 				Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
 				Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, String.class, String.class, String.class);
 				requestHandler = ctor.newInstance(servlet, request, indexName, urlResource, urlPathInfo);
 			} catch (NoSuchMethodException e) {
 				// (can only happen if the required constructor is not available in the RequestHandler subclass)
+				logger.error("Could not get constructor to create request handler", e);
 				return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
 			} catch (IllegalArgumentException e) {
+				logger.error("Could not create request handler", e);
 				return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
 			} catch (InstantiationException e) {
+				logger.error("Could not create request handler", e);
 				return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
 			} catch (IllegalAccessException e) {
+				logger.error("Could not create request handler", e);
 				return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
 			} catch (InvocationTargetException e) {
+				logger.error("Could not create request handler", e);
 				return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
 			}
 		}
+		if (debugMode)
+			requestHandler.setDebug(debugMode);
 
 		// Handle the request
 		try {
@@ -134,6 +146,8 @@ public abstract class RequestHandler {
 			return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
 		}
 	}
+
+	boolean debugMode;
 
 	/** The servlet object */
 	BlackLabServer servlet;
@@ -156,14 +170,44 @@ public abstract class RequestHandler {
 	/** The search manager, which executes and caches our searches */
 	SearchManager searchMan;
 
+	/** Our user id */
+	String userId;
+
 	RequestHandler(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathInfo) {
 		this.servlet = servlet;
 		this.request = request;
-		searchParam = servlet.getSearchParameters(request, indexName);
 		searchMan = servlet.getSearchManager();
+		searchParam = servlet.getSearchParameters(request, indexName);
 		this.indexName = indexName;
 		this.urlResource = urlResource;
 		this.urlPathInfo = urlPathInfo;
+
+		userId = request.getSession().getId();
+		if (searchMan.mayOverrideUserId(request.getRemoteAddr()) && request.getParameter("userid") != null) {
+			userId = request.getParameter("userid");
+			logger.debug("userid overridden: " + userId);
+		}
+
+	}
+
+	private void setDebug(boolean debugMode) {
+		this.debugMode = debugMode;
+	}
+
+	public void debug(Logger logger, String msg) {
+		logger.debug(shortUserId() + " " + msg);
+	}
+
+	public void warn(Logger logger, String msg) {
+		logger.warn(shortUserId() + " " + msg);
+	}
+
+	public void info(Logger logger, String msg) {
+		logger.info(shortUserId() + " " + msg);
+	}
+
+	public void error(Logger logger, String msg) {
+		logger.error(shortUserId() + " " + msg);
 	}
 
 	/**
@@ -182,6 +226,30 @@ public abstract class RequestHandler {
 		else
 			queryString = "?" + queryString;
 		return request.getServletPath() + pathInfo + queryString;
+	}
+
+	/**
+	 * Get the user id.
+	 *
+	 * Used for logging and making sure 1 user doesn't run too many queries.
+	 *
+	 * Right now, we simply use the session id, or the value sent in a parameter.
+	 *
+	 * @return the unique user id
+	 */
+	public String getUserId() {
+		return userId;
+	}
+
+	/**
+	 * Return the start of the user id.
+	 *
+	 * Useful for logging; should be enough for unique identification.
+	 *
+	 * @return the unique session id
+	 */
+	public String shortUserId() {
+		return getUserId().substring(0, 6);
 	}
 
 	/**
@@ -222,7 +290,7 @@ public abstract class RequestHandler {
 		try {
 			return SearchUtil.strToInt(str);
 		} catch (IllegalArgumentException e) {
-			logger.debug("Illegal integer value for parameter '" + paramName + "': " + str);
+			debug(logger, "Illegal integer value for parameter '" + paramName + "': " + str);
 			return 0;
 		}
 	}
@@ -244,7 +312,7 @@ public abstract class RequestHandler {
 		try {
 			return SearchUtil.strToBool(str);
 		} catch (IllegalArgumentException e) {
-			logger.debug("Illegal integer value for parameter '" + paramName + "': " + str);
+			debug(logger, "Illegal integer value for parameter '" + paramName + "': " + str);
 			return false;
 		}
 	}

@@ -4,14 +4,19 @@ import java.util.HashSet;
 import java.util.Set;
 
 import nl.inl.blacklab.search.Searcher;
+import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.util.ExUtil;
 
 import org.apache.log4j.Logger;
 
 public abstract class Job implements Comparable<Job> {
+	protected static final Logger logger = Logger.getLogger(Job.class);
 
-	/** Log4j logger object */
-	protected static final Logger logger = Logger.getLogger(JobHits.class);
+	/** id for the next job started */
+	static long nextJobId = 0;
+
+	/** Unique job id */
+	long id = nextJobId++;
 
 	/** Number of clients waiting for the results of this job.
 	 * This is used to allow clients to cancel long searches: if this number reaches
@@ -46,8 +51,10 @@ public abstract class Job implements Comparable<Job> {
 	 * Wait for the specified job to finish
 	 * @param job the job to wait for
 	 * @throws InterruptedException
+	 * @throws QueryException
+	 * @throws IndexOpenException
 	 */
-	protected void waitForJobToFinish(Job job) throws InterruptedException {
+	protected void waitForJobToFinish(Job job) throws InterruptedException, IndexOpenException, QueryException {
 		waitingFor.add(job);
 		job.waitUntilFinished();
 		waitingFor.remove(job);
@@ -58,34 +65,35 @@ public abstract class Job implements Comparable<Job> {
 	 * and call the perform() method to start the search.
 	 *
 	 * @param searchMan the servlet
+	 * @param userId user creating the job
 	 * @param par search parameters
 	 * @return the new Search object
 	 * @throws IndexOpenException
 	 * @throws QueryException
 	 */
-	public static Job create(SearchManager searchMan, SearchParameters par) throws IndexOpenException, QueryException {
+	public static Job create(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException, QueryException {
 		Job search = null;
 		String jobClass = par.get("jobclass");
 		if (jobClass.equals("JobHits")) {
-			search = new JobHits(searchMan, par);
+			search = new JobHits(searchMan, userId, par);
 		} else if (jobClass.equals("JobDocs")) {
-			search = new JobDocs(searchMan, par);
+			search = new JobDocs(searchMan, userId, par);
 		} else if (jobClass.equals("JobHitsSorted")) {
-			search = new JobHitsSorted(searchMan, par);
+			search = new JobHitsSorted(searchMan, userId, par);
 		} else if (jobClass.equals("JobDocsSorted")) {
-			search = new JobDocsSorted(searchMan, par);
+			search = new JobDocsSorted(searchMan, userId, par);
 		} else if (jobClass.equals("JobHitsWindow")) {
-			search = new JobHitsWindow(searchMan, par);
+			search = new JobHitsWindow(searchMan, userId, par);
 		} else if (jobClass.equals("JobDocsWindow")) {
-			search = new JobDocsWindow(searchMan, par);
+			search = new JobDocsWindow(searchMan, userId, par);
 		} else if (jobClass.equals("JobHitsTotal")) {
-			search = new JobHitsTotal(searchMan, par);
+			search = new JobHitsTotal(searchMan, userId, par);
 		} else if (jobClass.equals("JobDocsTotal")) {
-			search = new JobDocsTotal(searchMan, par);
+			search = new JobDocsTotal(searchMan, userId, par);
 		} else if (jobClass.equals("JobHitsGrouped")) {
-			search = new JobHitsGrouped(searchMan, par);
+			search = new JobHitsGrouped(searchMan, userId, par);
 		} else if (jobClass.equals("JobDocsGrouped")) {
-			search = new JobDocsGrouped(searchMan, par);
+			search = new JobDocsGrouped(searchMan, userId, par);
 		} else
 			throw new QueryException("INTERNAL_ERROR", "Unknown job class '" + jobClass + "'");
 
@@ -119,10 +127,14 @@ public abstract class Job implements Comparable<Job> {
 	/** The servlet */
 	protected SearchManager searchMan;
 
-	public Job(SearchManager searchMan, SearchParameters par) throws IndexOpenException {
+	/** Who created this job? */
+	protected String userId;
+
+	public Job(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
 		super();
-		this.par = par;
 		this.searchMan = searchMan;
+		this.userId = userId;
+		this.par = par;
 		searcher = searchMan.getSearcher(par.get("indexname"));
 		resetLastAccessed();
 		startedAt = -1;
@@ -169,8 +181,9 @@ public abstract class Job implements Comparable<Job> {
 	 *
 	 * @throws QueryException on parse error or other query-related error (e.g. too broad)
 	 * @throws InterruptedException if the thread was interrupted
+	 * @throws IndexOpenException if the index couldn't be opened
 	 */
-	final public void perform(int waitTimeMs) throws QueryException, InterruptedException {
+	final public void perform(int waitTimeMs) throws QueryException, InterruptedException, IndexOpenException {
 		if (performCalled)
 			throw new RuntimeException("Already performing search!");
 
@@ -259,8 +272,10 @@ public abstract class Job implements Comparable<Job> {
 	 *
 	 * @param maxWaitMs maximum time to wait, or a negative number for no limit
 	 * @throws InterruptedException if the thread was interrupted
+	 * @throws QueryException
+	 * @throws IndexOpenException
 	 */
-	public void waitUntilFinished(int maxWaitMs) throws InterruptedException {
+	public void waitUntilFinished(int maxWaitMs) throws InterruptedException, IndexOpenException, QueryException {
 		int defaultWaitStep = 100;
 		while (maxWaitMs != 0 && !searchThread.finished()) {
 			int w = maxWaitMs < 0 ? defaultWaitStep : (maxWaitMs > defaultWaitStep ? defaultWaitStep : maxWaitMs);
@@ -268,14 +283,18 @@ public abstract class Job implements Comparable<Job> {
 			if (maxWaitMs >= 0)
 				maxWaitMs -= w;
 		}
+		// If an Exception occurred, re-throw it now.
+		rethrowException();
 	}
 
 	/**
 	 * Wait until this job is finished (or an Exception is thrown)
 	 *
 	 * @throws InterruptedException
+	 * @throws QueryException
+	 * @throws IndexOpenException
 	 */
-	public void waitUntilFinished() throws InterruptedException {
+	public void waitUntilFinished() throws InterruptedException, IndexOpenException, QueryException {
 		waitUntilFinished(-1);
 	}
 
@@ -298,7 +317,7 @@ public abstract class Job implements Comparable<Job> {
 	public void changeClientsWaiting(int delta) {
 		clientsWaiting += delta;
 		if (clientsWaiting < 0)
-			logger.error("clientsWaiting < 0 for job: " + this);
+			error(logger, "clientsWaiting < 0 for job: " + this);
 		if (shouldBeCancelled()) {
 			cancelJob();
 		}
@@ -344,9 +363,45 @@ public abstract class Job implements Comparable<Job> {
 
 	@Override
 	public String toString() {
-		return par.toString();
+		return id + ": " + par.toString();
 	}
 
+	private String shortUserId() {
+		return userId.substring(0, 6);
+	}
 
+	public void debug(Logger logger, String msg) {
+		logger.debug(shortUserId() + " " + msg);
+	}
+
+	public void warn(Logger logger, String msg) {
+		logger.warn(shortUserId() + " " + msg);
+	}
+
+	public void info(Logger logger, String msg) {
+		logger.info(shortUserId() + " " + msg);
+	}
+
+	public void error(Logger logger, String msg) {
+		logger.error(shortUserId() + " " + msg);
+	}
+
+	public DataObjectMapElement toDataObject() {
+		DataObjectMapElement stats = new DataObjectMapElement();
+		stats.put("clients-waiting", clientsWaiting);
+		stats.put("waiting-for-jobs", waitingFor.size());
+		stats.put("started-at", (startedAt - searchMan.createdAt)/1000.0);
+		stats.put("finished-at", (finishedAt - searchMan.createdAt)/1000.0);
+		stats.put("last-accessed", (lastAccessed - searchMan.createdAt)/1000.0);
+		stats.put("created-by", shortUserId());
+		stats.put("thread-finished", searchThread.finished());
+
+		DataObjectMapElement d = new DataObjectMapElement();
+		d.put("id", id);
+		d.put("class", getClass().getSimpleName());
+		d.put("search-parameters", par.toDataObject());
+		d.put("stats", stats);
+		return d;
+	}
 
 }

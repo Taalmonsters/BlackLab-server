@@ -14,11 +14,14 @@ import nl.inl.blacklab.server.search.JobHitsGrouped;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
 
+import org.apache.log4j.Logger;
+
 /**
  * Request handler for grouped hit results.
  */
 public class RequestHandlerHitsGrouped extends RequestHandler {
-	//private static final Logger logger = Logger.getLogger(RequestHandlerHitset.class);
+	@SuppressWarnings("hiding")
+	private static final Logger logger = Logger.getLogger(RequestHandlerHitsGrouped.class);
 
 	public RequestHandlerHitsGrouped(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
@@ -26,10 +29,10 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 
 	@Override
 	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
-		logger.debug("REQ hitsgrouped: " + searchParam);
+		debug(logger, "REQ hitsgrouped: " + searchParam);
 
 		// Get the window we're interested in
-		JobHitsGrouped search = searchMan.searchHitsGrouped(searchParam);
+		JobHitsGrouped search = searchMan.searchHitsGrouped(getUserId(), searchParam);
 		if (getBoolParameter("block")) {
 			search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 			if (!search.finished())
@@ -55,7 +58,7 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 			if (i >= first && i < first + number) {
 				DataObjectMapElement doGroup = new DataObjectMapElement();
 				doGroup.put("identity", group.getIdentity().serialize());
-				doGroup.put("identity-human-readable", group.getIdentity().toString());
+				doGroup.put("identity-display", group.getIdentity().toString());
 				doGroup.put("size", group.size());
 				doGroups.add(doGroup);
 			}
