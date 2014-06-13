@@ -332,7 +332,7 @@ public abstract class RequestHandler {
 			if (value != null)
 				docInfo.put(metadataFieldName, value);
 		}
-		docInfo.put("mayView", searchMan.mayViewContents(indexName, document));
+		docInfo.put("may-view", searchMan.mayViewContents(indexName, document));
 		return docInfo;
 	}
 

@@ -79,6 +79,7 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 		summary.put("window-size", doGroups.size());
 		summary.put("window-has-previous", first > 0);
 		summary.put("window-has-next", first + number < groups.numberOfGroups());
+		summary.put("largest-group-size", groups.getLargestGroupSize());
 
 		// Assemble all the parts
 		DataObjectMapElement response = new DataObjectMapElement();
