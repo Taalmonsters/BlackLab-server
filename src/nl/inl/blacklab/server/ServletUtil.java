@@ -106,6 +106,18 @@ public class ServletUtil {
 		if (outputTypeString.length() > 0) {
 			return getOutputTypeFromString(outputTypeString, defaultFormat);
 		}
+
+		// No explicit parameter. Check if the Accept header contains either json or xml
+		String accept = request.getHeader("Accept");
+		logger.debug("Accept: " + accept);
+		if (accept != null && accept.length() > 0) {
+			if (accept.contains("json"))
+				return DataFormat.JSON;
+			if (accept.contains("xml"))
+				return DataFormat.XML;
+		}
+
+		// Unspecified. Use the configured default format.
 		return defaultFormat;
 	}
 

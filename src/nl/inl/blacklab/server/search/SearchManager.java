@@ -138,7 +138,7 @@ public class SearchManager  {
 
 		// Request properties
 		JSONObject reqProp = properties.getJSONObject("requests");
-		defaultOutputType = DataFormat.XML;
+		defaultOutputType = DataFormat.JSON;
 		if (reqProp.has("defaultOutputType"))
 			defaultOutputType = ServletUtil.getOutputTypeFromString(reqProp.getString("defaultOutputType"), DataFormat.XML);
 		defaultPageSize = JsonUtil.getIntProp(reqProp, "defaultPageSize", 20);
