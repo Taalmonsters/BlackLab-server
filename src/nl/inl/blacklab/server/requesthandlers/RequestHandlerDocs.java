@@ -46,10 +46,10 @@ public class RequestHandlerDocs extends RequestHandler {
 		debug(logger, "REQ docs: " + searchParam);
 
 		// Do we want to view a single group after grouping?
-		String groupBy = getStringParameter("group");
+		String groupBy = searchParam.get("group");
 		if (groupBy == null)
 			groupBy = "";
-		String viewGroup = getStringParameter("viewgroup");
+		String viewGroup = searchParam.get("viewgroup");
 		if (viewGroup == null)
 			viewGroup = "";
 		Job search;
@@ -88,7 +88,7 @@ public class RequestHandlerDocs extends RequestHandler {
 			if (group == null)
 				return DataObject.errorObject("GROUP_NOT_FOUND", "Group not found: " + viewGroup);
 
-			String sortBy = getStringParameter("sort");
+			String sortBy = searchParam.get("sort");
 			DocProperty sortProp = sortBy != null && sortBy.length() > 0 ? DocProperty.deserialize(sortBy) : null;
 			DocResults docsSorted;
 			if (sortProp != null) {
@@ -97,8 +97,8 @@ public class RequestHandlerDocs extends RequestHandler {
 			} else
 				docsSorted = group.getResults();
 
-			int first = getIntParameter("first");
-			int number = getIntParameter("number");
+			int first = searchParam.getInteger("first");
+			int number = searchParam.getInteger("number");
 			window = docsSorted.window(first, number);
 
 		} else {
@@ -179,7 +179,8 @@ public class RequestHandlerDocs extends RequestHandler {
 			summary.put("number-of-docs", docs.size());
 		}
 		summary.put("window-first-result", window.first());
-		summary.put("window-size", window.size());
+		summary.put("requested-window-size", searchParam.getInteger("number"));
+		summary.put("actual-window-size", window.size());
 		summary.put("window-has-previous", window.hasPrevious());
 		summary.put("window-has-next", window.hasNext());
 

@@ -15,6 +15,8 @@ public class JobDocsWindow extends Job {
 
 	private DocResultsWindow window;
 
+	private int requestedWindowSize;
+
 	public JobDocsWindow(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
 		super(searchMan, userId, par);
 	}
@@ -28,12 +30,12 @@ public class JobDocsWindow extends Job {
 		// Now, create a HitsWindow on these hits.
 		DocResults docResults = docsSearch.getDocResults();
 		int first = par.getInteger("first");
-		int number = par.getInteger("number");
+		requestedWindowSize = par.getInteger("number");
 		if (!docResults.sizeAtLeast(first + 1)) {
 			debug(logger, "Parameter first (" + first + ") out of range; setting to 0");
 			first = 0;
 		}
-		window = docResults.window(first, number);
+		window = docResults.window(first, requestedWindowSize);
 		//TODO context size
 //		int contextSize = par.getInteger("wordsaroundhit");
 //		if (contextSize > searchMan.maxContextSize) {
@@ -51,7 +53,8 @@ public class JobDocsWindow extends Job {
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("window-size", window == null ? -1 : window.size());
+		d.put("requested-window-size", requestedWindowSize);
+		d.put("actual-window-size", window == null ? -1 : window.size());
 		return d;
 	}
 

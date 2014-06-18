@@ -51,8 +51,8 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 		// The list of groups found
 		// TODO paging..?
 		doGroups = new DataObjectList("hitgroup");
-		int first = getIntParameter("first");
-		int number = getIntParameter("number");
+		int first = searchParam.getInteger("first");
+		int number = searchParam.getInteger("number");
 		int i = 0;
 		for (HitGroup group: groups) {
 			if (i >= first && i < first + number) {
@@ -76,7 +76,8 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 		summary.put("number-of-docs-retrieved", hits.countSoFarDocsRetrieved());
 		summary.put("number-of-groups", groups.numberOfGroups());
 		summary.put("window-first-result", first);
-		summary.put("window-size", doGroups.size());
+		summary.put("requested-window-size", number);
+		summary.put("actual-window-size", doGroups.size());
 		summary.put("window-has-previous", first > 0);
 		summary.put("window-has-next", first + number < groups.numberOfGroups());
 		summary.put("largest-group-size", groups.getLargestGroupSize());

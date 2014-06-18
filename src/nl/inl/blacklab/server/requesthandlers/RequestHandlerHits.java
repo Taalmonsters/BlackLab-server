@@ -58,13 +58,14 @@ public class RequestHandlerHits extends RequestHandler {
 		HitsWindow window;
 		HitGroup group = null;
 		JobHitsTotal total = null;
+		boolean block = getBoolParameter("block");
 		if (groupBy.length() > 0 && viewGroup.length() > 0) {
 
 			// TODO: clean up, do using JobHitsGroupedViewGroup or something (also cache sorted group!)
 
 			// Yes. Group, then show hits from the specified group
 			search = searchGrouped = searchMan.searchHitsGrouped(getUserId(), searchParam);
-			if (getBoolParameter("block")) {
+			if (block) {
 				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 				if (!search.finished())
 					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
@@ -103,7 +104,7 @@ public class RequestHandlerHits extends RequestHandler {
 			// Regular set of hits (no grouping first)
 
 			search = searchWindow = searchMan.searchHitsWindow(getUserId(), searchParam);
-			if (getBoolParameter("block")) {
+			if (block) {
 				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 				if (!search.finished())
 					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
@@ -165,7 +166,8 @@ public class RequestHandlerHits extends RequestHandler {
 		summary.put("number-of-docs", hits.countSoFarDocsCounted());
 		summary.put("number-of-docs-retrieved", hits.countSoFarDocsRetrieved());
 		summary.put("window-first-result", window.first());
-		summary.put("window-size", window.size());
+		summary.put("requested-window-size", searchParam.getInteger("number"));
+		summary.put("actual-window-size", window.size());
 		summary.put("window-has-previous", window.hasPrevious());
 		summary.put("window-has-next", window.hasNext());
 
