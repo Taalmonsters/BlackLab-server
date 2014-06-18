@@ -72,23 +72,6 @@ public class BlackLabServer extends HttpServlet {
 			throw new ServletException("Error reading JSON config file", e);
 		}
 
-//		Properties properties = new Properties();
-//		if (DEBUG_MODE) {
-//			properties.setProperty("debugMode", "true");
-//
-//			// Some test indices
-//			properties.put("index.brown",     "D:/dev/blacklab/brown/index");
-//			properties.put("index.brown.may-view-content", "true");
-//
-//			properties.put("index.opensonar", "D:/dev/blacklab/opensonar/index");
-//			properties.put("index.opensonar.pid", "id");
-//			properties.put("index.opensonar.may-view-content", "true");
-//
-//			properties.put("index.gysseling", "D:/dev/blacklab/gysseling/index");
-//			properties.put("index.gysseling.pid", "idno");
-//			properties.put("index.gysseling.may-view-content", "true");
-//		}
-
 		searchManager = new SearchManager(config);
 
 		logger.info("BlackLab Server ready.");
@@ -129,7 +112,8 @@ public class BlackLabServer extends HttpServlet {
 			// Write HTTP headers (content type and cache)
 			responseObject.setCharacterEncoding("utf-8");
 			responseObject.setContentType(ServletUtil.getContentType(outputType));
-			ServletUtil.writeCacheHeaders(responseObject, searchManager.getClientCacheTimeSec());
+			int cacheTime = response.isCacheAllowed() ? searchManager.getClientCacheTimeSec() : 0;
+			ServletUtil.writeCacheHeaders(responseObject, cacheTime);
 
 			// Write the response
 			OutputStreamWriter out = new OutputStreamWriter(responseObject.getOutputStream(), "utf-8");

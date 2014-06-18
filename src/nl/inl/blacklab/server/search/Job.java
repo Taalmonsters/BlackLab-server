@@ -74,6 +74,7 @@ public abstract class Job implements Comparable<Job> {
 	public static Job create(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException, QueryException {
 		Job search = null;
 		String jobClass = par.get("jobclass");
+		// TODO: use a map of String -> Class<? extends Job>
 		if (jobClass.equals("JobHits")) {
 			search = new JobHits(searchMan, userId, par);
 		} else if (jobClass.equals("JobDocs")) {
@@ -95,10 +96,7 @@ public abstract class Job implements Comparable<Job> {
 		} else if (jobClass.equals("JobDocsGrouped")) {
 			search = new JobDocsGrouped(searchMan, userId, par);
 		} else
-			throw new QueryException("INTERNAL_ERROR", "Unknown job class '" + jobClass + "'");
-
-		// TODO: implement other search types
-		//   use Map<String, Class<? extends Search>> ?
+			throw new QueryException("INTERNAL_ERROR", "An internal error occurred. Please contact the administrator. Error code: 1.");
 
 		return search;
 	}
@@ -241,6 +239,7 @@ public abstract class Job implements Comparable<Job> {
 		Throwable exception = getThrownException();
 		if (exception == null)
 			return;
+		logger.debug("Re-throwing exception from search thread:\n" + exception.getClass().getName() + ": " + exception.getMessage());
 		if (exception instanceof IndexOpenException)
 			throw (IndexOpenException)exception;
 		else if (exception instanceof QueryException)

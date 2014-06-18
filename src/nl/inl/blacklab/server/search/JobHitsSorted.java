@@ -32,7 +32,7 @@ public class JobHitsSorted extends JobWithHits {
 		}
 		HitProperty sortProp = HitProperty.deserialize(hitsUnsorted, sortBy);
 		if (sortProp == null)
-			throw new QueryException("UNKNOWN_SORT_PROPERTY", "Unknown sort property '" + sortBy + "'");
+			throw new QueryException("UNKNOWN_SORT_PROPERTY", "Unknown sort property '" + sortBy + "'.");
 		hits = hitsUnsorted.sortedBy(sortProp, reverse);
 	}
 

@@ -32,7 +32,7 @@ public class JobDocsSorted extends JobWithDocs {
 		}
 		DocProperty sortProp = DocProperty.deserialize(sortBy);
 		if (sortProp == null)
-			throw new QueryException("UNKNOWN_SORT_PROPERTY", "Unknown sort property '" + sortBy + "'");
+			throw new QueryException("UNKNOWN_SORT_PROPERTY", "Unknown sort property '" + sortBy + "'.");
 		docsUnsorted.sort(sortProp, reverse); // TODO: add .sortedBy() same as in Hits
 		docResults = docsUnsorted; // client can use results
 	}

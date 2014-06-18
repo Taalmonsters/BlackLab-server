@@ -73,7 +73,7 @@ public class RequestHandlerDocs extends RequestHandler {
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
-				return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getDefaultCheckAgainAdviceMs());
+				return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getCheckAgainAdviceMs(search));
 			}
 
 			// Search is done; construct the results object
@@ -82,7 +82,7 @@ public class RequestHandlerDocs extends RequestHandler {
 			HitPropValue viewGroupVal = null;
 			viewGroupVal = HitPropValue.deserialize(groups.getOriginalDocResults().getOriginalHits(), viewGroup);
 			if (viewGroupVal == null)
-				return DataObject.errorObject("ERROR_IN_GROUP_VALUE", "Cannot deserialize group value: " + viewGroup);
+				return DataObject.errorObject("ERROR_IN_GROUP_VALUE", "Parameter 'viewgroup' has an illegal value: " + viewGroup);
 
 			group = groups.getGroup(viewGroupVal);
 			if (group == null)
@@ -116,7 +116,7 @@ public class RequestHandlerDocs extends RequestHandler {
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
-				return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getDefaultCheckAgainAdviceMs());
+				return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getCheckAgainAdviceMinimumMs());
 			}
 
 			window = searchWindow.getWindow();

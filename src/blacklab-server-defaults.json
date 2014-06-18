@@ -11,8 +11,8 @@
 	// - output is prettyprinted by default (can be overriden with the "prettyprint"
 	//   GET parameter)
 	"debugModeIps": [
-		"127.0.0.1",      // IPv4 localhost
-		"0:0:0:0:0:0:0:1" // IPv6 localhost
+		//"127.0.0.1",      // IPv4 localhost
+		//"0:0:0:0:0:0:0:1" // IPv6 localhost
 	],
 
 	// The location and parameters for each index
@@ -136,11 +136,19 @@
 		// the protocol) changes after an update. A value of an hour or so seems reasonable.
 		"clientCacheTimeSec": 3600,
 
-		// The default advice to give to the client for when to check status of search again. (in milliseconds)
+		// The minimum time to advise a client to wait before checking the status of a search again.
 		// The lower this is set, the more responsive client applications should become, but
-		// the server will have to server more polling requests. This shouldn't affect server load
+		// the server will have to serve more polling requests. This shouldn't affect server load
 		// too much however, as these are simple, easily-handled requests.
-		"defaultCheckAgainAdviceMs": 200,
+		"checkAgainAdviceMinimumMs": 200,
+
+        // How to determine the "check again advice time" to give to clients.
+        // We divide the search time so far by this number to get the advice.
+        // E.g. if this is set to 5 (the default), if a search has been running for 10
+        // seconds, clients are advised to wait 2 seconds before checking the status again.
+        // Higher numbers mean a (slightly) more responsive application at the cost of
+        // (slightly) increased server load.
+        "checkAgainAdviceDivider": 5,
 
 		// Even if the client specifies nonblocking mode, the server will always wait a short while
 		// for the search to complete, so it can answer short requests immediately without the client

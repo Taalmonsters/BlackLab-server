@@ -52,11 +52,16 @@ public class SearchManager  {
 	 * the client needs only one request even in nonblocking mode. */
 	private int waitTimeInNonblockingModeMs;
 
-	/** The default advice to give for when to check status of search again.
-	 * TODO the longer a search has been running, the
-	 *   higher the advised wait time should be.
-	 */
-	private int defaultCheckAgainAdviceMs;
+	/** The minimum time to advise a client to
+	 * wait before checking the status of a search again. */
+	private int checkAgainAdviceMinimumMs;
+
+	/** What number to divide the search time so far
+	 * by to get the check again advice. E.g. if this is set
+	 * to 5 (the default), if a search has been running for 10
+	 * seconds, clients are advised to wait 2 seconds before
+	 * checking the status again. */
+	private int checkAgainAdviceDivider;
 
 	/** Maximum context size allowed */
 	private int maxContextSize;
@@ -134,11 +139,10 @@ public class SearchManager  {
 		for (int i = 0; i < jsonDebugModeIps.length(); i++) {
 			debugModeIps.add(jsonDebugModeIps.getString(i));
 		}
-		//debugMode = JsonUtil.getBooleanProp(properties, "debugMode", false);
 
 		// Request properties
 		JSONObject reqProp = properties.getJSONObject("requests");
-		defaultOutputType = DataFormat.JSON;
+		defaultOutputType = DataFormat.XML; // XML if nothing specified (because of browser's default Accept header)
 		if (reqProp.has("defaultOutputType"))
 			defaultOutputType = ServletUtil.getOutputTypeFromString(reqProp.getString("defaultOutputType"), DataFormat.XML);
 		defaultPageSize = JsonUtil.getIntProp(reqProp, "defaultPageSize", 20);
@@ -158,7 +162,8 @@ public class SearchManager  {
 		JSONObject perfProp = properties.getJSONObject("performance");
 		minFreeMemForSearchMegs = JsonUtil.getIntProp(perfProp, "minFreeMemForSearchMegs", 50);
 		maxRunningJobsPerUser = JsonUtil.getIntProp(perfProp, "maxRunningJobsPerUser", 20);
-		defaultCheckAgainAdviceMs = JsonUtil.getIntProp(perfProp, "defaultCheckAgainAdviceMs", 200);
+		checkAgainAdviceMinimumMs = JsonUtil.getIntProp(perfProp, "checkAgainAdviceMinimumMs", 200);
+		checkAgainAdviceDivider = JsonUtil.getIntProp(perfProp, "checkAgainAdviceDivider", 5);
 		waitTimeInNonblockingModeMs = JsonUtil.getIntProp(perfProp, "waitTimeInNonblockingModeMs", 100);
 		clientCacheTimeSec = JsonUtil.getIntProp(perfProp, "clientCacheTimeSec", 3600);
 
@@ -517,28 +522,6 @@ public class SearchManager  {
 		return rv;
 	}
 
-	/**
-	 * Construct a simple status response object.
-	 *
-	 * Status response indicates the server is busy carrying out the request and
-	 * will have results later.
-	 *
-	 * @param code (string) error code
-	 * @param msg the error message
-	 * @param checkAgainMs advice for how long to wait before asking again (ms) (if 0, don't include this)
-	 * @return the data object representing the error message
-	 */
-	public static DataObject statusObject(String code, String msg, int checkAgainMs) {
-		DataObjectMapElement status = new DataObjectMapElement();
-		status.put("code", new DataObjectString(code));
-		status.put("message", new DataObjectString(msg));
-		if (checkAgainMs != 0)
-			status.put("check-again-ms", checkAgainMs);
-		DataObjectMapElement rv = new DataObjectMapElement();
-		rv.put("status", status);
-		return rv;
-	}
-
 	public TextPattern parsePatt(String indexName, String pattern, String language) throws QueryException {
 		return parsePatt(indexName, pattern, language, true);
 	}
@@ -581,7 +564,7 @@ public class SearchManager  {
 			}
 		}
 
-		throw new QueryException("UNKNOWN_PATT_LANG", "Unknown pattern language '" + language + "'. Supported: corpusql, contextql, luceneql");
+		throw new QueryException("UNKNOWN_PATT_LANG", "Unknown pattern language '" + language + "'. Supported: corpusql, contextql, luceneql.");
 	}
 
 	public static Query parseFilter(String filter, String filterLang) throws QueryException {
@@ -601,26 +584,26 @@ public class SearchManager  {
 				Query query = parser.parse(filter);
 				return query;
 			} catch (org.apache.lucene.queryparser.classic.ParseException e) {
-				throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing document filter query: " + e.getMessage());
+				throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing LuceneQL filter query: " + e.getMessage());
 			} catch (org.apache.lucene.queryparser.classic.TokenMgrError e) {
-				throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing document filter query: " + e.getMessage());
+				throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing LuceneQL filter query: " + e.getMessage());
 			}
 		} else if (filterLang.equals("contextql")) {
 			try {
 				CompleteQuery q = ContextualQueryLanguageParser.parse(filter);
 				return q.getFilterQuery();
 			} catch (nl.inl.blacklab.queryParser.contextql.TokenMgrError e) {
-				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in ContextQL pattern: " + e.getMessage());
+				throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing ContextQL filter query: " + e.getMessage());
 			} catch (nl.inl.blacklab.queryParser.contextql.ParseException e) {
-				throw new QueryException("PATT_SYNTAX_ERROR", "Syntax error in ContextQL pattern: " + e.getMessage());
+				throw new QueryException("FILTER_SYNTAX_ERROR", "Error parsing ContextQL filter query: " + e.getMessage());
 			}
 		}
 
-		throw new QueryException("UNKNOWN_FILTER_LANG", "Unknown filter language '" + filterLang + "'. Only 'luceneql' supported.");
+		throw new QueryException("UNKNOWN_FILTER_LANG", "Unknown filter language '" + filterLang + "'. Supported: luceneql, contextql.");
 	}
 
-	public int getDefaultCheckAgainAdviceMs() {
-		return defaultCheckAgainAdviceMs;
+	public int getCheckAgainAdviceMinimumMs() {
+		return checkAgainAdviceMinimumMs;
 	}
 
 	public boolean isDebugMode(String ip) {
@@ -677,6 +660,23 @@ public class SearchManager  {
 
 	public int getClientCacheTimeSec() {
 		return clientCacheTimeSec;
+	}
+
+	/**
+	 * Give advice for how long to wait to check the status of a search.
+	 * @param search the search you want to check the status of
+	 * @return how long you should wait before asking again
+	 */
+	public int getCheckAgainAdviceMs(Job search) {
+
+		// Simple advice algorithm: the longer the search
+		// has been running, the less frequently the client
+		// should check its progress. Just divide the search time by
+		// 5 with a configured minimum.
+		int runningFor = search.ageInSeconds();
+		int checkAgainAdvice = Math.min(checkAgainAdviceMinimumMs, runningFor * 1000 / checkAgainAdviceDivider);
+
+		return checkAgainAdvice;
 	}
 
 }

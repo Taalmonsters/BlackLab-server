@@ -9,7 +9,19 @@ import java.io.Writer;
  */
 public abstract class DataObject {
 
+	/** If set, overrides the response type (XML/JSON) for this object. */
 	DataFormat overrideType = null;
+
+	/** If true, the client may cache this response. If false, it should never cache this. */
+	boolean cacheAllowed = true;
+
+	public boolean isCacheAllowed() {
+		return cacheAllowed;
+	}
+
+	public void setCacheAllowed(boolean allowCache) {
+		this.cacheAllowed = allowCache;
+	}
 
 	public DataFormat getOverrideType() {
 		return overrideType;
@@ -129,11 +141,11 @@ public abstract class DataObject {
 	/**
 	 * Construct a simple status response object.
 	 *
-	 * Status response indicates the server is busy carrying out the request and
-	 * will have results later.
+	 * Status response indicates the server is carrying out the request
+	 * and will have results later.
 	 *
-	 * @param code (string) error code
-	 * @param msg the error message
+	 * @param code (string) status code
+	 * @param msg the message
 	 * @param checkAgainMs advice for how long to wait before asking again (ms) (if 0, don't include this)
 	 * @return the data object representing the error message
 	 */
@@ -145,6 +157,7 @@ public abstract class DataObject {
 			status.put("check-again-ms", checkAgainMs);
 		DataObjectMapElement rv = new DataObjectMapElement();
 		rv.put("status", status);
+		rv.setCacheAllowed(false); // status should never be cached
 		return rv;
 	}
 

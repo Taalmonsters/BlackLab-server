@@ -87,7 +87,7 @@ public abstract class RequestHandler {
 				// HACK to avoid having a different url resource for
 				// the lists of (hit|doc) groups: instantiate a different
 				// request handler class in this case.
-				if (handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs")) {
+				if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs")) {
 					handlerName = "debug";
 				}
 				else if (handlerName.equals("docs") && urlPathInfo.length() > 0) {
@@ -117,19 +117,19 @@ public abstract class RequestHandler {
 			} catch (NoSuchMethodException e) {
 				// (can only happen if the required constructor is not available in the RequestHandler subclass)
 				logger.error("Could not get constructor to create request handler", e);
-				return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
+				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 2));
 			} catch (IllegalArgumentException e) {
 				logger.error("Could not create request handler", e);
-				return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
+				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 3));
 			} catch (InstantiationException e) {
 				logger.error("Could not create request handler", e);
-				return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
+				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 4));
 			} catch (IllegalAccessException e) {
 				logger.error("Could not create request handler", e);
-				return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
+				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 5));
 			} catch (InvocationTargetException e) {
 				logger.error("Could not create request handler", e);
-				return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
+				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 6));
 			}
 		}
 		if (debugMode)
@@ -139,12 +139,19 @@ public abstract class RequestHandler {
 		try {
 			return requestHandler.handle();
 		} catch (IndexOpenException e) {
-			return DataObject.errorObject("CANNOT_OPEN_INDEX", e.getMessage());
+			return DataObject.errorObject("CANNOT_OPEN_INDEX", debugMode ? e.getMessage() : "Could not open index '" + indexName + "'. Please check the name.");
 		} catch (QueryException e) {
 			return DataObject.errorObject(e.getErrorCode(), e.getMessage());
 		} catch (InterruptedException e) {
-			return DataObject.errorObject("INTERNAL_ERROR", e.getClass().getName() + ": " + e.getMessage());
+			return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 7));
 		}
+	}
+
+	public static String internalErrorMessage(Exception e, boolean debugMode, int code) {
+		if (debugMode) {
+			return e.getClass().getName() + ": " + e.getMessage() + " (Internal error code " + code + ")";
+		}
+		return "An internal error occurred. Please contact the administrator.  Error code: " + code + ".";
 	}
 
 	boolean debugMode;

@@ -109,7 +109,7 @@ public class ServletUtil {
 
 		// No explicit parameter. Check if the Accept header contains either json or xml
 		String accept = request.getHeader("Accept");
-		logger.debug("Accept: " + accept);
+		//logger.debug("Accept: " + accept);
 		if (accept != null && accept.length() > 0) {
 			if (accept.contains("json"))
 				return DataFormat.JSON;
@@ -166,9 +166,6 @@ public class ServletUtil {
 	/** Output character encoding */
 	static final String OUTPUT_ENCODING = "UTF-8";
 
-	/** For how long returned pages are valid (30 minutes) */
-	private static final int CACHE_TIME_SECONDS = 30 * 60;
-
 	/** The HTTP date format, to use for the cache header */
 	static DateFormat httpDateFormat;
 
@@ -178,23 +175,32 @@ public class ServletUtil {
 		httpDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
 	}
 
+	public static void writeNoCacheHeaders(HttpServletResponse response) {
+		writeCacheHeaders(response, 0);
+	}
+
 	/**
 	 * Write cache headers for the configured cache time.
 	 * @param response the response object to write the headers to
 	 * @param cacheTimeSeconds how long to cache the response
 	 */
 	public static void writeCacheHeaders(HttpServletResponse response, int cacheTimeSeconds) {
-		GregorianCalendar cal = new GregorianCalendar();
-		cal.add(Calendar.SECOND, cacheTimeSeconds);
-
-		String expires;
-		synchronized (httpDateFormat) {
-			expires = httpDateFormat.format(cal.getTime());
+		if (cacheTimeSeconds > 0) {
+			// Cache page for specified time
+			GregorianCalendar cal = new GregorianCalendar();
+			cal.add(Calendar.SECOND, cacheTimeSeconds);
+			String expires;
+			synchronized (httpDateFormat) {
+				expires = httpDateFormat.format(cal.getTime());
+			}
+			response.setHeader("Expires", expires);
+			response.setHeader("Cache-Control", "PUBLIC, max-age=" + cacheTimeSeconds);
+		} else {
+			// Don't cache this page
+			response.setHeader("Expires", "0");
+			response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+			response.setHeader("Pragma", "no-cache");
 		}
-
-		// Output headers
-		response.setHeader("Cache-Control", "PUBLIC, max-age=" + CACHE_TIME_SECONDS);
-		response.setHeader("Expires", expires);
 	}
 
 	/**

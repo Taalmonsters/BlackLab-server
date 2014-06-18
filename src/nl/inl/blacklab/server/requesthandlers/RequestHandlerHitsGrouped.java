@@ -41,7 +41,7 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 
 		// If search is not done yet, indicate this to the user
 		if (!search.finished()) {
-			return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getDefaultCheckAgainAdviceMs());
+			return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getCheckAgainAdviceMinimumMs());
 		}
 
 		// Search is done; construct the results object

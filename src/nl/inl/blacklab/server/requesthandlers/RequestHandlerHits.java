@@ -42,6 +42,7 @@ public class RequestHandlerHits extends RequestHandler {
 
 	@Override
 	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
+
 		debug(logger, "REQ hits: " + searchParam);
 
 		// Do we want to view a single group after grouping?
@@ -71,7 +72,7 @@ public class RequestHandlerHits extends RequestHandler {
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
-				return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getDefaultCheckAgainAdviceMs());
+				return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getCheckAgainAdviceMinimumMs());
 			}
 
 			// Search is done; construct the results object
@@ -113,7 +114,7 @@ public class RequestHandlerHits extends RequestHandler {
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
-				return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getDefaultCheckAgainAdviceMs());
+				return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getCheckAgainAdviceMinimumMs());
 			}
 
 			window = searchWindow.getWindow();

@@ -34,7 +34,7 @@ public class JobDocsGrouped extends Job {
 			groupBy = "";
 		groupProp = DocProperty.deserialize(groupBy);
 		if (groupProp == null)
-			throw new QueryException("UNKNOWN_GROUP_PROPERTY", "Unknown group property '" + groupBy + "'");
+			throw new QueryException("UNKNOWN_GROUP_PROPERTY", "Unknown group property '" + groupBy + "'.");
 		DocGroups theGroups = docResults.groupedBy(groupProp);
 
 		String sortBy = par.get("sort");
