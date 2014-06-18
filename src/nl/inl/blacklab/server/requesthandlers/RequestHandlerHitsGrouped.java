@@ -50,7 +50,7 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 		DataObjectList doGroups = null;
 		// The list of groups found
 		// TODO paging..?
-		doGroups = new DataObjectList("group");
+		doGroups = new DataObjectList("hitgroup");
 		int first = getIntParameter("first");
 		int number = getIntParameter("number");
 		int i = 0;
@@ -84,7 +84,7 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 		// Assemble all the parts
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("summary", summary);
-		response.put("groups", doGroups);
+		response.put("hitgroups", doGroups);
 		/*response.put("hits", hitList);
 		response.put("docinfos", docInfos);*/
 
