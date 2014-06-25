@@ -42,7 +42,12 @@ public class JobHits extends JobWithHits {
 				q = SearchManager.parseFilter(par.get("filter"), par.get("filterlang"));
 				filterQuery = q == null ? null : new QueryWrapperFilter(q);
 			}
-			hits = searcher.find(textPattern, filterQuery);
+			try {
+				hits = searcher.find(textPattern, filterQuery);
+			} catch (RuntimeException e) {
+				// TODO: catch a more specific exception!
+				throw new QueryException("SEARCH_ERROR", "Search error: " + e.getMessage());
+			}
 		} catch (TooManyClauses e) {
 			throw new QueryException("QUERY_TOO_BROAD", "Query too broad, too many matching terms. Please be more specific.", e);
 		}

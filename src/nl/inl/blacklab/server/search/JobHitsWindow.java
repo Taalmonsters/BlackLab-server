@@ -43,7 +43,6 @@ public class JobHitsWindow extends Job {
 			contextSize = maxContextSize;
 		}
 		window.setContextSize(contextSize);
-
 	}
 
 	public HitsWindow getWindow() {
