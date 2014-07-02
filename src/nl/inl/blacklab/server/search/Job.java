@@ -398,7 +398,7 @@ public abstract class Job implements Comparable<Job> {
 		DataObjectMapElement d = new DataObjectMapElement();
 		d.put("id", id);
 		d.put("class", getClass().getSimpleName());
-		d.put("search-parameters", par.toDataObject());
+		d.put("search-param", par.toDataObject());
 		d.put("stats", stats);
 		return d;
 	}

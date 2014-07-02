@@ -163,6 +163,7 @@ public class RequestHandlerDocs extends RequestHandler {
 		DocResults docs = searchWindow != null ? total.getDocResults() : group.getResults();
 		Hits hits = docs.getOriginalHits();
 		boolean done = hits == null ? true : hits.doneFetchingHits();
+		summary.put("search-param", searchParam.toDataObject());
 		summary.put("search-time", search.executionTimeMillis());
 		if (total != null)
 			summary.put("count-time", total.executionTimeMillis());

@@ -157,6 +157,7 @@ public class RequestHandlerHits extends RequestHandler {
 		DataObjectMapElement summary = new DataObjectMapElement();
 		Hits hits = searchWindow != null ? hits = searchWindow.getWindow().getOriginalHits() : group.getHits();
 		boolean done = hits.doneFetchingHits();
+		summary.put("search-param", searchParam.toDataObject());
 		summary.put("search-time", search.executionTimeMillis());
 		if (total != null)
 			summary.put("count-time", total.executionTimeMillis());
