@@ -3,10 +3,9 @@ BlackLab Server
 
 A REST API for BlackLab that speaks JSON and XML.
 
+**WARNING: This is not yet production-ready software! This is an alpha version, available for review and testing. There are likely still be bugs and the protocol may change slightly. **
+
 The goal for this webservice is to expose all of BlackLab's functionality through an easy-to-consume web service accessible from your favourite programming language.
-
-BlackLab Server is currently in alpha, expected to go into beta this May.
-
 
 Some simple example URLs:
 
