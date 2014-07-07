@@ -15,9 +15,9 @@ Find hits for a word:
 
 Group hits by left context:
 
-  http://corpus.example.com/blacklab-server/mycorpus/hitsgrouped?patt="easy"&groupby=left
+  http://corpus.example.com/blacklab-server/mycorpus/hitsgrouped?patt="easy"&group=left
 
 Highlight in original content:
 
-  http://corpus.example.com/blacklab-server/mycorpus/doc/12345/?patt="easy"
+  http://corpus.example.com/blacklab-server/mycorpus/12345/?patt="easy"
 
