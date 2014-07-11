@@ -21,14 +21,14 @@ public class JobDocsGrouped extends Job {
 
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
-		// First, execute blocking hits search.
+		// First, execute blocking docs search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithDocs docsSearch = searchMan.searchDocs(userId, parNoGroup);
 		waitForJobToFinish(docsSearch);
 
-		// Now, group the hits.
+		// Now, group the docs.
 		docResults = docsSearch.getDocResults();
-		String groupBy = par.get("group");
+		String groupBy = par.getString("group");
 		DocProperty groupProp = null;
 		if (groupBy == null)
 			groupBy = "";
@@ -37,7 +37,7 @@ public class JobDocsGrouped extends Job {
 			throw new QueryException("UNKNOWN_GROUP_PROPERTY", "Unknown group property '" + groupBy + "'.");
 		DocGroups theGroups = docResults.groupedBy(groupProp);
 
-		String sortBy = par.get("sort");
+		String sortBy = par.getString("sort");
 		if (sortBy == null)
 			sortBy = "";
 		boolean reverse = false;

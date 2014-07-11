@@ -22,7 +22,7 @@ public class JobHitsSorted extends JobWithHits {
 
 		// Now, sort the hits.
 		Hits hitsUnsorted = hitsSearch.getHits();
-		String sortBy = par.get("sort");
+		String sortBy = par.getString("sort");
 		if (sortBy == null)
 			sortBy = "";
 		boolean reverse = false;

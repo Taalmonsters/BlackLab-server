@@ -22,7 +22,7 @@ public class JobDocsSorted extends JobWithDocs {
 
 		// Now, sort the docs.
 		DocResults docsUnsorted = search.getDocResults();
-		String sortBy = par.get("sort");
+		String sortBy = par.getString("sort");
 		if (sortBy == null)
 			sortBy = "";
 		boolean reverse = false;

@@ -119,7 +119,12 @@ public class BlackLabServer extends HttpServlet {
 			// Write the response
 			OutputStreamWriter out = new OutputStreamWriter(responseObject.getOutputStream(), "utf-8");
 			boolean prettyPrint = ServletUtil.getParameter(request, "prettyprint", debugMode);
-			response.serializeDocument("blacklab-response", out, outputType, prettyPrint);
+			String callbackFunction = ServletUtil.getParameter(request, "jsonp", "");
+			if (callbackFunction.length() > 0 && !callbackFunction.matches("[_a-zA-Z][_a-zA-Z0-9]+")) {
+				response = DataObject.errorObject("JSONP_ILLEGAL_CALLBACK", "Illegal JSONP callback function name. Must be a valid Javascript name.");
+				callbackFunction = "";
+			}
+			response.serializeDocument("blacklab-response", out, outputType, prettyPrint, callbackFunction);
 			out.flush();
 
 		} catch (IOException e) {
@@ -158,10 +163,10 @@ public class BlackLabServer extends HttpServlet {
 	 * @return the unique key
 	 */
 	public SearchParameters getSearchParameters(HttpServletRequest request, String indexName) {
-		SearchParameters param = new SearchParameters();
+		SearchParameters param = new SearchParameters(searchManager);
 		param.put("indexname", indexName);
 		for (String name: searchManager.getSearchParameterNames()) {
-			String value = ServletUtil.getParameter(request, name, searchManager.getParameterDefaultValue(name)).trim();
+			String value = ServletUtil.getParameter(request, name, "").trim();
 			if (value.length() == 0)
 				continue;
 			param.put(name, value);

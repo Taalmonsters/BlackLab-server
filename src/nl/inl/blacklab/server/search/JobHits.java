@@ -30,16 +30,16 @@ public class JobHits extends JobWithHits {
 	@Override
 	public void performSearch() throws QueryException, IndexOpenException {
 		try {
-			textPattern = searchMan.parsePatt(par.get("indexname"), par.get("patt"), par.get("pattlang"));
+			textPattern = searchMan.parsePatt(par.getString("indexname"), par.getString("patt"), par.getString("pattlang"));
 			Query q;
-			if (par.get("doc-pid") != null) {
+			if (par.getString("doc-pid") != null) {
 				// Only hits in 1 doc (for highlighting)
-				int luceneDocId = searchMan.getLuceneDocIdFromPid(par.get("indexname"), par.get("doc-pid"));
+				int luceneDocId = searchMan.getLuceneDocIdFromPid(par.getString("indexname"), par.getString("doc-pid"));
 				filterQuery = new SingleDocIdFilter(luceneDocId);
 				debug(logger, "Filtering on single doc-id");
 			} else {
 				// Filter query
-				q = SearchManager.parseFilter(par.get("filter"), par.get("filterlang"));
+				q = SearchManager.parseFilter(par.getString("filter"), par.getString("filterlang"));
 				filterQuery = q == null ? null : new QueryWrapperFilter(q);
 			}
 			try {

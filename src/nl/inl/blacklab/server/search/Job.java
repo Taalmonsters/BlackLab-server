@@ -73,7 +73,7 @@ public abstract class Job implements Comparable<Job> {
 	 */
 	public static Job create(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException, QueryException {
 		Job search = null;
-		String jobClass = par.get("jobclass");
+		String jobClass = par.getString("jobclass");
 		// TODO: use a map of String -> Class<? extends Job>
 		if (jobClass.equals("JobHits")) {
 			search = new JobHits(searchMan, userId, par);
@@ -133,7 +133,7 @@ public abstract class Job implements Comparable<Job> {
 		this.searchMan = searchMan;
 		this.userId = userId;
 		this.par = par;
-		searcher = searchMan.getSearcher(par.get("indexname"));
+		searcher = searchMan.getSearcher(par.getString("indexname"));
 		resetLastAccessed();
 		startedAt = -1;
 		finishedAt = -1;

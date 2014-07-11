@@ -46,7 +46,7 @@ public class RequestHandlerDocContents extends RequestHandler {
 			return errObj;
 		}
 
-		String patt = searchParam.get("patt");
+		String patt = searchParam.getString("patt");
 		Hits hits = null;
 		if (patt != null && patt.length() > 0) {
 			//@@@ TODO: filter on document!

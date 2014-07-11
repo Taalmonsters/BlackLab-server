@@ -14,7 +14,7 @@ public class JobDocs extends JobWithDocs {
 	@Override
 	public void performSearch() throws QueryException, IndexOpenException, InterruptedException {
 		// First, execute blocking hits search.
-		String patt = par.get("patt");
+		String patt = par.getString("patt");
 		if (patt != null && patt.length() > 0) {
 			SearchParameters parNoSort = par.copyWithout("sort");
 			JobWithHits hitsSearch = searchMan.searchHits(userId, parNoSort);
@@ -22,7 +22,7 @@ public class JobDocs extends JobWithDocs {
 			// Now, get per document results
 			docResults = hitsSearch.getHits().perDocResults();
 		} else {
-			Query filterQuery = SearchManager.parseFilter(par.get("filter"), par.get("filterlang"));
+			Query filterQuery = SearchManager.parseFilter(par.getString("filter"), par.getString("filterlang"));
 			docResults = searcher.queryDocuments(filterQuery);
 		}
 	}

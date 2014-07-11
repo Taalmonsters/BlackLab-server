@@ -403,6 +403,12 @@ public class SearchManager  {
 		return (JobDocsGrouped)search(userId, parBasic);
 	}
 
+	public JobFacets searchFacets(String userId, SearchParameters par) throws IndexOpenException, QueryException, InterruptedException {
+		SearchParameters parBasic = par.copyWithOnly("facets", "indexname", "patt", "pattlang", "filter", "filterlang");
+		parBasic.put("jobclass", "JobFacets");
+		return (JobFacets)search(userId, parBasic);
+	}
+
 	/**
 	 * Start a new search or return an existing Search object corresponding
 	 * to these search parameters.
@@ -476,17 +482,17 @@ public class SearchManager  {
 
 		return search;
 	}
-
+	
 	public long getMinFreeMemForSearchMegs() {
 		return minFreeMemForSearchMegs;
 	}
 
 	public String getParameterDefaultValue(String paramName) {
 		String defVal = defaultParameterValues.get(paramName);
-		if (defVal == null) {
+		/*if (defVal == null) {
 			defVal = "";
 			defaultParameterValues.put(paramName, defVal);
-		}
+		}*/
 		return defVal;
 	}
 

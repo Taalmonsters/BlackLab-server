@@ -1,10 +1,15 @@
 package nl.inl.blacklab.server.requesthandlers;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.perdocument.DocCounts;
 import nl.inl.blacklab.perdocument.DocGroup;
 import nl.inl.blacklab.perdocument.DocGroups;
 import nl.inl.blacklab.perdocument.DocProperty;
+import nl.inl.blacklab.perdocument.DocPropertyMultiple;
 import nl.inl.blacklab.perdocument.DocResult;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.perdocument.DocResultsWindow;
@@ -46,10 +51,10 @@ public class RequestHandlerDocs extends RequestHandler {
 		debug(logger, "REQ docs: " + searchParam);
 
 		// Do we want to view a single group after grouping?
-		String groupBy = searchParam.get("group");
+		String groupBy = searchParam.getString("group");
 		if (groupBy == null)
 			groupBy = "";
-		String viewGroup = searchParam.get("viewgroup");
+		String viewGroup = searchParam.getString("viewgroup");
 		if (viewGroup == null)
 			viewGroup = "";
 		Job search;
@@ -88,7 +93,7 @@ public class RequestHandlerDocs extends RequestHandler {
 			if (group == null)
 				return DataObject.errorObject("GROUP_NOT_FOUND", "Group not found: " + viewGroup);
 
-			String sortBy = searchParam.get("sort");
+			String sortBy = searchParam.getString("sort");
 			DocProperty sortProp = sortBy != null && sortBy.length() > 0 ? DocProperty.deserialize(sortBy) : null;
 			DocResults docsSorted;
 			if (sortProp != null) {
@@ -102,7 +107,7 @@ public class RequestHandlerDocs extends RequestHandler {
 			window = docsSorted.window(first, number);
 
 		} else {
-			// Regular set of hits (no grouping first)
+			// Regular set of docs (no grouping first)
 
 			search = searchWindow = searchMan.searchDocsWindow(getUserId(), searchParam);
 			if (block) {
@@ -120,6 +125,33 @@ public class RequestHandlerDocs extends RequestHandler {
 			}
 
 			window = searchWindow.getWindow();
+		}
+
+		String facets = searchParam.getString("facets");
+		if (facets != null && facets.length() > 0) {
+			// Now, group the docs according to the requested facets.
+			DocResults docsToFacet = window.getOriginalDocs();
+			DocProperty propMultipleFacets = DocProperty.deserialize(facets);
+			List<DocProperty> props = new ArrayList<DocProperty>();
+			if (propMultipleFacets instanceof DocPropertyMultiple) {
+				// Multiple facets requested
+				for (DocProperty prop: (DocPropertyMultiple)propMultipleFacets) {
+					props.add(prop);
+				}
+			} else {
+				// Just a single facet requested
+				props.add(propMultipleFacets);
+			}
+
+			DataObjectMapElement theCounts = new DataObjectMapElement();
+			for (DocProperty facetBy: props) {
+				DocCounts facetCounts = docsToFacet.countBy(facetBy);
+				
+				// TODO:
+				// - DocCounts.sortBy()
+				// - add facets to response object
+				// - also for hits response
+			}
 		}
 
 		// Search is done; construct the results object

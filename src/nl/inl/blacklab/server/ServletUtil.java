@@ -101,7 +101,13 @@ public class ServletUtil {
 	 * @return the type of content the user would like
 	 */
 	public static DataFormat getOutputType(HttpServletRequest request, DataFormat defaultFormat) {
-		// See if we want non-HTML output (XML or CSV)
+		// See if jsonp callback parameter specified. If so, we want JSON (the "P" part is handled elsewhere)
+		String jsonpCallback = getParameter(request, "jsonp", "").toLowerCase();
+		if (jsonpCallback.length() > 0) {
+			return DataFormat.JSON;
+		}
+
+		// See if there was an explicit outputformat parameter. If so, use that.
 		String outputTypeString = getParameter(request, "outputformat", "").toLowerCase();
 		if (outputTypeString.length() > 0) {
 			return getOutputTypeFromString(outputTypeString, defaultFormat);

@@ -17,9 +17,12 @@ import org.apache.log4j.Logger;
  */
 public class SearchParameters extends TreeMap<String, String> {
 	private static final Logger logger = Logger.getLogger(SearchParameters.class);
+	
+	/** The search manager, for querying default value for missing parameters */
+	private SearchManager searchManager;
 
-	public SearchParameters() {
-		// (nothing to do)
+	public SearchParameters(SearchManager searchManager) {
+		this.searchManager = searchManager;
 	}
 
 	@Override
@@ -33,8 +36,26 @@ public class SearchParameters extends TreeMap<String, String> {
 		return "{ " + b.toString() + " }";
 	}
 
+	/*
+	@Override
+	public String get(Object key) {
+		String value = super.get(key);
+		if (value == null || value.length() == 0) {
+			value = searchManager.getParameterDefaultValue(key.toString());
+		}
+		return value;
+	}*/
+
+	public String getString(Object key) {
+		String value = super.get(key);
+		if (value == null || value.length() == 0) {
+			value = searchManager.getParameterDefaultValue(key.toString());
+		}
+		return value;
+	}
+
 	public int getInteger(String name) {
-		String value = get(name);
+		String value = getString(name);
 		try {
 			return SearchUtil.strToInt(value);
 		} catch (IllegalArgumentException e) {
@@ -44,7 +65,7 @@ public class SearchParameters extends TreeMap<String, String> {
 	}
 
 	public boolean getBoolean(String name) {
-		String value = get(name);
+		String value = getString(name);
 		try {
 			return SearchUtil.strToBool(value);
 		} catch (IllegalArgumentException e) {
@@ -54,22 +75,23 @@ public class SearchParameters extends TreeMap<String, String> {
 	}
 
 	public SearchParameters copyWithJobClass(String newJobClass) {
-		SearchParameters par = new SearchParameters();
+		SearchParameters par = new SearchParameters(searchManager);
 		par.putAll(this);
 		par.put("jobclass", newJobClass);
 		return par;
 	}
 
 	public SearchParameters copyWithOnly(String... keys) {
-		SearchParameters copy = new SearchParameters();
+		SearchParameters copy = new SearchParameters(searchManager);
 		for (String key: keys) {
-			copy.put(key, get(key));
+			if (containsKey(key))
+				copy.put(key, get(key));
 		}
 		return copy;
 	}
 
 	public SearchParameters copyWithout(String... remove) {
-		SearchParameters copy = new SearchParameters();
+		SearchParameters copy = new SearchParameters(searchManager);
 		copy.putAll(this);
 		for (String key: remove) {
 			copy.remove(key);

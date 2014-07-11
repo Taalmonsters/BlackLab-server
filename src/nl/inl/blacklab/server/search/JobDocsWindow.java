@@ -23,7 +23,7 @@ public class JobDocsWindow extends Job {
 
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
-		// First, execute blocking hits search.
+		// First, execute blocking docs search.
 		JobWithDocs docsSearch = searchMan.searchDocs(userId, par);
 		waitForJobToFinish(docsSearch);
 

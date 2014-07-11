@@ -106,16 +106,21 @@ public abstract class DataObject {
 	public abstract boolean isSimple();
 
 	/**
-	 * Serialize this value to a full XML or JSON document.
+	 * Serialize this value to a full XML, JSON document.
 	 * @param rootElementName name of the XML root element (not applicable for JSON)
 	 * @param out where to serialize to
 	 * @param outputType the output format: XML or JSON
 	 * @param prettyPrint whether or not to include newline and indents
+	 * @param jsonpCallback the callback function name (only used for JSON, in which case the
+	 *   response is JSONP, i.e. a Javascript consisting of a single function call with a JSON 
+	 *   object as parameter)
 	 * @throws IOException
 	 */
-	public void serializeDocument(String rootElementName, Writer out, DataFormat outputType, boolean prettyPrint) throws IOException {
+	public void serializeDocument(String rootElementName, Writer out, DataFormat outputType, boolean prettyPrint, String jsonpCallback) throws IOException {
 		switch (outputType) {
 		case JSON:
+			if (jsonpCallback != null && jsonpCallback.length() > 0)
+				out.append(jsonpCallback).append("(");
 			break;
 		case XML:
 			out.append("<?xml version=\"1.0\" encoding=\"utf-8\" ?>");
@@ -129,6 +134,8 @@ public abstract class DataObject {
 		serialize(out, outputType, prettyPrint, outputType == DataFormat.XML ? 1 : 0);
 		switch (outputType) {
 		case JSON:
+			if (jsonpCallback != null && jsonpCallback.length() > 0)
+				out.append(");");
 			break;
 		case XML:
 			out.append("</").append(rootElementName).append(">");

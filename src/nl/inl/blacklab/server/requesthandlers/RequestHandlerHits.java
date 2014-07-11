@@ -46,10 +46,10 @@ public class RequestHandlerHits extends RequestHandler {
 		debug(logger, "REQ hits: " + searchParam);
 
 		// Do we want to view a single group after grouping?
-		String groupBy = searchParam.get("group");
+		String groupBy = searchParam.getString("group");
 		if (groupBy == null)
 			groupBy = "";
-		String viewGroup = searchParam.get("viewgroup");
+		String viewGroup = searchParam.getString("viewgroup");
 		if (viewGroup == null)
 			viewGroup = "";
 		Job search;
@@ -88,7 +88,7 @@ public class RequestHandlerHits extends RequestHandler {
 			if (group == null)
 				return DataObject.errorObject("GROUP_NOT_FOUND", "Group not found: " + viewGroup);
 
-			String sortBy = searchParam.get("sort");
+			String sortBy = searchParam.getString("sort");
 			HitProperty sortProp = sortBy != null && sortBy.length() > 0 ? HitProperty.deserialize(group.getHits(), sortBy) : null;
 			Hits hitsSorted;
 			if (sortProp != null)

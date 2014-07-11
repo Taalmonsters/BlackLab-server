@@ -28,7 +28,7 @@ public class JobHitsGrouped extends Job {
 
 		// Now, group the hits.
 		hits = hitsSearch.getHits();
-		String groupBy = par.get("group");
+		String groupBy = par.getString("group");
 		HitProperty groupProp = null;
 		if (groupBy == null)
 			groupBy = "";
@@ -37,7 +37,7 @@ public class JobHitsGrouped extends Job {
 			throw new QueryException("UNKNOWN_GROUP_PROPERTY", "Unknown group property '" + groupBy + "'.");
 		HitGroups theGroups = hits.groupedBy(groupProp);
 
-		String sortBy = par.get("sort");
+		String sortBy = par.getString("sort");
 		if (sortBy == null)
 			sortBy = "";
 		boolean reverse = false;
