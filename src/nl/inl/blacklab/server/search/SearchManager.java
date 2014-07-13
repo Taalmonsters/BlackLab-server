@@ -200,7 +200,7 @@ public class SearchManager  {
 		searchParameterNames = Arrays.asList(
 				"resultsType", "patt", "pattlang", "pattfield", "filter", "filterlang",
 				"sort", "group", "viewgroup", "collator", "first", "number", "wordsaroundhit",
-				"hitstart", "hitend");
+				"hitstart", "hitend", "facets");
 
 		// Set up the parameter default values
 		defaultParameterValues = new HashMap<String, String>();

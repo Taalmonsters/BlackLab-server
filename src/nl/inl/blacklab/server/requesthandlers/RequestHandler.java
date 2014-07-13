@@ -2,15 +2,25 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.perdocument.DocCount;
+import nl.inl.blacklab.perdocument.DocCounts;
+import nl.inl.blacklab.perdocument.DocGroupProperty;
+import nl.inl.blacklab.perdocument.DocProperty;
+import nl.inl.blacklab.perdocument.DocPropertyMultiple;
+import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.search.IndexStructure;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.ServletUtil;
 import nl.inl.blacklab.server.dataobject.DataObject;
+import nl.inl.blacklab.server.dataobject.DataObjectList;
+import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.QueryException;
@@ -341,6 +351,48 @@ public abstract class RequestHandler {
 		}
 		docInfo.put("may-view", searchMan.mayViewContents(indexName, document));
 		return docInfo;
+	}
+
+	protected DataObjectMapAttribute getFacets(DocResults docsToFacet, String facetSpec) {
+		DataObjectMapAttribute doFacets;
+		DocProperty propMultipleFacets = DocProperty.deserialize(facetSpec);
+		List<DocProperty> props = new ArrayList<DocProperty>();
+		if (propMultipleFacets instanceof DocPropertyMultiple) {
+			// Multiple facets requested
+			for (DocProperty prop: (DocPropertyMultiple)propMultipleFacets) {
+				props.add(prop);
+			}
+		} else {
+			// Just a single facet requested
+			props.add(propMultipleFacets);
+		}
+	
+		doFacets = new DataObjectMapAttribute("facet", "name");
+		for (DocProperty facetBy: props) {
+			DocCounts facetCounts = docsToFacet.countBy(facetBy);
+			facetCounts.sort(DocGroupProperty.size());
+			DataObjectList doFacet = new DataObjectList("item");
+			int n = 0, maxFacetValues = 10;
+			int totalSize = 0;
+			for (DocCount count: facetCounts) {
+				DataObjectMapElement doItem = new DataObjectMapElement();
+				doItem.put("value", count.getIdentity().toString());
+				doItem.put("size", count.size());
+				doFacet.add(doItem);
+				totalSize += count.size();
+				n++;
+				if (n >= maxFacetValues)
+					break;
+			}
+			if (totalSize < facetCounts.getTotalResults()) {
+				DataObjectMapElement doItem = new DataObjectMapElement();
+				doItem.put("value", "[REST]");
+				doItem.put("size", facetCounts.getTotalResults() - totalSize);
+				doFacet.add(doItem);
+			}
+			doFacets.put(facetBy.getName(), doFacet);
+		}
+		return doFacets;
 	}
 
 }

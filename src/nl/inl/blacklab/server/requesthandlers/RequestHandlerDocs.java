@@ -1,15 +1,10 @@
 package nl.inl.blacklab.server.requesthandlers;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import javax.servlet.http.HttpServletRequest;
 
-import nl.inl.blacklab.perdocument.DocCounts;
 import nl.inl.blacklab.perdocument.DocGroup;
 import nl.inl.blacklab.perdocument.DocGroups;
 import nl.inl.blacklab.perdocument.DocProperty;
-import nl.inl.blacklab.perdocument.DocPropertyMultiple;
 import nl.inl.blacklab.perdocument.DocResult;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.perdocument.DocResultsWindow;
@@ -23,6 +18,7 @@ import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectContextList;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
+import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.Job;
@@ -127,31 +123,12 @@ public class RequestHandlerDocs extends RequestHandler {
 			window = searchWindow.getWindow();
 		}
 
-		String facets = searchParam.getString("facets");
-		if (facets != null && facets.length() > 0) {
+		String parFacets = searchParam.getString("facets");
+		DataObjectMapAttribute doFacets = null;
+		if (parFacets != null && parFacets.length() > 0) {
 			// Now, group the docs according to the requested facets.
 			DocResults docsToFacet = window.getOriginalDocs();
-			DocProperty propMultipleFacets = DocProperty.deserialize(facets);
-			List<DocProperty> props = new ArrayList<DocProperty>();
-			if (propMultipleFacets instanceof DocPropertyMultiple) {
-				// Multiple facets requested
-				for (DocProperty prop: (DocPropertyMultiple)propMultipleFacets) {
-					props.add(prop);
-				}
-			} else {
-				// Just a single facet requested
-				props.add(propMultipleFacets);
-			}
-
-			DataObjectMapElement theCounts = new DataObjectMapElement();
-			for (DocProperty facetBy: props) {
-				DocCounts facetCounts = docsToFacet.countBy(facetBy);
-				
-				// TODO:
-				// - DocCounts.sortBy()
-				// - add facets to response object
-				// - also for hits response
-			}
+			doFacets = getFacets(docsToFacet, parFacets);
 		}
 
 		// Search is done; construct the results object
@@ -221,6 +198,8 @@ public class RequestHandlerDocs extends RequestHandler {
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("summary", summary);
 		response.put("docs", docList);
+		if (doFacets != null)
+			response.put("facets", doFacets);
 
 		return response;
 	}

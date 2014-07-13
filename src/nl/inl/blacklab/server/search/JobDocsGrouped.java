@@ -46,7 +46,7 @@ public class JobDocsGrouped extends Job {
 			sortBy = sortBy.substring(1);
 		}
 		DocGroupProperty sortProp = DocGroupProperty.deserialize(sortBy);
-		theGroups.sortGroups(sortProp, reverse);
+		theGroups.sort(sortProp, reverse);
 
 		groups = theGroups; // we're done, caller can use the groups now
 	}

@@ -2,6 +2,7 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.search.Hit;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.HitsWindow;
@@ -120,6 +121,14 @@ public class RequestHandlerHits extends RequestHandler {
 
 			window = searchWindow.getWindow();
 		}
+		
+		String parFacets = searchParam.getString("facets");
+		DataObjectMapAttribute doFacets = null;
+		if (parFacets != null && parFacets.length() > 0) {
+			// Now, group the docs according to the requested facets.
+			DocResults docsToFacet = window.getOriginalHits().perDocResults();
+			doFacets = getFacets(docsToFacet, parFacets);
+		}
 
 		// Search is done; construct the results object
 		Searcher searcher = search.getSearcher();
@@ -177,6 +186,8 @@ public class RequestHandlerHits extends RequestHandler {
 		response.put("summary", summary);
 		response.put("hits", hitList);
 		response.put("doc-infos", docInfos);
+		if (doFacets != null)
+			response.put("facets", doFacets);
 
 		return response;
 	}
