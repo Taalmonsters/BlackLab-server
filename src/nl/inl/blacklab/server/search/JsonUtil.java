@@ -2,7 +2,7 @@ package nl.inl.blacklab.server.search;
 
 import java.io.File;
 
-import org.json.JSONObject;
+import nl.inl.util.json.JSONObject;
 
 public class JsonUtil {
 

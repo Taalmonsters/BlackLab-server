@@ -11,9 +11,9 @@ import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.util.MemoryUtil;
+import nl.inl.util.json.JSONObject;
 
 import org.apache.log4j.Logger;
-import org.json.JSONObject;
 
 public class SearchCache {
 	private static final Logger logger = Logger.getLogger(SearchCache.class);

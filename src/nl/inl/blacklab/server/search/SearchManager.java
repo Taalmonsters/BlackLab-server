@@ -27,6 +27,8 @@ import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectString;
 import nl.inl.util.MemoryUtil;
+import nl.inl.util.json.JSONArray;
+import nl.inl.util.json.JSONObject;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
@@ -35,8 +37,6 @@ import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.Version;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 public class SearchManager  {
 	private static final Logger logger = Logger.getLogger(SearchManager.class);
@@ -437,7 +437,7 @@ public class SearchManager  {
 					logger.warn("Can't start new search, not enough memory (" + freeMegs + "M < " + minFreeMemForSearchMegs + "M)");
 					throw new QueryException("SERVER_BUSY", "The server is under heavy load right now. Please try again later.");
 				}
-				logger.debug("Enough free memory: " + (freeMegs/1000000) + "M");
+				logger.debug("Enough free memory: " + freeMegs + "M");
 
 				// Is this user allowed to start another search?
 				int numRunningJobs = 0;
@@ -587,6 +587,7 @@ public class SearchManager  {
 		if (filterLang.equals("luceneql")) {
 			try {
 				QueryParser parser = new QueryParser(Version.LUCENE_42, "", new BLDutchAnalyzer());
+				parser.setAllowLeadingWildcard(true);
 				Query query = parser.parse(filter);
 				return query;
 			} catch (org.apache.lucene.queryparser.classic.ParseException e) {

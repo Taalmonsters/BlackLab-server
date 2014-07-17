@@ -1,13 +1,11 @@
 package nl.inl.blacklab.server;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 
 import javax.servlet.ServletException;
@@ -20,12 +18,12 @@ import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.requesthandlers.RequestHandler;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.SearchParameters;
-import nl.inl.util.IoUtil;
+import nl.inl.util.Json;
 import nl.inl.util.LogUtil;
+import nl.inl.util.json.JSONObject;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import org.json.JSONObject;
 
 public class BlackLabServer extends HttpServlet {
 	private static final Logger logger = Logger.getLogger(BlackLabServer.class);
@@ -67,8 +65,13 @@ public class BlackLabServer extends HttpServlet {
 			logger.debug("Reading configuration file from classpath: " + configFileName);
 		}
 		JSONObject config;
+		
 		try {
-			config = new JSONObject(readFileStripLineComments(is));
+			try {
+				config = Json.read(is);
+			} finally {
+				is.close();
+			}
 		} catch (Exception e) {
 			throw new ServletException("Error reading JSON config file", e);
 		}
@@ -77,19 +80,6 @@ public class BlackLabServer extends HttpServlet {
 
 		logger.info("BlackLab Server ready.");
 
-	}
-
-	public static String readFileStripLineComments(InputStream is) throws IOException {
-		BufferedReader reader = IoUtil.makeBuffered(new InputStreamReader(is));
-		StringBuilder b = new StringBuilder();
-		while (true) {
-			String line = reader.readLine();
-			if (line == null)
-				break;
-			line = line.replaceAll("//.+$", "").trim();
-			b.append(line).append("\n");
-		}
-		return b.toString();
 	}
 
 	/**
