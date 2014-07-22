@@ -37,9 +37,11 @@ public class RequestHandlerDocContents extends RequestHandler {
 
 		DataFormat type = searchMan.getContentsFormat(indexName);
 		int luceneDocId = searchMan.getLuceneDocIdFromPid(indexName, docId);
+		if (luceneDocId < 0)
+			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 		Document document = searchMan.getSearcher(indexName).document(luceneDocId); //searchMan.getDocumentFromPid(indexName, docId);
 		if (document == null)
-			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
+			throw new QueryException("INTERNAL_ERROR", "An internal error occurred. Please contact the administrator. Error code: 8.");
 		if (!searchMan.mayViewContents(indexName, document)) {
 			DataObject errObj = DataObject.errorObject("NOT_AUTHORIZED", "Sorry, you're not authorized to retrieve the full contents of this document.");
 			errObj.overrideType(type); // Application expects this MIME type, don't disappoint
