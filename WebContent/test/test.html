@@ -1,0 +1,106 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<title>BlackLab Server Test Suite</title>
+		<link rel="stylesheet" type="text/css" href="style.css" />
+		<script src='jQuery.js'></script>
+		<style>
+textarea, input {
+	display: block;
+	padding-left: 10px;
+}
+		
+textarea {
+	background-color: black;
+	color: yellow;
+	border: 1px solid yellow;
+	padding: 3px;
+	width: 100%;
+	height: 200px;
+	scroll: auto;
+}
+
+label {
+	display: block;
+}
+		</style>
+		<script>
+
+// Shim Date.now() (for pre-ES5 browsers)
+if (!Date.now) {
+    Date.now = function() { return new Date().getTime(); };
+}
+
+// Show test output
+function output(msg) {
+	$("#output").append(msg + "\n");
+}
+
+var queryNum = 1;
+
+// Run the test with the given parameters
+function runTest() {
+	var indexName = $("#indexName")[0].value;
+	output("index name: " + indexName);
+	var patts = $("#patts").html().trim().split(/[\r\n]+/);
+	var queryFreq = $("#queryFreq")[0].value;
+	var avgWaitBetweenQueries = 1 / queryFreq;
+	var minWaitBetweenQueries = avgWaitBetweenQueries * 0.5;
+	var testDuration = $("#testDuration")[0].value * 1000;
+	var testRunningSince = Date.now();
+	
+	// Fire off a query and set up trigger for the next query
+	function query() {
+		var patt = patts[Math.floor(Math.random() * patts.length)];
+		$.ajax("../" + encodeURIComponent(indexName) + "/hits", {
+			"accept": "application/json",
+			"dataType": "json",
+			"data": {
+				"patt": patt,
+				"queryNum": queryNum++  // avoid caching
+			},
+			"success": function (data) {
+				if (data['error'])
+					output("Error for query " + patt + ": " + data['error']['message']);
+				else
+					output("Success for query " + patt + ".");
+			},
+			"error": function (jqXHR, textStatus, errorThrown) {
+				output("Error for query " + patt + ": " + textStatus + "; " + errorThrown);
+			},
+		});
+		if (Date.now() - testRunningSince < testDuration) {
+			var wait = Math.random() * avgWaitBetweenQueries + minWaitBetweenQueries;
+			setTimeout(query, wait);
+		} else {
+			output("Done!");
+		}
+	}
+	
+	query();
+}
+		</script>
+	</head>
+	<body>
+		<h1>BlackLab Server Test Suite</h1>
+		<form onsubmit='runTest(); return false;'>
+			<label for='output'>Console:</label>
+			<textarea id='output'></textarea>
+			<hr/>
+			<label for='indexName'>Index name:</label>
+			<input type='text' id='indexName' value='gysseling' />
+			<label for='patts'>Patterns:</label>
+			<textarea id='patts'>"de"
+[pos="a.*"]
+[lemma="man"]
+[lemma="een"] [lemma="schip"]
+</textarea>
+			<label for='queryFreq'>Avg. queries / second:</label>
+			<input type='text' id='queryFreq' value='3' />
+			<label for='testDuration'>Test duration in seconds:</label>
+			<input type='text' id='testDuration' value='10' />
+			<input type='submit' value='Run test' />
+		</form>
+	</body>
+</html>
