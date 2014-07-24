@@ -1,5 +1,6 @@
 package nl.inl.blacklab.server.search;
 
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 
 /**
@@ -22,7 +23,10 @@ public class JobDocs extends JobWithDocs {
 			// Now, get per document results
 			docResults = hitsSearch.getHits().perDocResults();
 		} else {
+			// Documents only
 			Query filterQuery = SearchManager.parseFilter(par.getString("filter"), par.getString("filterlang"));
+			if (filterQuery == null)
+				filterQuery = new MatchAllDocsQuery();
 			docResults = searcher.queryDocuments(filterQuery);
 		}
 	}
