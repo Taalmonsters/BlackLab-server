@@ -15,6 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
+import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.requesthandlers.RequestHandler;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.SearchParameters;
@@ -96,9 +97,12 @@ public class BlackLabServer extends HttpServlet {
 			DataObject response = RequestHandler.handle(this, request, debugMode);
 
 			// Determine response type
+			boolean outputTypeOverridden = true;
 			DataFormat outputType = response.getOverrideType(); // some responses override the user's request (i.e. article XML)
-			if (outputType == null)
+			if (outputType == null) {
 				outputType = ServletUtil.getOutputType(request, searchManager.getDefaultOutputType());
+				outputTypeOverridden = false;
+			}
 
 			// Write HTTP headers (content type and cache)
 			responseObject.setCharacterEncoding("utf-8");
@@ -114,7 +118,8 @@ public class BlackLabServer extends HttpServlet {
 				response = DataObject.errorObject("JSONP_ILLEGAL_CALLBACK", "Illegal JSONP callback function name. Must be a valid Javascript name.");
 				callbackFunction = "";
 			}
-			response.serializeDocument("blacklab-response", out, outputType, prettyPrint, callbackFunction);
+			String rootEl = outputTypeOverridden && response instanceof DataObjectPlain ? null : "blacklab-response";
+			response.serializeDocument(rootEl, out, outputType, prettyPrint, callbackFunction);
 			out.flush();
 
 		} catch (IOException e) {

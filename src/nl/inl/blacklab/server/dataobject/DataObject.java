@@ -108,6 +108,8 @@ public abstract class DataObject {
 	/**
 	 * Serialize this value to a full XML, JSON document.
 	 * @param rootElementName name of the XML root element (not applicable for JSON)
+	 *   (if null, leaves out the root element and assumes the object will serialize
+	 *    to valid XML)
 	 * @param out where to serialize to
 	 * @param outputType the output format: XML or JSON
 	 * @param prettyPrint whether or not to include newline and indents
@@ -126,9 +128,11 @@ public abstract class DataObject {
 			out.append("<?xml version=\"1.0\" encoding=\"utf-8\" ?>");
 			if (prettyPrint)
 				out.append("\n");
-			out.append("<").append(rootElementName).append(">");
-			if (prettyPrint)
-				out.append("\n");
+			if (rootElementName != null) {
+				out.append("<").append(rootElementName).append(">");
+				if (prettyPrint)
+					out.append("\n");
+			}
 			break;
 		}
 		serialize(out, outputType, prettyPrint, outputType == DataFormat.XML ? 1 : 0);
@@ -138,9 +142,11 @@ public abstract class DataObject {
 				out.append(");");
 			break;
 		case XML:
-			out.append("</").append(rootElementName).append(">");
-			if (prettyPrint)
-				out.append("\n");
+			if (rootElementName != null) {
+				out.append("</").append(rootElementName).append(">");
+				if (prettyPrint)
+					out.append("\n");
+			}
 			break;
 		}
 	}
