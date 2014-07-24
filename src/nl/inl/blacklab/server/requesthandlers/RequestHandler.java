@@ -54,6 +54,7 @@ public abstract class RequestHandler {
 		availableHandlers.put("doc-snippet", RequestHandlerDocSnippet.class);
 		availableHandlers.put("doc-info", RequestHandlerDocInfo.class);
 		availableHandlers.put("cache-info", RequestHandlerCacheInfo.class);
+		availableHandlers.put("fields", RequestHandlerFieldInfo.class);
 		availableHandlers.put("", RequestHandlerIndexStructure.class);
 	}
 
@@ -97,7 +98,7 @@ public abstract class RequestHandler {
 				// HACK to avoid having a different url resource for
 				// the lists of (hit|doc) groups: instantiate a different
 				// request handler class in this case.
-				if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs")) {
+				if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs") && !handlerName.equals("fields")) {
 					handlerName = "debug";
 				}
 				else if (handlerName.equals("docs") && urlPathInfo.length() > 0) {
