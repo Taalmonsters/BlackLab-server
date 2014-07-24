@@ -208,6 +208,8 @@ public abstract class Job implements Comparable<Job> {
 	 * @return true iff the search operation is finished and the results are available
 	 */
 	public boolean finished() {
+		if (searchThread == null)
+			return false;
 		return performCalled && searchThread.finished();
 	}
 
@@ -217,6 +219,8 @@ public abstract class Job implements Comparable<Job> {
 	 * @return true iff the search operation threw an exception
 	 */
 	public boolean threwException() {
+		if (searchThread == null)
+			return false;
 		return finished() && searchThread.threwException();
 	}
 
@@ -276,7 +280,7 @@ public abstract class Job implements Comparable<Job> {
 	 */
 	public void waitUntilFinished(int maxWaitMs) throws InterruptedException, IndexOpenException, QueryException {
 		int defaultWaitStep = 100;
-		while (maxWaitMs != 0 && !searchThread.finished()) {
+		while (searchThread == null || (maxWaitMs != 0 && !searchThread.finished())) {
 			int w = maxWaitMs < 0 ? defaultWaitStep : (maxWaitMs > defaultWaitStep ? defaultWaitStep : maxWaitMs);
 			Thread.sleep(w);
 			if (maxWaitMs >= 0)
@@ -326,6 +330,8 @@ public abstract class Job implements Comparable<Job> {
 	 * Try to cancel this job.
 	 */
 	public void cancelJob() {
+		if (searchThread == null)
+			return; // can't cancel, hasn't been started yet (shouldn't happen)
 		searchThread.interrupt();
 
 		// Tell the jobs we were waiting for we're no longer interested
@@ -393,7 +399,7 @@ public abstract class Job implements Comparable<Job> {
 		stats.put("finished-at", (finishedAt - searchMan.createdAt)/1000.0);
 		stats.put("last-accessed", (lastAccessed - searchMan.createdAt)/1000.0);
 		stats.put("created-by", shortUserId());
-		stats.put("thread-finished", searchThread.finished());
+		stats.put("thread-finished", searchThread == null ? false : searchThread.finished());
 
 		DataObjectMapElement d = new DataObjectMapElement();
 		d.put("id", id);
