@@ -112,8 +112,14 @@ public class RequestHandlerDocs extends RequestHandler {
 					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
 			}
 
-			// Also determine the total number of hits (nonblocking)
+			// Also determine the total number of hits
+			// (usually nonblocking, unless "waitfortotal=yes" was passed)
 			total = searchMan.searchDocsTotal(getUserId(), searchParam);
+			if (searchParam.getBoolean("waitfortotal")) {
+				total.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+				if (!total.finished())
+					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+			}
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {

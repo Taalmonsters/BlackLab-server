@@ -214,6 +214,7 @@ public class SearchManager  {
 		defaultParameterValues.put("hitend", "1");
 		defaultParameterValues.put("number", "" + defaultPageSize);
 		defaultParameterValues.put("block", defaultBlockingMode ? "yes" : "no");
+		defaultParameterValues.put("waitfortotal", "no");
 		defaultParameterValues.put("wordsaroundhit", "" + defaultContextSize);
 
 		// Start with empty cache
@@ -559,7 +560,7 @@ public class SearchManager  {
 		} else if (language.equals("luceneql")) {
 			try {
 				String field = getSearcher(indexName).getIndexStructure().getMainContentsField().getName();
-				LuceneQueryParser parser = new LuceneQueryParser(Version.LUCENE_42, field, new BLDefaultAnalyzer());
+				LuceneQueryParser parser = new LuceneQueryParser(Version.LUCENE_42, field, new BLDutchAnalyzer());
 				return parser.parse(pattern);
 			} catch (IndexOpenException e) {
 				throw new RuntimeException(e); // should never happen at this point
