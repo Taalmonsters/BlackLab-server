@@ -27,13 +27,11 @@
 
 		"opensonar": {
 			"dir": "D:/dev/blacklab/opensonar/index",
-			"pid": "id",
 			"mayViewContent": true
 		},
 
 		"gysseling": {
 			"dir": "D:/dev/blacklab/gysseling/index",
-			"pid": "idno",
 			"mayViewContent": true
 		},
 	},

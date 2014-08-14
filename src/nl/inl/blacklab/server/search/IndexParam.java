@@ -29,4 +29,8 @@ class IndexParam {
 		return mayViewContents;
 	}
 
+	public void setPidField(String pidField) {
+		this.pidField = pidField;
+	}
+
 }

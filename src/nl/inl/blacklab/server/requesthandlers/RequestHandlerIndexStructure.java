@@ -2,17 +2,18 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.indexstructure.AltDesc;
 import nl.inl.blacklab.search.indexstructure.ComplexFieldDesc;
-import nl.inl.blacklab.search.indexstructure.FieldType;
 import nl.inl.blacklab.search.indexstructure.IndexStructure;
+import nl.inl.blacklab.search.indexstructure.MetadataFieldDesc;
 import nl.inl.blacklab.search.indexstructure.PropertyDesc;
-import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
+import nl.inl.util.StringUtil;
 
 import org.apache.log4j.Logger;
 
@@ -66,16 +67,30 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		// Metadata fields
 		DataObjectMapAttribute doMetaFields = new DataObjectMapAttribute("metadata-field", "name");
 		for (String name: struct.getMetadataFields()) {
-			FieldType type = struct.getMetadataFieldDesc(name).getType();
+			MetadataFieldDesc fd = struct.getMetadataFieldDesc(name);
 			DataObjectMapElement doMetaField = new DataObjectMapElement();
-			doMetaField.put("type", type.toString());
+			doMetaField.put("field-name", fd.getName());
+			doMetaField.put("displayName", fd.getDisplayName());
+			doMetaField.put("type", fd.getType().toString());
 			doMetaFields.put(name, doMetaField);
 		}
+		
+		DataObjectMapElement doVersionInfo = new DataObjectMapElement();
+		doVersionInfo.put("blackLabBuildDate", struct.getBlackLabBuildDate());
+		doVersionInfo.put("indexFormat", struct.getIndexFormat());
+		doVersionInfo.put("timeCreated", struct.getTimeCreated());
+		doVersionInfo.put("timeModified", struct.getTimeModified());
 
 		// Assemble response
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("index-name", indexName);
-		response.put("document-title-field", struct.titleField());
+		response.put("displayName", struct.getDisplayName());
+		response.put("description", struct.getDescription());
+		response.put("versionInfo", doVersionInfo);
+		response.put("pidField", StringUtil.nullToEmpty(struct.pidField()));
+		response.put("titleField", StringUtil.nullToEmpty(struct.titleField()));
+		response.put("authorField", StringUtil.nullToEmpty(struct.authorField()));
+		response.put("dateField", StringUtil.nullToEmpty(struct.dateField()));
 		response.put("complex-fields", doComplexFields);
 		response.put("metadata-fields", doMetaFields);
 

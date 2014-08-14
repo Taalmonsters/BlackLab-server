@@ -1,14 +1,15 @@
 package nl.inl.blacklab.server.requesthandlers;
 
-import java.util.List;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.indexstructure.IndexStructure;
+import nl.inl.blacklab.search.indexstructure.MetadataFieldDesc;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
-import nl.inl.blacklab.server.dataobject.DataObjectList;
+import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.QueryException;
@@ -33,25 +34,28 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 		}
 
 		Searcher searcher = searchMan.getSearcher(indexName);
-		@SuppressWarnings("unused")
 		IndexStructure struct = searcher.getIndexStructure();
-		
-		final int MAX_TERMS = 50;
-		List<String> fieldTerms = searcher.getFieldTerms(fieldName, MAX_TERMS + 1);
-		boolean moreThanMaxTerms = fieldTerms.size() > MAX_TERMS;
-		if (moreThanMaxTerms)
-			fieldTerms = fieldTerms.subList(0, MAX_TERMS); 
-		DataObjectList doTerms = new DataObjectList("term");
-		for (String term: fieldTerms)
-			doTerms.add(term);
+
+		MetadataFieldDesc fd = struct.getMetadataFieldDesc(fieldName);
+		Map<String, Integer> values = fd.getValueDistribution();
+		boolean valueListComplete = fd.isValueListComplete();
 
 		// Assemble response
+		DataObjectMapAttribute doFieldValues = new DataObjectMapAttribute("value", "text");
+		for (Map.Entry<String, Integer> e: values.entrySet()) {
+			doFieldValues.put(e.getKey(), e.getValue());
+		}
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("index-name", indexName);
 		response.put("field-name", fieldName);
-		response.put("field-terms", doTerms);
-		response.put("terms-list-complete", !moreThanMaxTerms);
-
+		response.put("displayName", fd.getDisplayName());
+		response.put("description", fd.getDescription());
+		response.put("type", fd.getType().toString());
+		response.put("analyzer", fd.getAnalyzer());
+		response.put("unknownCondition", fd.getUnknownCondition().toString());
+		response.put("unknownValue", fd.getUnknownValue());
+		response.put("fieldValues", doFieldValues);
+		response.put("valueListComplete", valueListComplete);
 		return response;
 	}
 
