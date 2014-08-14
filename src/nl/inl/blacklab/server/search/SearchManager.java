@@ -11,7 +11,6 @@ import java.util.Map;
 import java.util.Set;
 
 import nl.inl.blacklab.analysis.BLDutchAnalyzer;
-import nl.inl.blacklab.index.BLDefaultAnalyzer;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.queryParser.contextql.ContextualQueryLanguageParser;
 import nl.inl.blacklab.queryParser.corpusql.CorpusQueryLanguageParser;
