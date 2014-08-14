@@ -83,10 +83,39 @@
         <mkdir dir="${dist}" />
         <war manifest="WebContent/META-INF/MANIFEST.MF" warfile="${dist}/${project.name}.war" webxml="WebContent/WEB-INF/web.xml" basedir="${build}" />
     </target>
-
+	
 	<!-- Delete all generated files -->
 	<target name="clean">
 		<delete dir="${build}" />
 		<delete dir="${dist}" />
 	</target>
+	
+	
+	<!-- Read Tomcat deployment settings -->
+	<property file="tomcat-deploy.properties" />
+
+	<!-- Set classpath for Tomcat Ant tasks -->
+	<path id="tomcat.lib.classpath">
+		<fileset dir="${catalina.home}/bin">
+			<include name="*.jar" />
+		</fileset>
+		<fileset dir="${catalina.home}/lib">
+			<include name="*.jar" />
+		</fileset>
+	</path>
+
+	<!-- Import the Tomcat Ant tasks -->
+	<taskdef resource="org/apache/catalina/ant/catalina.tasks"
+			classpathref="tomcat.lib.classpath" />
+
+	<!-- Build and deploy the web application -->
+	<target name="deploy" depends="dist">
+		<deploy 
+			url="${tomcat.manager.url}" 
+			username="${tomcat.manager.username}"
+			password="${tomcat.manager.password}"
+			path="/${project.name}"
+			war="file://${basedir}/${dist}/${project.name}.war" />
+	</target>
+	
 </project>
