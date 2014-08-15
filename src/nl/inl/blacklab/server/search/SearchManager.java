@@ -230,7 +230,7 @@ public class SearchManager {
 		searchParameterNames = Arrays.asList("resultsType", "patt", "pattlang",
 				"pattfield", "filter", "filterlang", "sort", "group",
 				"viewgroup", "collator", "first", "number", "wordsaroundhit",
-				"hitstart", "hitend", "facets");
+				"hitstart", "hitend", "facets", "waitfortotal", "includetokencount");
 
 		// Set up the parameter default values
 		defaultParameterValues = new HashMap<String, String>();
@@ -245,6 +245,7 @@ public class SearchManager {
 		defaultParameterValues.put("number", "" + defaultPageSize);
 		defaultParameterValues.put("block", defaultBlockingMode ? "yes" : "no");
 		defaultParameterValues.put("waitfortotal", "no");
+		defaultParameterValues.put("includetokencount", "no");
 		defaultParameterValues.put("wordsaroundhit", "" + defaultContextSize);
 
 		// Start with empty cache
@@ -421,7 +422,7 @@ public class SearchManager {
 	public JobWithHits searchHits(String userId, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang", "sort", "docPid");
+				"pattlang", "filter", "filterlang", "sort", "docpid");
 		String sort = parBasic.get("sort");
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits

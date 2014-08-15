@@ -5,6 +5,7 @@ import javax.servlet.http.HttpServletRequest;
 import nl.inl.blacklab.perdocument.DocGroup;
 import nl.inl.blacklab.perdocument.DocGroups;
 import nl.inl.blacklab.perdocument.DocProperty;
+import nl.inl.blacklab.perdocument.DocPropertyComplexFieldLength;
 import nl.inl.blacklab.perdocument.DocResult;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.perdocument.DocResultsWindow;
@@ -37,7 +38,7 @@ import org.apache.lucene.document.Document;
 public class RequestHandlerDocs extends RequestHandler {
 	@SuppressWarnings("hiding")
 	private static final Logger logger = Logger.getLogger(RequestHandlerDocs.class);
-
+	
 	public RequestHandlerDocs(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
 	}
@@ -136,6 +137,15 @@ public class RequestHandlerDocs extends RequestHandler {
 			DocResults docsToFacet = window.getOriginalDocs();
 			doFacets = getFacets(docsToFacet, parFacets);
 		}
+		
+		boolean includeTokenCount = searchParam.getBoolean("includetokencount");
+		int totalTokens = -1;
+		if (includeTokenCount) {
+			// Determine total number of tokens in result set
+			String fieldName = searchMan.getSearcher(indexName).getIndexStructure().getMainContentsField().getName();
+			DocProperty propTokens = new DocPropertyComplexFieldLength(fieldName);
+			totalTokens = window.getOriginalDocs().intSum(propTokens);
+		}
 
 		// Search is done; construct the results object
 		Searcher searcher = search.getSearcher();
@@ -199,6 +209,8 @@ public class RequestHandlerDocs extends RequestHandler {
 		summary.put("actualWindowSize", window.size());
 		summary.put("windowHasPrevious", window.hasPrevious());
 		summary.put("windowHasNext", window.hasNext());
+		if (includeTokenCount)
+			summary.put("tokensInMatchingDocuments", totalTokens);
 
 		// Assemble all the parts
 		DataObjectMapElement response = new DataObjectMapElement();

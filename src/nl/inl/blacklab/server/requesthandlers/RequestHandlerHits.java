@@ -2,6 +2,8 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.perdocument.DocProperty;
+import nl.inl.blacklab.perdocument.DocPropertyComplexFieldLength;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.search.Hit;
 import nl.inl.blacklab.search.Hits;
@@ -130,10 +132,22 @@ public class RequestHandlerHits extends RequestHandler {
 		
 		String parFacets = searchParam.getString("facets");
 		DataObjectMapAttribute doFacets = null;
+		DocResults perDocResults = null;
 		if (parFacets != null && parFacets.length() > 0) {
 			// Now, group the docs according to the requested facets.
-			DocResults docsToFacet = window.getOriginalHits().perDocResults();
-			doFacets = getFacets(docsToFacet, parFacets);
+			perDocResults = window.getOriginalHits().perDocResults();
+			doFacets = getFacets(perDocResults, parFacets);
+		}
+
+		boolean includeTokenCount = searchParam.getBoolean("includetokencount");
+		int totalTokens = -1;
+		if (includeTokenCount) {
+			if (perDocResults == null)
+				perDocResults = window.getOriginalHits().perDocResults();
+			// Determine total number of tokens in result set
+			String fieldName = searchMan.getSearcher(indexName).getIndexStructure().getMainContentsField().getName();
+			DocProperty propTokens = new DocPropertyComplexFieldLength(fieldName);
+			totalTokens = perDocResults.intSum(propTokens);
 		}
 
 		// Search is done; construct the results object
@@ -186,6 +200,8 @@ public class RequestHandlerHits extends RequestHandler {
 		summary.put("actualWindowSize", window.size());
 		summary.put("windowHasPrevious", window.hasPrevious());
 		summary.put("windowHasNext", window.hasNext());
+		if (includeTokenCount)
+			summary.put("tokensInMatchingDocuments", totalTokens);
 
 		// Assemble all the parts
 		DataObjectMapElement response = new DataObjectMapElement();
