@@ -209,5 +209,12 @@ public abstract class DataObject {
 	public static DataObject from(boolean value) {
 		return value ? DataObjectBoolean.TRUE : DataObjectBoolean.FALSE;
 	}
+	
+	/**
+	 * Remove map keys with empty values anywhere inside this object.
+	 */
+	public void removeEmptyMapValues() {
+		// (subclasses should override)
+	}
 
 }

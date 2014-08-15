@@ -205,5 +205,15 @@ public class DataObjectList extends DataObject {
 		return false;
 	}
 
+	/**
+	 * Remove map keys with empty values anywhere inside this object.
+	 */
+	@Override
+	public void removeEmptyMapValues() {
+		for (DataObject value: list) {
+			value.removeEmptyMapValues();
+		}
+	}
+
 
 }

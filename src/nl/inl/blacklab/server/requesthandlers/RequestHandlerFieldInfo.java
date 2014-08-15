@@ -56,6 +56,10 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 		response.put("unknownValue", fd.getUnknownValue());
 		response.put("fieldValues", doFieldValues);
 		response.put("valueListComplete", valueListComplete);
+		
+		// Remove any empty settings
+		response.removeEmptyMapValues();
+		
 		return response;
 	}
 

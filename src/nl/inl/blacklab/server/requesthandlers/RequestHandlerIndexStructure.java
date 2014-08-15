@@ -40,6 +40,8 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		for (String name: struct.getComplexFields()) {
 			ComplexFieldDesc fieldDesc = struct.getComplexFieldDesc(name);
 			DataObjectMapElement doComplexField = new DataObjectMapElement();
+			doComplexField.put("displayName", fieldDesc.getDisplayName());
+			doComplexField.put("description", fieldDesc.getDescription());
 			doComplexField.put("hasContentStore", fieldDesc.hasContentStore());
 			doComplexField.put("hasXmlTags", fieldDesc.hasXmlTags());
 			doComplexField.put("hasLengthTokens", fieldDesc.hasLengthTokens());
@@ -81,18 +83,24 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		doVersionInfo.put("timeCreated", struct.getTimeCreated());
 		doVersionInfo.put("timeModified", struct.getTimeModified());
 
+		DataObjectMapElement doFieldInfo = new DataObjectMapElement();
+		doFieldInfo.put("pidField", StringUtil.nullToEmpty(struct.pidField()));
+		doFieldInfo.put("titleField", StringUtil.nullToEmpty(struct.titleField()));
+		doFieldInfo.put("authorField", StringUtil.nullToEmpty(struct.authorField()));
+		doFieldInfo.put("dateField", StringUtil.nullToEmpty(struct.dateField()));
+		doFieldInfo.put("complexFields", doComplexFields);
+		doFieldInfo.put("metadataFields", doMetaFields);
+		
 		// Assemble response
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("indexName", indexName);
 		response.put("displayName", struct.getDisplayName());
 		response.put("description", struct.getDescription());
 		response.put("versionInfo", doVersionInfo);
-		response.put("pidField", StringUtil.nullToEmpty(struct.pidField()));
-		response.put("titleField", StringUtil.nullToEmpty(struct.titleField()));
-		response.put("authorField", StringUtil.nullToEmpty(struct.authorField()));
-		response.put("dateField", StringUtil.nullToEmpty(struct.dateField()));
-		response.put("complexFields", doComplexFields);
-		response.put("metadataFields", doMetaFields);
+		response.put("fieldInfo", doFieldInfo);
+		
+		// Remove any empty settings
+		response.removeEmptyMapValues();
 
 		return response;
 	}

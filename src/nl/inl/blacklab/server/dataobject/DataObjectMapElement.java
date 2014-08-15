@@ -2,8 +2,10 @@ package nl.inl.blacklab.server.dataobject;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -159,4 +161,21 @@ public class DataObjectMapElement extends DataObject {
 		return false;
 	}
 
+	/**
+	 * Remove map keys with empty values anywhere inside this object.
+	 */
+	@Override
+	public void removeEmptyMapValues() {
+		List<String> toRemove = new ArrayList<String>();
+		for (Map.Entry<String, DataObject> e: map.entrySet()) {
+			DataObject value = e.getValue();
+			value.removeEmptyMapValues();
+			if (value instanceof DataObjectString && ((DataObjectString) value).value.length() == 0) {
+				toRemove.add(e.getKey());
+			}
+		}
+		for (String key: toRemove) {
+			map.remove(key);
+		}
+	}
 }

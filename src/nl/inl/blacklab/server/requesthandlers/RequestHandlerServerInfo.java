@@ -32,8 +32,10 @@ public class RequestHandlerServerInfo extends RequestHandler {
 		}
 
 		DataObjectMapElement response = new DataObjectMapElement();
-		response.put("availableIndices", doIndices);
-		response.put("cacheStatus", searchMan.getCacheStatusDataObject());
+		response.put("indices", doIndices);
+		if (debugMode) {
+			response.put("cacheStatus", searchMan.getCacheStatusDataObject());
+		}
 
 		return response;
 	}
