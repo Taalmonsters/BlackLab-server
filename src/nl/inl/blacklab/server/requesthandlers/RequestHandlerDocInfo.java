@@ -43,8 +43,8 @@ public class RequestHandlerDocInfo extends RequestHandler {
 		debug(logger, "REQ doc info: " + indexName + "-" + docId);
 
 		DataObjectMapElement response = new DataObjectMapElement();
-		response.put("doc-pid", docId);
-		response.put("doc-info", getDocumentInfo(indexName, searcher.getIndexStructure(), document));
+		response.put("docPid", docId);
+		response.put("docInfo", getDocumentInfo(indexName, searcher.getIndexStructure(), document));
 		return response;
 	}
 

@@ -39,7 +39,7 @@ public class JobHitsSorted extends JobWithHits {
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("number-of-hits", hits == null ? -1 : hits.size());
+		d.put("numberOfHits", hits == null ? -1 : hits.size());
 		return d;
 	}
 

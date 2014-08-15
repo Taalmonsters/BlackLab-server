@@ -165,9 +165,9 @@ public class RequestHandlerDocs extends RequestHandler {
 
 			// Combine all
 			DataObjectMapElement docMap = new DataObjectMapElement();
-			docMap.put("doc-pid", pid);
-			docMap.put("number-of-hits", result.getNumberOfHits());
-			docMap.put("doc-info", docInfo);
+			docMap.put("docPid", pid);
+			docMap.put("numberOfHits", result.getNumberOfHits());
+			docMap.put("docInfo", docInfo);
 			docMap.put("snippets", doSnippetList);
 
 			docList.add(docMap);
@@ -178,27 +178,27 @@ public class RequestHandlerDocs extends RequestHandler {
 		DocResults docs = searchWindow != null ? total.getDocResults() : group.getResults();
 		Hits hits = docs.getOriginalHits();
 		boolean done = hits == null ? true : hits.doneFetchingHits();
-		summary.put("search-param", searchParam.toDataObject());
-		summary.put("search-time", search.executionTimeMillis());
+		summary.put("searchParam", searchParam.toDataObject());
+		summary.put("searchTime", search.executionTimeMillis());
 		if (total != null)
-			summary.put("count-time", total.executionTimeMillis());
-		summary.put("still-counting", !done);
+			summary.put("countTime", total.executionTimeMillis());
+		summary.put("stillCounting", !done);
 		if (searchGrouped == null && hits != null) {
-			summary.put("number-of-hits", hits.countSoFarHitsCounted());
-			summary.put("number-of-hits-retrieved", hits.countSoFarHitsRetrieved());
+			summary.put("numberOfHits", hits.countSoFarHitsCounted());
+			summary.put("numberOfHitsRetrieved", hits.countSoFarHitsRetrieved());
 		}
 		if (hits != null || group != null) {
-			summary.put("number-of-docs", hits == null ? group.getResults().size() : hits.countSoFarDocsCounted());
-			summary.put("number-of-docs-retrieved", hits == null ? group.getResults().size() : hits.countSoFarDocsRetrieved());
+			summary.put("numberOfDocs", hits == null ? group.getResults().size() : hits.countSoFarDocsCounted());
+			summary.put("numberOfDocsRetrieved", hits == null ? group.getResults().size() : hits.countSoFarDocsRetrieved());
 		} else {
 			// TODO: DocResults.countSoFarDocsCounted/Retrieved?
-			summary.put("number-of-docs", docs.size());
+			summary.put("numberOfDocs", docs.size());
 		}
-		summary.put("window-first-result", window.first());
-		summary.put("requested-window-size", searchParam.getInteger("number"));
-		summary.put("actual-window-size", window.size());
-		summary.put("window-has-previous", window.hasPrevious());
-		summary.put("window-has-next", window.hasNext());
+		summary.put("windowFirstResult", window.first());
+		summary.put("requestedWindowSize", searchParam.getInteger("number"));
+		summary.put("actualWindowSize", window.size());
+		summary.put("windowHasPrevious", window.hasPrevious());
+		summary.put("windowHasNext", window.hasNext());
 
 		// Assemble all the parts
 		DataObjectMapElement response = new DataObjectMapElement();

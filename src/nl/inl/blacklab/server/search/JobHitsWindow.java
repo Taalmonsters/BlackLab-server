@@ -52,8 +52,8 @@ public class JobHitsWindow extends Job {
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("requested-window-size", requestedWindowSize);
-		d.put("actual-window-size", window == null ? -1 : window.size());
+		d.put("requestedWindowSize", requestedWindowSize);
+		d.put("actualWindowSize", window == null ? -1 : window.size());
 		return d;
 	}
 

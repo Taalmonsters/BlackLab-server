@@ -40,7 +40,7 @@ public class JobDocsSorted extends JobWithDocs {
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("number-of-doc-results", docResults == null ? -1 : docResults.size());
+		d.put("numberOfDocResults", docResults == null ? -1 : docResults.size());
 		return d;
 	}
 

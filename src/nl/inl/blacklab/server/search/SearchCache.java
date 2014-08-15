@@ -287,11 +287,11 @@ public class SearchCache {
 
 	public DataObject getCacheStatusDataObject() {
 		DataObjectMapElement doCache = new DataObjectMapElement();
-		doCache.put("max-size-bytes", getMaxSizeBytes());
-		doCache.put("max-number-of-searches", getMaxJobsToCache());
-		doCache.put("max-search-age-sec", getMaxJobAgeSec());
-		doCache.put("size-bytes", getSizeBytes());
-		doCache.put("number-of-searches", getNumberOfSearches());
+		doCache.put("maxSizeBytes", getMaxSizeBytes());
+		doCache.put("maxNumberOfSearches", getMaxJobsToCache());
+		doCache.put("maxSearchAgeSec", getMaxJobAgeSec());
+		doCache.put("sizeBytes", getSizeBytes());
+		doCache.put("numberOfSearches", getNumberOfSearches());
 		return doCache;
 	}
 

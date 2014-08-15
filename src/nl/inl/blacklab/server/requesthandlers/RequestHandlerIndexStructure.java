@@ -36,25 +36,25 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		IndexStructure struct = searcher.getIndexStructure();
 
 		// Complex fields
-		DataObjectMapAttribute doComplexFields = new DataObjectMapAttribute("complex-field", "name");
+		DataObjectMapAttribute doComplexFields = new DataObjectMapAttribute("complexField", "name");
 		for (String name: struct.getComplexFields()) {
 			ComplexFieldDesc fieldDesc = struct.getComplexFieldDesc(name);
 			DataObjectMapElement doComplexField = new DataObjectMapElement();
-			doComplexField.put("has-content-store", fieldDesc.hasContentStore());
-			doComplexField.put("has-xml-tags", fieldDesc.hasXmlTags());
-			doComplexField.put("has-length-tokens", fieldDesc.hasLengthTokens());
-			doComplexField.put("main-property", fieldDesc.getMainProperty().getName());
+			doComplexField.put("hasContentStore", fieldDesc.hasContentStore());
+			doComplexField.put("hasXmlTags", fieldDesc.hasXmlTags());
+			doComplexField.put("hasLengthTokens", fieldDesc.hasLengthTokens());
+			doComplexField.put("mainProperty", fieldDesc.getMainProperty().getName());
 			DataObjectMapAttribute doProps = new DataObjectMapAttribute("property", "name");
 			for (String propName: fieldDesc.getProperties()) {
 				PropertyDesc propDesc = fieldDesc.getPropertyDesc(propName);
 				DataObjectMapElement doProp = new DataObjectMapElement();
-				doProp.put("has-forward-index", propDesc.hasForwardIndex());
+				doProp.put("hasForwardIndex", propDesc.hasForwardIndex());
 				DataObjectMapAttribute doAlts = new DataObjectMapAttribute("alternative", "name");
 				for (String altName: propDesc.getAlternatives()) {
 					AltDesc altDesc = propDesc.getAlternativeDesc(altName);
 					DataObjectMapElement doAlt = new DataObjectMapElement();
 					doAlt.put("type", altDesc.getType().toString());
-					doAlt.put("has-offsets", altDesc == propDesc.getOffsetsAlternative());
+					doAlt.put("hasOffsets", altDesc == propDesc.getOffsetsAlternative());
 					doAlts.put(altName, doAlt);
 				}
 				doProp.put("alternative", doAlts);
@@ -65,11 +65,11 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		}
 
 		// Metadata fields
-		DataObjectMapAttribute doMetaFields = new DataObjectMapAttribute("metadata-field", "name");
+		DataObjectMapAttribute doMetaFields = new DataObjectMapAttribute("metadataField", "name");
 		for (String name: struct.getMetadataFields()) {
 			MetadataFieldDesc fd = struct.getMetadataFieldDesc(name);
 			DataObjectMapElement doMetaField = new DataObjectMapElement();
-			doMetaField.put("field-name", fd.getName());
+			doMetaField.put("fieldName", fd.getName());
 			doMetaField.put("displayName", fd.getDisplayName());
 			doMetaField.put("type", fd.getType().toString());
 			doMetaFields.put(name, doMetaField);
@@ -83,7 +83,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 
 		// Assemble response
 		DataObjectMapElement response = new DataObjectMapElement();
-		response.put("index-name", indexName);
+		response.put("indexName", indexName);
 		response.put("displayName", struct.getDisplayName());
 		response.put("description", struct.getDescription());
 		response.put("versionInfo", doVersionInfo);
@@ -91,8 +91,8 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		response.put("titleField", StringUtil.nullToEmpty(struct.titleField()));
 		response.put("authorField", StringUtil.nullToEmpty(struct.authorField()));
 		response.put("dateField", StringUtil.nullToEmpty(struct.dateField()));
-		response.put("complex-fields", doComplexFields);
-		response.put("metadata-fields", doMetaFields);
+		response.put("complexFields", doComplexFields);
+		response.put("metadataFields", doMetaFields);
 
 		return response;
 	}

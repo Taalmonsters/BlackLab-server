@@ -46,8 +46,8 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 			doFieldValues.put(e.getKey(), e.getValue());
 		}
 		DataObjectMapElement response = new DataObjectMapElement();
-		response.put("index-name", indexName);
-		response.put("field-name", fieldName);
+		response.put("indexName", indexName);
+		response.put("fieldName", fieldName);
 		response.put("displayName", fd.getDisplayName());
 		response.put("description", fd.getDescription());
 		response.put("type", fd.getType().toString());

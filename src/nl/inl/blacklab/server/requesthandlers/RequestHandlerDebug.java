@@ -25,11 +25,11 @@ public class RequestHandlerDebug extends RequestHandler {
 		debug(logger, "REQ Debug");
 
 		DataObjectMapElement response = new DataObjectMapElement();
-		response.put("index-name", indexName);
+		response.put("indexName", indexName);
 		response.put("resource", urlResource);
 		response.put("rest", urlPathInfo);
-		response.put("query-string", request.getQueryString());
-		response.put("search-parameters", servlet.getSearchParameters(request, indexName).toString());
+		response.put("queryString", request.getQueryString());
+		response.put("searchParam", servlet.getSearchParameters(request, indexName).toString());
 		return response;
 	}
 

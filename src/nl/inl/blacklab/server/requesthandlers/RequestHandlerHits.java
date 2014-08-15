@@ -142,7 +142,7 @@ public class RequestHandlerHits extends RequestHandler {
 
 		// The hits and document info
 		DataObjectList hitList = new DataObjectList("hit");
-		DataObjectMapAttribute docInfos = new DataObjectMapAttribute("doc-info", "pid");
+		DataObjectMapAttribute docInfos = new DataObjectMapAttribute("docInfo", "pid");
 		for (Hit hit: window) {
 			DataObjectMapElement hitMap = new DataObjectMapElement();
 
@@ -151,7 +151,7 @@ public class RequestHandlerHits extends RequestHandler {
 			String pid = searchMan.getDocumentPid(indexName, hit.doc, document);
 
 			// Add basic hit info
-			hitMap.put("doc-pid", pid);
+			hitMap.put("docPid", pid);
 			hitMap.put("start", hit.start);
 			hitMap.put("end", hit.end);
 
@@ -172,26 +172,26 @@ public class RequestHandlerHits extends RequestHandler {
 		DataObjectMapElement summary = new DataObjectMapElement();
 		Hits hits = searchWindow != null ? hits = searchWindow.getWindow().getOriginalHits() : group.getHits();
 		boolean done = hits.doneFetchingHits();
-		summary.put("search-param", searchParam.toDataObject());
-		summary.put("search-time", search.executionTimeMillis());
+		summary.put("searchParam", searchParam.toDataObject());
+		summary.put("searchTime", search.executionTimeMillis());
 		if (total != null)
-			summary.put("count-time", total.executionTimeMillis());
-		summary.put("still-counting", !done);
-		summary.put("number-of-hits", hits.countSoFarHitsCounted());
-		summary.put("number-of-hits-retrieved", hits.countSoFarHitsRetrieved());
-		summary.put("number-of-docs", hits.countSoFarDocsCounted());
-		summary.put("number-of-docs-retrieved", hits.countSoFarDocsRetrieved());
-		summary.put("window-first-result", window.first());
-		summary.put("requested-window-size", searchParam.getInteger("number"));
-		summary.put("actual-window-size", window.size());
-		summary.put("window-has-previous", window.hasPrevious());
-		summary.put("window-has-next", window.hasNext());
+			summary.put("countTime", total.executionTimeMillis());
+		summary.put("stillCounting", !done);
+		summary.put("numberOfHits", hits.countSoFarHitsCounted());
+		summary.put("numberOfHitsRetrieved", hits.countSoFarHitsRetrieved());
+		summary.put("numberOfDocs", hits.countSoFarDocsCounted());
+		summary.put("numberOfDocsRetrieved", hits.countSoFarDocsRetrieved());
+		summary.put("windowFirstResult", window.first());
+		summary.put("requestedWindowSize", searchParam.getInteger("number"));
+		summary.put("actualWindowSize", window.size());
+		summary.put("windowHasPrevious", window.hasPrevious());
+		summary.put("windowHasNext", window.hasNext());
 
 		// Assemble all the parts
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("summary", summary);
 		response.put("hits", hitList);
-		response.put("doc-infos", docInfos);
+		response.put("docInfos", docInfos);
 		if (doFacets != null)
 			response.put("facets", doFacets);
 

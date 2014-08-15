@@ -58,7 +58,7 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 			if (i >= first && i < first + number) {
 				DataObjectMapElement doGroup = new DataObjectMapElement();
 				doGroup.put("identity", group.getIdentity().serialize());
-				doGroup.put("identity-display", group.getIdentity().toString());
+				doGroup.put("identityDisplay", group.getIdentity().toString());
 				doGroup.put("size", group.size());
 				doGroups.add(doGroup);
 			}
@@ -68,27 +68,25 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 		// The summary
 		DataObjectMapElement summary = new DataObjectMapElement();
 		Hits hits = search.getDocResults().getOriginalHits();
-		summary.put("search-param", searchParam.toDataObject());
-		summary.put("search-time", search.executionTimeMillis());
-		summary.put("still-counting", false);
-		summary.put("number-of-hits", hits.countSoFarHitsCounted());
-		summary.put("number-of-hits-retrieved", hits.countSoFarHitsRetrieved());
-		summary.put("number-of-docs", hits.countSoFarDocsCounted());
-		summary.put("number-of-docs-retrieved", hits.countSoFarDocsRetrieved());
-		summary.put("number-of-groups", groups.numberOfGroups());
-		summary.put("window-first-result", first);
-		summary.put("requested-window-size", number);
-		summary.put("actual-window-size", doGroups.size());
-		summary.put("window-has-previous", first > 0);
-		summary.put("window-has-next", first + number < groups.numberOfGroups());
-		summary.put("largest-group-size", groups.getLargestGroupSize());
+		summary.put("searchParam", searchParam.toDataObject());
+		summary.put("searchTime", search.executionTimeMillis());
+		summary.put("stillCounting", false);
+		summary.put("numberOfHits", hits.countSoFarHitsCounted());
+		summary.put("numberOfHitsRetrieved", hits.countSoFarHitsRetrieved());
+		summary.put("numberOfDocs", hits.countSoFarDocsCounted());
+		summary.put("numberOfDocsRetrieved", hits.countSoFarDocsRetrieved());
+		summary.put("numberOfGroups", groups.numberOfGroups());
+		summary.put("windowFirstResult", first);
+		summary.put("requestedWindowSize", number);
+		summary.put("actualWindowSize", doGroups.size());
+		summary.put("windowHasPrevious", first > 0);
+		summary.put("windowHasNext", first + number < groups.numberOfGroups());
+		summary.put("largestGroupSize", groups.getLargestGroupSize());
 
 		// Assemble all the parts
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("summary", summary);
-		response.put("docgroups", doGroups);
-		/*response.put("hits", hitList);
-		response.put("docinfos", docInfos);*/
+		response.put("docGroups", doGroups);
 
 		return response;
 	}

@@ -38,7 +38,7 @@ public class JobHitsTotal extends Job {
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("hits-counted", hitsSearch != null && hitsSearch.getHits() != null ? hitsSearch.getHits().countSoFarHitsCounted() : -1);
+		d.put("hitsCounted", hitsSearch != null && hitsSearch.getHits() != null ? hitsSearch.getHits().countSoFarHitsCounted() : -1);
 		return d;
 	}
 

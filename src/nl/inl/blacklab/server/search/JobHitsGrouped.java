@@ -62,8 +62,8 @@ public class JobHitsGrouped extends Job {
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("hits-retrieved", hits == null ? -1 : hits.countSoFarHitsRetrieved());
-		d.put("number-of-groups", groups == null ? -1 : groups.numberOfGroups());
+		d.put("hitsRetrieved", hits == null ? -1 : hits.countSoFarHitsRetrieved());
+		d.put("numberOfGroups", groups == null ? -1 : groups.numberOfGroups());
 		return d;
 	}
 

@@ -167,7 +167,7 @@ public abstract class DataObject {
 		status.put("code", new DataObjectString(code));
 		status.put("message", new DataObjectString(msg));
 		if (checkAgainMs != 0)
-			status.put("check-again-ms", checkAgainMs);
+			status.put("checkAgainMs", checkAgainMs);
 		DataObjectMapElement rv = new DataObjectMapElement();
 		rv.put("status", status);
 		rv.setCacheAllowed(false); // status should never be cached

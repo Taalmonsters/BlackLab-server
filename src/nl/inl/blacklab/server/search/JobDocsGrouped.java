@@ -62,8 +62,8 @@ public class JobDocsGrouped extends Job {
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("number-of-doc-results", docResults == null ? -1 : docResults.size());
-		d.put("number-of-groups", groups == null ? -1 : groups.numberOfGroups());
+		d.put("numberOfDocResults", docResults == null ? -1 : docResults.size());
+		d.put("numberOfGroups", groups == null ? -1 : groups.numberOfGroups());
 		return d;
 	}
 

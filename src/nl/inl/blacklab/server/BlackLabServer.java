@@ -118,7 +118,7 @@ public class BlackLabServer extends HttpServlet {
 				response = DataObject.errorObject("JSONP_ILLEGAL_CALLBACK", "Illegal JSONP callback function name. Must be a valid Javascript name.");
 				callbackFunction = "";
 			}
-			String rootEl = outputTypeOverridden && response instanceof DataObjectPlain ? null : "blacklab-response";
+			String rootEl = outputTypeOverridden && response instanceof DataObjectPlain ? null : "blacklabResponse";
 			response.serializeDocument(rootEl, out, outputType, prettyPrint, callbackFunction);
 			out.flush();
 

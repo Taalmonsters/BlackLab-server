@@ -393,18 +393,18 @@ public abstract class Job implements Comparable<Job> {
 
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement stats = new DataObjectMapElement();
-		stats.put("clients-waiting", clientsWaiting);
-		stats.put("waiting-for-jobs", waitingFor.size());
-		stats.put("started-at", (startedAt - searchMan.createdAt)/1000.0);
-		stats.put("finished-at", (finishedAt - searchMan.createdAt)/1000.0);
-		stats.put("last-accessed", (lastAccessed - searchMan.createdAt)/1000.0);
-		stats.put("created-by", shortUserId());
-		stats.put("thread-finished", searchThread == null ? false : searchThread.finished());
+		stats.put("clientsWaiting", clientsWaiting);
+		stats.put("waitingForJobs", waitingFor.size());
+		stats.put("startedAt", (startedAt - searchMan.createdAt)/1000.0);
+		stats.put("finishedAt", (finishedAt - searchMan.createdAt)/1000.0);
+		stats.put("lastAccessed", (lastAccessed - searchMan.createdAt)/1000.0);
+		stats.put("createdBy", shortUserId());
+		stats.put("threadFinished", searchThread == null ? false : searchThread.finished());
 
 		DataObjectMapElement d = new DataObjectMapElement();
 		d.put("id", id);
 		d.put("class", getClass().getSimpleName());
-		d.put("search-param", par.toDataObject());
+		d.put("searchParam", par.toDataObject());
 		d.put("stats", stats);
 		return d;
 	}

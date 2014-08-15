@@ -421,7 +421,7 @@ public class SearchManager {
 	public JobWithHits searchHits(String userId, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang", "sort", "doc-pid");
+				"pattlang", "filter", "filterlang", "sort", "docPid");
 		String sort = parBasic.get("sort");
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits

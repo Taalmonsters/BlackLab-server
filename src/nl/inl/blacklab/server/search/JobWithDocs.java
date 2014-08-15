@@ -21,7 +21,7 @@ public class JobWithDocs extends Job {
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("count-docs-retrieved", docResults == null ? -1 : docResults.getOriginalHits().countSoFarDocsRetrieved());
+		d.put("countDocsRetrieved", docResults == null || docResults.getOriginalHits() == null ? -1 : docResults.getOriginalHits().countSoFarDocsRetrieved());
 		return d;
 	}
 

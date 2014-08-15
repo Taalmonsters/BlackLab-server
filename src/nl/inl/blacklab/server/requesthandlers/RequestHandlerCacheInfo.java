@@ -24,8 +24,8 @@ public class RequestHandlerCacheInfo extends RequestHandler {
 		debug(logger, "REQ cacheinfo");
 
 		DataObjectMapElement response = new DataObjectMapElement();
-		response.put("cache-status", searchMan.getCacheStatusDataObject());
-		response.put("cache-contents", searchMan.getCacheContentsDataObject());
+		response.put("cacheStatus", searchMan.getCacheStatusDataObject());
+		response.put("cacheContents", searchMan.getCacheContentsDataObject());
 
 		return response;
 	}

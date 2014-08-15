@@ -69,8 +69,8 @@ public class JobFacets extends Job {
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("number-of-doc-results", docResults == null ? -1 : docResults.size());
-		d.put("number-of-facets", counts == null ? -1 : counts.size());
+		d.put("numberOfDocResults", docResults == null ? -1 : docResults.size());
+		d.put("numberOfFacets", counts == null ? -1 : counts.size());
 		return d;
 	}
 

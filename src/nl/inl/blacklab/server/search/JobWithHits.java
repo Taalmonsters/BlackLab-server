@@ -22,7 +22,7 @@ public class JobWithHits extends Job {
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("count-hits-retrieved", hits == null ? -1 : hits.countSoFarDocsRetrieved());
+		d.put("countHitsRetrieved", hits == null ? -1 : hits.countSoFarDocsRetrieved());
 		return d;
 	}
 
