@@ -50,6 +50,7 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 		response.put("fieldName", fieldName);
 		response.put("displayName", fd.getDisplayName());
 		response.put("description", fd.getDescription());
+		response.put("group", fd.getGroup());
 		response.put("type", fd.getType().toString());
 		response.put("analyzer", fd.getAnalyzer());
 		response.put("unknownCondition", fd.getUnknownCondition().toString());
