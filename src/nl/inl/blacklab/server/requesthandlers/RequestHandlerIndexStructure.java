@@ -3,7 +3,6 @@ package nl.inl.blacklab.server.requesthandlers;
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.search.Searcher;
-import nl.inl.blacklab.search.indexstructure.AltDesc;
 import nl.inl.blacklab.search.indexstructure.ComplexFieldDesc;
 import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.search.indexstructure.MetadataFieldDesc;
@@ -51,7 +50,10 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 				PropertyDesc propDesc = fieldDesc.getPropertyDesc(propName);
 				DataObjectMapElement doProp = new DataObjectMapElement();
 				doProp.put("hasForwardIndex", propDesc.hasForwardIndex());
-				DataObjectMapAttribute doAlts = new DataObjectMapAttribute("alternative", "name");
+				doProp.put("sensitivity", propDesc.getSensitivity().toString());
+				doProp.put("offsetsAlternative", StringUtil.nullToEmpty(propDesc.offsetsAlternative()));
+				/*
+				//DataObjectMapAttribute doAlts = new DataObjectMapAttribute("alternative", "name");
 				for (String altName: propDesc.getAlternatives()) {
 					AltDesc altDesc = propDesc.getAlternativeDesc(altName);
 					DataObjectMapElement doAlt = new DataObjectMapElement();
@@ -59,7 +61,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 					doAlt.put("hasOffsets", altDesc == propDesc.getOffsetsAlternative());
 					doAlts.put(altName, doAlt);
 				}
-				doProp.put("alternative", doAlts);
+				doProp.put("alternative", doAlts);*/
 				doProps.put(propName, doProp);
 			}
 			doComplexField.put("properties", doProps);
