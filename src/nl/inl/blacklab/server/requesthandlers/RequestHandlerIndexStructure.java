@@ -76,6 +76,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 			doMetaField.put("fieldName", fd.getName());
 			doMetaField.put("displayName", fd.getDisplayName());
 			doMetaField.put("type", fd.getType().toString());
+			doMetaField.put("group", fd.getGroup());
 			doMetaFields.put(name, doMetaField);
 		}
 		
