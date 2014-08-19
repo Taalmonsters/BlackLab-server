@@ -80,7 +80,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		}
 		
 		DataObjectMapElement doVersionInfo = new DataObjectMapElement();
-		doVersionInfo.put("blackLabBuildDate", struct.getBlackLabBuildDate());
+		doVersionInfo.put("blackLabBuildTime", struct.getIndexBlackLabBuildTime());
 		doVersionInfo.put("indexFormat", struct.getIndexFormat());
 		doVersionInfo.put("timeCreated", struct.getTimeCreated());
 		doVersionInfo.put("timeModified", struct.getTimeModified());

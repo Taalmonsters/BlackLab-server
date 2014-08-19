@@ -4,6 +4,7 @@ import java.util.Collection;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
@@ -32,6 +33,7 @@ public class RequestHandlerServerInfo extends RequestHandler {
 		}
 
 		DataObjectMapElement response = new DataObjectMapElement();
+		response.put("blacklabBuildTime", Searcher.getBlackLabBuildTime());
 		response.put("indices", doIndices);
 		if (debugMode) {
 			response.put("cacheStatus", searchMan.getCacheStatusDataObject());
