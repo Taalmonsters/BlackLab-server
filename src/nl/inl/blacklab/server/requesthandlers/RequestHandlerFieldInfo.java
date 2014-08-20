@@ -5,14 +5,17 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.search.Searcher;
+import nl.inl.blacklab.search.indexstructure.ComplexFieldDesc;
 import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.search.indexstructure.MetadataFieldDesc;
+import nl.inl.blacklab.search.indexstructure.PropertyDesc;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.QueryException;
+import nl.inl.util.StringUtil;
 
 /**
  * Get information about the structure of an index.
@@ -35,28 +38,52 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 
 		Searcher searcher = searchMan.getSearcher(indexName);
 		IndexStructure struct = searcher.getIndexStructure();
-
-		MetadataFieldDesc fd = struct.getMetadataFieldDesc(fieldName);
-		Map<String, Integer> values = fd.getValueDistribution();
-		boolean valueListComplete = fd.isValueListComplete();
-
-		// Assemble response
-		DataObjectMapAttribute doFieldValues = new DataObjectMapAttribute("value", "text");
-		for (Map.Entry<String, Integer> e: values.entrySet()) {
-			doFieldValues.put(e.getKey(), e.getValue());
-		}
+		
 		DataObjectMapElement response = new DataObjectMapElement();
-		response.put("indexName", indexName);
-		response.put("fieldName", fieldName);
-		response.put("displayName", fd.getDisplayName());
-		response.put("description", fd.getDescription());
-		response.put("group", fd.getGroup());
-		response.put("type", fd.getType().toString());
-		response.put("analyzer", fd.getAnalyzer());
-		response.put("unknownCondition", fd.getUnknownCondition().toString());
-		response.put("unknownValue", fd.getUnknownValue());
-		response.put("fieldValues", doFieldValues);
-		response.put("valueListComplete", valueListComplete);
+		if (struct.getComplexFields().contains(fieldName)) {
+			ComplexFieldDesc fieldDesc = struct.getComplexFieldDesc(fieldName);
+			response.put("indexName", indexName);
+			response.put("fieldName", fieldName);
+			response.put("isComplexField", "true");
+			response.put("displayName", fieldDesc.getDisplayName());
+			response.put("description", fieldDesc.getDescription());
+			response.put("hasContentStore", fieldDesc.hasContentStore());
+			response.put("hasXmlTags", fieldDesc.hasXmlTags());
+			response.put("hasLengthTokens", fieldDesc.hasLengthTokens());
+			response.put("mainProperty", fieldDesc.getMainProperty().getName());
+			DataObjectMapAttribute doProps = new DataObjectMapAttribute("property", "name");
+			for (String propName: fieldDesc.getProperties()) {
+				PropertyDesc propDesc = fieldDesc.getPropertyDesc(propName);
+				DataObjectMapElement doProp = new DataObjectMapElement();
+				doProp.put("hasForwardIndex", propDesc.hasForwardIndex());
+				doProp.put("sensitivity", propDesc.getSensitivity().toString());
+				doProp.put("offsetsAlternative", StringUtil.nullToEmpty(propDesc.offsetsAlternative()));
+				doProps.put(propName, doProp);
+			}
+			response.put("properties", doProps);
+		} else {
+			MetadataFieldDesc fd = struct.getMetadataFieldDesc(fieldName);
+			Map<String, Integer> values = fd.getValueDistribution();
+			boolean valueListComplete = fd.isValueListComplete();
+	
+			// Assemble response
+			DataObjectMapAttribute doFieldValues = new DataObjectMapAttribute("value", "text");
+			for (Map.Entry<String, Integer> e: values.entrySet()) {
+				doFieldValues.put(e.getKey(), e.getValue());
+			}
+			response.put("indexName", indexName);
+			response.put("fieldName", fieldName);
+			response.put("isComplexField", "false");
+			response.put("displayName", fd.getDisplayName());
+			response.put("description", fd.getDescription());
+			response.put("group", fd.getGroup());
+			response.put("type", fd.getType().toString());
+			response.put("analyzer", fd.getAnalyzer());
+			response.put("unknownCondition", fd.getUnknownCondition().toString());
+			response.put("unknownValue", fd.getUnknownValue());
+			response.put("fieldValues", doFieldValues);
+			response.put("valueListComplete", valueListComplete);
+		}
 		
 		// Remove any empty settings
 		response.removeEmptyMapValues();

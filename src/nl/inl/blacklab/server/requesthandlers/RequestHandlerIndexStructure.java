@@ -2,6 +2,7 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.index.complex.ComplexFieldUtil;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.indexstructure.ComplexFieldDesc;
 import nl.inl.blacklab.search.indexstructure.IndexStructure;
@@ -41,30 +42,18 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 			DataObjectMapElement doComplexField = new DataObjectMapElement();
 			doComplexField.put("displayName", fieldDesc.getDisplayName());
 			doComplexField.put("description", fieldDesc.getDescription());
-			doComplexField.put("hasContentStore", fieldDesc.hasContentStore());
-			doComplexField.put("hasXmlTags", fieldDesc.hasXmlTags());
-			doComplexField.put("hasLengthTokens", fieldDesc.hasLengthTokens());
 			doComplexField.put("mainProperty", fieldDesc.getMainProperty().getName());
 			DataObjectMapAttribute doProps = new DataObjectMapAttribute("property", "name");
 			for (String propName: fieldDesc.getProperties()) {
+				if (propName.equals(ComplexFieldUtil.START_TAG_PROP_NAME) || propName.equals(ComplexFieldUtil.END_TAG_PROP_NAME) ||
+					propName.equals(ComplexFieldUtil.PUNCTUATION_PROP_NAME))
+					continue; // skip tag properties as we don't search on them directly; they are shown in detailed field info
 				PropertyDesc propDesc = fieldDesc.getPropertyDesc(propName);
 				DataObjectMapElement doProp = new DataObjectMapElement();
-				doProp.put("hasForwardIndex", propDesc.hasForwardIndex());
 				doProp.put("sensitivity", propDesc.getSensitivity().toString());
-				doProp.put("offsetsAlternative", StringUtil.nullToEmpty(propDesc.offsetsAlternative()));
-				/*
-				//DataObjectMapAttribute doAlts = new DataObjectMapAttribute("alternative", "name");
-				for (String altName: propDesc.getAlternatives()) {
-					AltDesc altDesc = propDesc.getAlternativeDesc(altName);
-					DataObjectMapElement doAlt = new DataObjectMapElement();
-					doAlt.put("type", altDesc.getType().toString());
-					doAlt.put("hasOffsets", altDesc == propDesc.getOffsetsAlternative());
-					doAlts.put(altName, doAlt);
-				}
-				doProp.put("alternative", doAlts);*/
 				doProps.put(propName, doProp);
 			}
-			doComplexField.put("properties", doProps);
+			doComplexField.put("basicProperties", doProps);
 			doComplexFields.put(name, doComplexField);
 		}
 

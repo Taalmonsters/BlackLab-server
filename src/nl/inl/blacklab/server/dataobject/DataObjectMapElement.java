@@ -170,7 +170,7 @@ public class DataObjectMapElement extends DataObject {
 		for (Map.Entry<String, DataObject> e: map.entrySet()) {
 			DataObject value = e.getValue();
 			value.removeEmptyMapValues();
-			if (value instanceof DataObjectString && ((DataObjectString) value).value.length() == 0) {
+			if (value instanceof DataObjectString && ((DataObjectString) value).isEmpty()) {
 				toRemove.add(e.getKey());
 			}
 		}

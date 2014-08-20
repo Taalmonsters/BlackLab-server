@@ -21,7 +21,7 @@ public class DataObjectString extends DataObject {
 		switch(fmt) {
 		case JSON:
 			if (value == null)
-				out.append(null);
+				out.append("null");
 			else
 				out.append("\"").append(StringUtil.escapeDoubleQuotedString(value)).append("\"");
 			break;
@@ -37,6 +37,10 @@ public class DataObjectString extends DataObject {
 	@Override
 	public boolean isSimple() {
 		return true;
+	}
+
+	public boolean isEmpty() {
+		return value == null || value.length() == 0;
 	}
 
 }
