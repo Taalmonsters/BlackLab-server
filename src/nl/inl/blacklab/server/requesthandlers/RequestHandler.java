@@ -55,6 +55,7 @@ public abstract class RequestHandler {
 		availableHandlers.put("doc-info", RequestHandlerDocInfo.class);
 		availableHandlers.put("cache-info", RequestHandlerCacheInfo.class);
 		availableHandlers.put("fields", RequestHandlerFieldInfo.class);
+		availableHandlers.put("help", RequestHandlerBlsHelp.class);
 		availableHandlers.put("", RequestHandlerIndexStructure.class);
 	}
 
@@ -87,6 +88,8 @@ public abstract class RequestHandler {
 		RequestHandler requestHandler;
 		if (indexName.equals("cache-info") && debugMode) {
 			requestHandler = new RequestHandlerCacheInfo(servlet, request, indexName, urlResource, urlPathInfo);
+		} else if (indexName.equals("help")) {
+			requestHandler = new RequestHandlerBlsHelp(servlet, request, indexName, urlResource, urlPathInfo);
 		} else if (indexName.length() == 0) {
 			// No index or operation given; server info
 			requestHandler = new RequestHandlerServerInfo(servlet, request, indexName, urlResource, urlPathInfo);

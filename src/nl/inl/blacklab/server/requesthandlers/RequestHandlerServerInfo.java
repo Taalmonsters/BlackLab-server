@@ -35,6 +35,7 @@ public class RequestHandlerServerInfo extends RequestHandler {
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("blacklabBuildTime", Searcher.getBlackLabBuildTime());
 		response.put("indices", doIndices);
+		response.put("helpPageUrl", servlet.getServletContext().getContextPath() + "/help");
 		if (debugMode) {
 			response.put("cacheStatus", searchMan.getCacheStatusDataObject());
 		}
