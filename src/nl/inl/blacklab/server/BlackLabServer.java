@@ -56,8 +56,10 @@ public class BlackLabServer extends HttpServlet {
 			}
 		} else {
 			// Read from classpath
+			logger.debug(configFileName + " not found in webapps dir; searching classpath...");
 			is = getClass().getClassLoader().getResourceAsStream(configFileName);
 			if (is == null) {
+				logger.debug(configFileName + " not found on classpath either. Using internal defaults.");
 				configFileName = "blacklab-server-defaults.json"; // internal defaults file
 				is = getClass().getClassLoader().getResourceAsStream(configFileName);
 				if (is == null)

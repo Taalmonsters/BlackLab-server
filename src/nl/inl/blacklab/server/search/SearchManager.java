@@ -224,7 +224,7 @@ public class SearchManager {
 		}
 		if (indexParam.size() == 0)
 			throw new RuntimeException(
-					"Configuration error: no indices available. Specify indexNames (space-separated) and indexDir_<name> for each index!");
+					"Configuration error: no indices available. Put blacklab-server.json on classpath (i.e. Tomcat shared or lib dir) with at least: { \"indices\": { \"myindex\": { \"dir\": \"/path/to/my/index\" } } } ");
 
 		// Keep a list of searchparameters.
 		searchParameterNames = Arrays.asList("resultsType", "patt", "pattlang",
