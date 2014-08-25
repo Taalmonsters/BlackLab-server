@@ -50,7 +50,7 @@ public class DataObjectMapElement extends DataObject {
 				if (prettyPrint)
 					indent(out, depth);
 				out.append("<").append(key).append(">");
-				if (!value.isSimple()) {
+				if (prettyPrint && !value.isSimple()) {
 					out.append("\n");
 				}
 				value.serialize(out, fmt, prettyPrint, depth);

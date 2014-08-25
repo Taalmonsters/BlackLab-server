@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Map;
 
+import nl.inl.util.StringUtil;
+
 /**
  * A collection of names mapping to DataObjects.
  *
@@ -53,8 +55,8 @@ public class DataObjectMapAttribute extends DataObjectMapElement {
 			case XML:
 				if (prettyPrint)
 					indent(out, depth);
-				out.append("<").append(xmlElementName).append(" ").append(xmlAttributeName).append("=\"").append(key).append("\">");
-				if (!value.isSimple()) {
+				out.append("<").append(xmlElementName).append(" ").append(xmlAttributeName).append("=\"").append(StringUtil.escapeXmlChars(key)).append("\">");
+				if (prettyPrint && !value.isSimple()) {
 					out.append("\n");
 				}
 				value.serialize(out, fmt, prettyPrint, depth);

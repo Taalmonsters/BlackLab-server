@@ -64,7 +64,7 @@ public class DataObjectMapInt extends DataObject {
 					indent(out, depth);
 				out.append("<").append(xmlElementName).append(" ").
 					append(xmlIdAttributeName).append("=\"").append(Integer.toString(key)).append("\">");
-				if (!value.isSimple()) {
+				if (prettyPrint && !value.isSimple()) {
 					out.append("\n");
 				}
 				value.serialize(out, fmt, prettyPrint, depth);
