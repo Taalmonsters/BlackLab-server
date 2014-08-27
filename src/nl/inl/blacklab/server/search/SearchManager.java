@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import nl.inl.blacklab.analysis.BLDutchAnalyzer;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.queryParser.contextql.ContextualQueryLanguageParser;
 import nl.inl.blacklab.queryParser.corpusql.CorpusQueryLanguageParser;
@@ -30,6 +29,7 @@ import nl.inl.util.json.JSONArray;
 import nl.inl.util.json.JSONObject;
 
 import org.apache.log4j.Logger;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
@@ -694,10 +694,11 @@ public class SearchManager {
 			}
 		} else if (language.equals("luceneql")) {
 			try {
-				String field = getSearcher(indexName).getIndexStructure()
+				Searcher searcher = getSearcher(indexName);
+				String field = searcher.getIndexStructure()
 						.getMainContentsField().getName();
 				LuceneQueryParser parser = new LuceneQueryParser(
-						Version.LUCENE_42, field, new BLDutchAnalyzer());
+						Version.LUCENE_42, field, searcher.getAnalyzer());
 				return parser.parse(pattern);
 			} catch (IndexOpenException e) {
 				throw new RuntimeException(e); // should never happen at this
@@ -716,12 +717,12 @@ public class SearchManager {
 						+ "'. Supported: corpusql, contextql, luceneql.");
 	}
 
-	public static Query parseFilter(String filter, String filterLang)
+	public static Query parseFilter(Analyzer analyzer, String filter, String filterLang)
 			throws QueryException {
-		return parseFilter(filter, filterLang, false);
+		return parseFilter(analyzer, filter, filterLang, false);
 	}
 
-	public static Query parseFilter(String filter, String filterLang,
+	public static Query parseFilter(Analyzer analyzer, String filter, String filterLang,
 			boolean required) throws QueryException {
 		if (filter == null || filter.length() == 0) {
 			if (required)
@@ -733,7 +734,7 @@ public class SearchManager {
 		if (filterLang.equals("luceneql")) {
 			try {
 				QueryParser parser = new QueryParser(Version.LUCENE_42, "",
-						new BLDutchAnalyzer());
+						analyzer);
 				parser.setAllowLeadingWildcard(true);
 				Query query = parser.parse(filter);
 				return query;

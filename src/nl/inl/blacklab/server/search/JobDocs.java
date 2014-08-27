@@ -24,7 +24,7 @@ public class JobDocs extends JobWithDocs {
 			docResults = hitsSearch.getHits().perDocResults();
 		} else {
 			// Documents only
-			Query filterQuery = SearchManager.parseFilter(par.getString("filter"), par.getString("filterlang"));
+			Query filterQuery = SearchManager.parseFilter(searcher.getAnalyzer(), par.getString("filter"), par.getString("filterlang"));
 			if (filterQuery == null)
 				filterQuery = new MatchAllDocsQuery();
 			docResults = searcher.queryDocuments(filterQuery);

@@ -39,7 +39,7 @@ public class JobHits extends JobWithHits {
 				debug(logger, "Filtering on single doc-id");
 			} else {
 				// Filter query
-				q = SearchManager.parseFilter(par.getString("filter"), par.getString("filterlang"));
+				q = SearchManager.parseFilter(searcher.getAnalyzer(), par.getString("filter"), par.getString("filterlang"));
 				filterQuery = q == null ? null : new QueryWrapperFilter(q);
 			}
 			try {
