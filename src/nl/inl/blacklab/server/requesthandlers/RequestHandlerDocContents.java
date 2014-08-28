@@ -62,12 +62,19 @@ public class RequestHandlerDocContents extends RequestHandler {
 
 		Searcher searcher = searchMan.getSearcher(indexName);
 		String content;
-		if (hits == null)
-			content = searcher.getContent(document);
-		else {
-			content = searcher.highlightContent(luceneDocId, hits.getHitsInDoc(luceneDocId));
+		int startAtWord = searchParam.getInteger("wordstart");
+		int endAtWord = searchParam.getInteger("wordend");
+		
+		// Note: we use the highlighter regardless of whether there's hits because
+		// it makes sure our document fragment is well-formed.
+		Hits hitsInDoc = hits == null ? null : hits.getHitsInDoc(luceneDocId);
+		content = searcher.highlightContent(luceneDocId, searcher.getMainContentsFieldName(), hitsInDoc, startAtWord, endAtWord);
+		
+		DataObjectPlain docContents = new DataObjectPlain(content, type);
+		if (startAtWord == -1 && endAtWord == -1) {
+			// Full document; no need for another root element
+			docContents.setAddRootElement(false); // don't add another root element
 		}
-		return new DataObjectPlain(content, type);
+		return docContents;
 	}
-
 }

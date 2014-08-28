@@ -231,7 +231,7 @@ public class SearchManager {
 				"pattfield", "filter", "filterlang", "sort", "group",
 				"viewgroup", "collator", "first", "number", "wordsaroundhit",
 				"hitstart", "hitend", "facets", "waitfortotal", "includetokencount",
-				"usecontent");
+				"usecontent", "wordstart", "wordend");
 
 		// Set up the parameter default values
 		defaultParameterValues = new HashMap<String, String>();
@@ -249,6 +249,8 @@ public class SearchManager {
 		defaultParameterValues.put("includetokencount", "no");
 		defaultParameterValues.put("wordsaroundhit", "" + defaultContextSize);
 		defaultParameterValues.put("usecontent", "fi");
+		defaultParameterValues.put("wordstart", "-1");
+		defaultParameterValues.put("wordend", "-1");
 
 		// Start with empty cache
 		cache = new SearchCache(cacheProp);

@@ -48,27 +48,50 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 
 		Searcher searcher = searchMan.getSearcher(indexName);
-		int start = searchParam.getInteger("hitstart");
-		int end = searchParam.getInteger("hitend");
-		int wordsAroundHit = searchParam.getInteger("wordsaroundhit");
-		if (wordsAroundHit > searchMan.getMaxSnippetSize()) {
-			wordsAroundHit = searchMan.getMaxSnippetSize();
+		
+		Hit hit;
+		int wordsAroundHit;
+		int start, end;
+		boolean isHit = false;
+		if (searchParam.containsKey("hitstart")) {
+			start = searchParam.getInteger("hitstart");
+			end = searchParam.getInteger("hitend");
+			wordsAroundHit = searchParam.getInteger("wordsaroundhit");
+			isHit = true;
+		} else {
+			start = searchParam.getInteger("wordstart");
+			end = searchParam.getInteger("wordend");
+			wordsAroundHit = 0;
 		}
-		Hit hit = new Hit(luceneDocId, start, end);
+		if (end - start > searchMan.getMaxSnippetSize()) {
+			end = start + searchMan.getMaxSnippetSize();
+		}
+		if (wordsAroundHit + end - start > searchMan.getMaxSnippetSize()) {
+			wordsAroundHit = searchMan.getMaxSnippetSize() - end + start;
+		}
+		hit = new Hit(luceneDocId, start, end);
 		Hits hits = new Hits(searcher, Arrays.asList(hit));
 		boolean origContent = searchParam.getString("usecontent").equals("orig");
 		hits.setConcordanceType(origContent ? ConcordanceType.CONTENT_STORE : ConcordanceType.FORWARD_INDEX);
 		DataObjectMapElement doSnippet = new DataObjectMapElement();
 		if (origContent) {
 			Concordance c = hits.getConcordance(hit, wordsAroundHit);
-			doSnippet.put("left", new DataObjectPlain(c.left()));
-			doSnippet.put("match", new DataObjectPlain(c.match()));
-			doSnippet.put("right", new DataObjectPlain(c.right()));
+			if (isHit) {
+				doSnippet.put("left", new DataObjectPlain(c.left()));
+				doSnippet.put("match", new DataObjectPlain(c.match()));
+				doSnippet.put("right", new DataObjectPlain(c.right()));
+			} else {
+				return new DataObjectPlain(c.match());
+			}
 		} else {
 			Kwic kwic = hits.getKwic(hit, wordsAroundHit);
-			doSnippet.put("left", new DataObjectContextList(kwic.getProperties(), kwic.getLeft()));
-			doSnippet.put("match", new DataObjectContextList(kwic.getProperties(), kwic.getMatch()));
-			doSnippet.put("right", new DataObjectContextList(kwic.getProperties(), kwic.getRight()));
+			if (isHit) {
+				doSnippet.put("left", new DataObjectContextList(kwic.getProperties(), kwic.getLeft()));
+				doSnippet.put("match", new DataObjectContextList(kwic.getProperties(), kwic.getMatch()));
+				doSnippet.put("right", new DataObjectContextList(kwic.getProperties(), kwic.getRight()));
+			} else {
+				return new DataObjectContextList(kwic.getProperties(), kwic.getTokens());
+			}
 		}
 
 		return doSnippet;

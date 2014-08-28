@@ -127,6 +127,7 @@ public abstract class RequestHandler {
 					return DataObject.errorObject("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
 				Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
 				Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, String.class, String.class, String.class);
+				servlet.getSearchManager().getSearcher(indexName); // make sure it's open
 				requestHandler = ctor.newInstance(servlet, request, indexName, urlResource, urlPathInfo);
 			} catch (NoSuchMethodException e) {
 				// (can only happen if the required constructor is not available in the RequestHandler subclass)
@@ -144,6 +145,8 @@ public abstract class RequestHandler {
 			} catch (InvocationTargetException e) {
 				logger.error("Could not create request handler", e);
 				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 6));
+			} catch (IndexOpenException e) {
+				return DataObject.errorObject("CANNOT_OPEN_INDEX", "Could not open index '" + indexName + "'. Please check the name.");
 			}
 		}
 		if (debugMode)
