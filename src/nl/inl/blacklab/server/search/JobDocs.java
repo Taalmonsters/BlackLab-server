@@ -1,5 +1,8 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.search.ConcordanceType;
+import nl.inl.blacklab.search.Hits;
+
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 
@@ -21,7 +24,9 @@ public class JobDocs extends JobWithDocs {
 			JobWithHits hitsSearch = searchMan.searchHits(userId, parNoSort);
 			waitForJobToFinish(hitsSearch);
 			// Now, get per document results
-			docResults = hitsSearch.getHits().perDocResults();
+			Hits hits = hitsSearch.getHits();
+			hits.setConcordanceType(par.getString("usecontent").equals("orig") ? ConcordanceType.CONTENT_STORE : ConcordanceType.FORWARD_INDEX);
+			docResults = hits.perDocResults();
 		} else {
 			// Documents only
 			Query filterQuery = SearchManager.parseFilter(searcher.getAnalyzer(), par.getString("filter"), par.getString("filterlang"));

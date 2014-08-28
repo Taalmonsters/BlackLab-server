@@ -230,7 +230,8 @@ public class SearchManager {
 		searchParameterNames = Arrays.asList("resultsType", "patt", "pattlang",
 				"pattfield", "filter", "filterlang", "sort", "group",
 				"viewgroup", "collator", "first", "number", "wordsaroundhit",
-				"hitstart", "hitend", "facets", "waitfortotal", "includetokencount");
+				"hitstart", "hitend", "facets", "waitfortotal", "includetokencount",
+				"usecontent");
 
 		// Set up the parameter default values
 		defaultParameterValues = new HashMap<String, String>();
@@ -247,6 +248,7 @@ public class SearchManager {
 		defaultParameterValues.put("waitfortotal", "no");
 		defaultParameterValues.put("includetokencount", "no");
 		defaultParameterValues.put("wordsaroundhit", "" + defaultContextSize);
+		defaultParameterValues.put("usecontent", "fi");
 
 		// Start with empty cache
 		cache = new SearchCache(cacheProp);
@@ -440,7 +442,7 @@ public class SearchManager {
 	public JobWithDocs searchDocs(String userId, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang", "sort");
+				"pattlang", "filter", "filterlang", "sort", "usecontent");
 		String sort = parBasic.get("sort");
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits
@@ -459,7 +461,7 @@ public class SearchManager {
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
-				"wordsaroundhit");
+				"wordsaroundhit", "usecontent");
 		parBasic.put("jobclass", "JobHitsWindow");
 		return (JobHitsWindow) search(userId, parBasic);
 	}
@@ -468,7 +470,7 @@ public class SearchManager {
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
-				"wordsaroundhit");
+				"wordsaroundhit", "usecontent");
 		parBasic.put("jobclass", "JobDocsWindow");
 		return (JobDocsWindow) search(userId, parBasic);
 	}

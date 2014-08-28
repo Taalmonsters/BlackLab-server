@@ -1,5 +1,6 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.search.ConcordanceType;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.HitsWindow;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
@@ -43,6 +44,7 @@ public class JobHitsWindow extends Job {
 			contextSize = maxContextSize;
 		}
 		window.setContextSize(contextSize);
+		window.setConcordanceType(par.getString("usecontent").equals("orig") ? ConcordanceType.CONTENT_STORE : ConcordanceType.FORWARD_INDEX);
 	}
 
 	public HitsWindow getWindow() {

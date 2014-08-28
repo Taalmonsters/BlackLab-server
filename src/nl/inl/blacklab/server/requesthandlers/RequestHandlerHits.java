@@ -5,6 +5,7 @@ import javax.servlet.http.HttpServletRequest;
 import nl.inl.blacklab.perdocument.DocProperty;
 import nl.inl.blacklab.perdocument.DocPropertyComplexFieldLength;
 import nl.inl.blacklab.perdocument.DocResults;
+import nl.inl.blacklab.search.Concordance;
 import nl.inl.blacklab.search.Hit;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.HitsWindow;
@@ -21,6 +22,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectContextList;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.Job;
 import nl.inl.blacklab.server.search.JobHitsGrouped;
@@ -169,12 +171,21 @@ public class RequestHandlerHits extends RequestHandler {
 			hitMap.put("start", hit.start);
 			hitMap.put("end", hit.end);
 
-			// Add KWIC info
-			Kwic c = window.getKwic(hit);
-			hitMap.put("left", new DataObjectContextList(c.getProperties(), c.getLeft()));
-			hitMap.put("match", new DataObjectContextList(c.getProperties(), c.getMatch()));
-			hitMap.put("right", new DataObjectContextList(c.getProperties(), c.getRight()));
-			hitList.add(hitMap);
+			if (searchParam.getString("usecontent").equals("orig")) {
+				// Add concordance from original XML
+				Concordance c = window.getConcordance(hit);
+				hitMap.put("left", new DataObjectPlain(c.left));
+				hitMap.put("match", new DataObjectPlain(c.hit));
+				hitMap.put("right", new DataObjectPlain(c.right));
+				hitList.add(hitMap);
+			} else {
+				// Add KWIC info
+				Kwic c = window.getKwic(hit);
+				hitMap.put("left", new DataObjectContextList(c.getProperties(), c.getLeft()));
+				hitMap.put("match", new DataObjectContextList(c.getProperties(), c.getMatch()));
+				hitMap.put("right", new DataObjectContextList(c.getProperties(), c.getRight()));
+				hitList.add(hitMap);
+			}
 
 			// Add document info if we didn't already
 			if (!docInfos.containsKey(hit.doc)) {

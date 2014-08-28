@@ -9,6 +9,7 @@ import nl.inl.blacklab.perdocument.DocPropertyComplexFieldLength;
 import nl.inl.blacklab.perdocument.DocResult;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.perdocument.DocResultsWindow;
+import nl.inl.blacklab.search.Concordance;
 import nl.inl.blacklab.search.Hit;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.Kwic;
@@ -21,6 +22,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectContextList;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.Job;
 import nl.inl.blacklab.server.search.JobDocsGrouped;
@@ -162,12 +164,22 @@ public class RequestHandlerDocs extends RequestHandler {
 			Hits hits = result.getHits(5); // TODO: make num. snippets configurable
 			DataObjectList doSnippetList = new DataObjectList("snippet");
 			for (Hit hit: hits) {
-				Kwic c = hits.getKwic(hit);
 				DataObjectMapElement hitMap = new DataObjectMapElement();
-				hitMap.put("left", new DataObjectContextList(c.getProperties(), c.getLeft()));
-				hitMap.put("match", new DataObjectContextList(c.getProperties(), c.getMatch()));
-				hitMap.put("right", new DataObjectContextList(c.getProperties(), c.getRight()));
-				doSnippetList.add(hitMap);
+				if (searchParam.getString("usecontent").equals("orig")) {
+					// Add concordance from original XML
+					Concordance c = hits.getConcordance(hit);
+					hitMap.put("left", new DataObjectPlain(c.left));
+					hitMap.put("match", new DataObjectPlain(c.hit));
+					hitMap.put("right", new DataObjectPlain(c.right));
+					doSnippetList.add(hitMap);
+				} else {
+					// Add KWIC info
+					Kwic c = hits.getKwic(hit);
+					hitMap.put("left", new DataObjectContextList(c.getProperties(), c.getLeft()));
+					hitMap.put("match", new DataObjectContextList(c.getProperties(), c.getMatch()));
+					hitMap.put("right", new DataObjectContextList(c.getProperties(), c.getRight()));
+					doSnippetList.add(hitMap);
+				}
 			}
 
 			// Find pid
