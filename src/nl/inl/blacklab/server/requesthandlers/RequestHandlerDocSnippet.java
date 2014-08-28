@@ -61,9 +61,9 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 		DataObjectMapElement doSnippet = new DataObjectMapElement();
 		if (origContent) {
 			Concordance c = hits.getConcordance(hit, wordsAroundHit);
-			doSnippet.put("left", new DataObjectPlain(c.left));
-			doSnippet.put("match", new DataObjectPlain(c.hit));
-			doSnippet.put("right", new DataObjectPlain(c.right));
+			doSnippet.put("left", new DataObjectPlain(c.left()));
+			doSnippet.put("match", new DataObjectPlain(c.match()));
+			doSnippet.put("right", new DataObjectPlain(c.right()));
 		} else {
 			Kwic kwic = hits.getKwic(hit, wordsAroundHit);
 			doSnippet.put("left", new DataObjectContextList(kwic.getProperties(), kwic.getLeft()));

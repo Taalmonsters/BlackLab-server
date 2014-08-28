@@ -174,9 +174,9 @@ public class RequestHandlerHits extends RequestHandler {
 			if (searchParam.getString("usecontent").equals("orig")) {
 				// Add concordance from original XML
 				Concordance c = window.getConcordance(hit);
-				hitMap.put("left", new DataObjectPlain(c.left));
-				hitMap.put("match", new DataObjectPlain(c.hit));
-				hitMap.put("right", new DataObjectPlain(c.right));
+				hitMap.put("left", new DataObjectPlain(c.left()));
+				hitMap.put("match", new DataObjectPlain(c.match()));
+				hitMap.put("right", new DataObjectPlain(c.right()));
 				hitList.add(hitMap);
 			} else {
 				// Add KWIC info
