@@ -4,6 +4,8 @@ import java.util.Arrays;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.search.Concordance;
+import nl.inl.blacklab.search.ConcordanceType;
 import nl.inl.blacklab.search.Hit;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.Kwic;
@@ -12,6 +14,7 @@ import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectContextList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.QueryException;
 
@@ -51,13 +54,20 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 		}
 		Hit hit = new Hit(luceneDocId, start, end);
 		Hits hits = new Hits(searcher, Arrays.asList(hit));
-		Kwic kwic = hits.getKwic(hit, wordsAroundHit);
-
-		// Add KWIC info
+		boolean origContent = searchParam.getString("usecontent").equals("orig");
+		hits.setConcordanceType(origContent ? ConcordanceType.CONTENT_STORE : ConcordanceType.FORWARD_INDEX);
 		DataObjectMapElement doSnippet = new DataObjectMapElement();
-		doSnippet.put("left", new DataObjectContextList(kwic.getProperties(), kwic.getLeft()));
-		doSnippet.put("match", new DataObjectContextList(kwic.getProperties(), kwic.getMatch()));
-		doSnippet.put("right", new DataObjectContextList(kwic.getProperties(), kwic.getRight()));
+		if (origContent) {
+			Concordance c = hits.getConcordance(hit, wordsAroundHit);
+			doSnippet.put("left", new DataObjectPlain(c.left));
+			doSnippet.put("match", new DataObjectPlain(c.hit));
+			doSnippet.put("right", new DataObjectPlain(c.right));
+		} else {
+			Kwic kwic = hits.getKwic(hit, wordsAroundHit);
+			doSnippet.put("left", new DataObjectContextList(kwic.getProperties(), kwic.getLeft()));
+			doSnippet.put("match", new DataObjectContextList(kwic.getProperties(), kwic.getMatch()));
+			doSnippet.put("right", new DataObjectContextList(kwic.getProperties(), kwic.getRight()));
+		}
 
 		return doSnippet;
 	}
