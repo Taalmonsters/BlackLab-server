@@ -32,9 +32,12 @@ public class JobHits extends JobWithHits {
 		try {
 			textPattern = searchMan.parsePatt(par.getString("indexname"), par.getString("patt"), par.getString("pattlang"));
 			Query q;
-			if (par.getString("docpid") != null) {
+			String docId = par.getString("docpid");
+			if (docId != null) {
 				// Only hits in 1 doc (for highlighting)
-				int luceneDocId = searchMan.getLuceneDocIdFromPid(par.getString("indexname"), par.getString("docpid"));
+				int luceneDocId = searchMan.getLuceneDocIdFromPid(par.getString("indexname"), docId);
+				if (luceneDocId < 0)
+					throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 				filterQuery = new SingleDocIdFilter(luceneDocId);
 				debug(logger, "Filtering on single doc-id");
 			} else {

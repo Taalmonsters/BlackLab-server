@@ -41,7 +41,9 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 		debug(logger, "REQ doc contents: " + indexName + "-" + docId);
 
 		int luceneDocId = searchMan.getLuceneDocIdFromPid(indexName, docId);
-		Document document = searchMan.getSearcher(indexName).document(luceneDocId); //searchMan.getDocumentFromPid(indexName, docId);
+		if (luceneDocId < 0)
+			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
+		Document document = searchMan.getSearcher(indexName).document(luceneDocId);
 		if (document == null)
 			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 
