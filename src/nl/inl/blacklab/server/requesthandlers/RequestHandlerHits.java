@@ -1,5 +1,7 @@
 package nl.inl.blacklab.server.requesthandlers;
 
+import java.util.Arrays;
+
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.perdocument.DocProperty;
@@ -10,7 +12,10 @@ import nl.inl.blacklab.search.Hit;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.HitsWindow;
 import nl.inl.blacklab.search.Kwic;
+import nl.inl.blacklab.search.QueryExecutionContext;
 import nl.inl.blacklab.search.Searcher;
+import nl.inl.blacklab.search.TokenFrequency;
+import nl.inl.blacklab.search.TokenFrequencyList;
 import nl.inl.blacklab.search.grouping.HitGroup;
 import nl.inl.blacklab.search.grouping.HitGroups;
 import nl.inl.blacklab.search.grouping.HitPropValue;
@@ -132,6 +137,10 @@ public class RequestHandlerHits extends RequestHandler {
 			window = searchWindow.getWindow();
 		}
 		
+		if (searchParam.getString("calc").equals("colloc")) {
+			return getCollocations(window.getOriginalHits());
+		}
+		
 		String parFacets = searchParam.getString("facets");
 		DataObjectMapAttribute doFacets = null;
 		DocResults perDocResults = null;
@@ -222,6 +231,20 @@ public class RequestHandlerHits extends RequestHandler {
 		if (doFacets != null)
 			response.put("facets", doFacets);
 
+		return response;
+	}
+
+	private DataObject getCollocations(Hits originalHits) {
+		originalHits.setContextSize(searchParam.getInteger("wordsaroundhit"));
+		DataObjectMapAttribute doTokenFreq = new DataObjectMapAttribute("token", "text");
+		TokenFrequencyList tfl = originalHits.getCollocations();
+		tfl.sort();
+		for (TokenFrequency tf: tfl) {
+			doTokenFreq.put(tf.token, tf.frequency);
+		}
+		
+		DataObjectMapElement response = new DataObjectMapElement();
+		response.put("tokenFrequencies", doTokenFreq);
 		return response;
 	}
 
