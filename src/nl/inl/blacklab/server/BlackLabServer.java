@@ -99,11 +99,9 @@ public class BlackLabServer extends HttpServlet {
 			DataObject response = RequestHandler.handle(this, request, debugMode);
 
 			// Determine response type
-			boolean outputTypeOverridden = true;
 			DataFormat outputType = response.getOverrideType(); // some responses override the user's request (i.e. article XML)
 			if (outputType == null) {
 				outputType = ServletUtil.getOutputType(request, searchManager.getDefaultOutputType());
-				outputTypeOverridden = false;
 			}
 
 			// Write HTTP headers (content type and cache)
