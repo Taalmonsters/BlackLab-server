@@ -63,11 +63,13 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 			end = searchParam.getInteger("wordend");
 			wordsAroundHit = 0;
 		}
-		if (end - start > searchMan.getMaxSnippetSize()) {
-			end = start + searchMan.getMaxSnippetSize();
+		int snippetStart = Math.max(0, start - wordsAroundHit);
+		int snippetEnd = end + wordsAroundHit;
+		if (snippetEnd - snippetStart > searchMan.getMaxSnippetSize()) {
+			throw new QueryException("SNIPPET_TOO_LARGE", "Snippet too large. Maximum size for a snippet is " + searchMan.getMaxSnippetSize() + " words.");
 		}
-		if (wordsAroundHit + end - start > searchMan.getMaxSnippetSize()) {
-			wordsAroundHit = searchMan.getMaxSnippetSize() - end + start;
+		if (start < 0 || end < 0 || wordsAroundHit * 2 + end - start <= 0 || end < start || wordsAroundHit < 0) {
+			throw new QueryException("ILLEGAL_BOUNDARIES", "Illegal word boundaries specified. Please check parameters.");
 		}
 		hit = new Hit(luceneDocId, start, end);
 		Hits hits = new Hits(searcher, Arrays.asList(hit));
