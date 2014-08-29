@@ -64,6 +64,9 @@ public class RequestHandlerDocContents extends RequestHandler {
 		String content;
 		int startAtWord = searchParam.getInteger("wordstart");
 		int endAtWord = searchParam.getInteger("wordend");
+		if (startAtWord < -1 || endAtWord < -1 || (startAtWord >= 0 && endAtWord >= 0 && endAtWord <= startAtWord) ) {
+			throw new QueryException("ILLEGAL_BOUNDARIES", "Illegal word boundaries specified. Please check parameters.");
+		}
 		
 		// Note: we use the highlighter regardless of whether there's hits because
 		// it makes sure our document fragment is well-formed.
