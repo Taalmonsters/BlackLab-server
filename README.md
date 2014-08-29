@@ -1,23 +1,22 @@
 BlackLab Server
 ===============
 
-A REST API for BlackLab that speaks JSON and XML.
+A webservice that allows you to use corpus search engine BlackLab from any programming language.
 
 **WARNING: This is not yet production-ready software! This is an alpha version, available for review and testing. There are likely still be bugs and the protocol may change slightly. **
+Please see the [https://github.com/INL/BlackLab-server/wiki/BlackLab-Server-overview full overview] of the webservice for more information.
 
-The goal for this webservice is to expose all of BlackLab's functionality through an easy-to-consume web service accessible from your favourite programming language.
-
-Some simple example URLs:
+Here's some simple example URLs:
 
 Find hits for a word:
 
-  http://corpus.example.com/blacklab-server/mycorpus/hitset?patt="easy"
+  http://corpus.example.com/blacklab-server/mycorpus/hits?patt="easy"
 
 Group hits by left context:
 
-  http://corpus.example.com/blacklab-server/mycorpus/hitsgrouped?patt="easy"&group=left
+  http://corpus.example.com/blacklab-server/mycorpus/hits?patt="easy"&group=left
 
 Highlight in original content:
 
-  http://corpus.example.com/blacklab-server/mycorpus/12345/?patt="easy"
+  http://corpus.example.com/blacklab-server/mycorpus/docs/12345/?patt="easy"
 
