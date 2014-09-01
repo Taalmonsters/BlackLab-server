@@ -115,13 +115,13 @@ public class SearchCache {
 	void removeOldSearches() {
 
 		// OPT: could be optimized a little bit
-
+		
 		// Sort cache by last access time
 		List<Job> lastAccessOrder = new ArrayList<Job>(cachedSearches.values());
 		Collections.sort(lastAccessOrder); // put stalest first
-
+		
 		calculateSizeBytes(lastAccessOrder);
-
+		
 		// If we're low on memory, always remove a few searches from cache.
 		int minSearchesToRemove = 0;
 		long freeMegs = MemoryUtil.getFree() / 1000000;
@@ -146,22 +146,35 @@ public class SearchCache {
 				cacheSizeBytes -= search.estimateSizeBytes();
 				removed = true;
 
-			} else if (minSearchesToRemove > 0 || lookAtCacheSizeAndSearchAccessTime && (cacheTooBig() || searchTooOld(search))) {
-				// Search is too old or cache is too big. Keep removing searches until that's no longer the case
-				logger.debug("Remove from cache: " + search);
-				cachedSearches.remove(search.getParameters());
-				cacheSizeBytes -= search.estimateSizeBytes();
-				removed = true;
-				minSearchesToRemove--;
 			} else {
-				// Cache is no longer too big and these searches are not too old. Stop checking that,
-				// just check for long-running searches
-				lookAtCacheSizeAndSearchAccessTime = false;
+				boolean removeBecauseOfCacheSizeOrAge = false;
+				if (lookAtCacheSizeAndSearchAccessTime) {
+					boolean isCacheTooBig = cacheTooBig();
+					boolean isSearchTooOld = false;
+					if (!isCacheTooBig)
+						isSearchTooOld = searchTooOld(search);
+					removeBecauseOfCacheSizeOrAge = isCacheTooBig || isSearchTooOld;
+				}
+				if (minSearchesToRemove > 0 || removeBecauseOfCacheSizeOrAge) {
+					// Search is too old or cache is too big. Keep removing searches until that's no longer the case
+					logger.debug("Remove from cache: " + search);
+					cachedSearches.remove(search.getParameters());
+					cacheSizeBytes -= search.estimateSizeBytes();
+					removed = true;
+					minSearchesToRemove--;
+				} else {
+					// Cache is no longer too big and these searches are not too old. Stop checking that,
+					// just check for long-running searches
+					lookAtCacheSizeAndSearchAccessTime = false;
+				}
 			}
 		}
 		if (removed) {
 			// Hint that we want GC to run
-			System.gc();
+			// NOTE: this is not a good idea. Explicitly calling the GC like this can result
+			//  in a multi-second pause each time. Just let Java figure it out itself and probably
+			//  run sufficient incremental GC in the background.
+			//System.gc();
 		}
 	}
 

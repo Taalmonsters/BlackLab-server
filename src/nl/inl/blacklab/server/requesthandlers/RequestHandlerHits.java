@@ -1,7 +1,5 @@
 package nl.inl.blacklab.server.requesthandlers;
 
-import java.util.Arrays;
-
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.perdocument.DocProperty;
@@ -12,7 +10,6 @@ import nl.inl.blacklab.search.Hit;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.HitsWindow;
 import nl.inl.blacklab.search.Kwic;
-import nl.inl.blacklab.search.QueryExecutionContext;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.TokenFrequency;
 import nl.inl.blacklab.search.TokenFrequencyList;

@@ -559,7 +559,7 @@ public class SearchManager {
 					throw new QueryException("SERVER_BUSY",
 							"The server is under heavy load right now. Please try again later.");
 				}
-				logger.debug("Enough free memory: " + freeMegs + "M");
+				//logger.debug("Enough free memory: " + freeMegs + "M");
 
 				// Is this user allowed to start another search?
 				int numRunningJobs = 0;
@@ -607,6 +607,7 @@ public class SearchManager {
 			search.rethrowException();
 		}
 
+		logger.debug("Search done");
 		return search;
 	}
 

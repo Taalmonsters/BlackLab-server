@@ -281,7 +281,7 @@ public abstract class Job implements Comparable<Job> {
 	public void waitUntilFinished(int maxWaitMs) throws InterruptedException, IndexOpenException, QueryException {
 		int defaultWaitStep = 100;
 		while (searchThread == null || (maxWaitMs != 0 && !searchThread.finished())) {
-			int w = maxWaitMs < 0 ? defaultWaitStep : (maxWaitMs > defaultWaitStep ? defaultWaitStep : maxWaitMs);
+			int w = maxWaitMs < 0 ? defaultWaitStep : Math.min(maxWaitMs, defaultWaitStep);
 			Thread.sleep(w);
 			if (maxWaitMs >= 0)
 				maxWaitMs -= w;
