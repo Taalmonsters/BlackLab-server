@@ -11,8 +11,8 @@ import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.HitsWindow;
 import nl.inl.blacklab.search.Kwic;
 import nl.inl.blacklab.search.Searcher;
-import nl.inl.blacklab.search.TokenFrequency;
-import nl.inl.blacklab.search.TokenFrequencyList;
+import nl.inl.blacklab.search.TermFrequency;
+import nl.inl.blacklab.search.TermFrequencyList;
 import nl.inl.blacklab.search.grouping.HitGroup;
 import nl.inl.blacklab.search.grouping.HitGroups;
 import nl.inl.blacklab.search.grouping.HitPropValue;
@@ -236,10 +236,10 @@ public class RequestHandlerHits extends RequestHandler {
 	private DataObject getCollocations(Hits originalHits) {
 		originalHits.setContextSize(searchParam.getInteger("wordsaroundhit"));
 		DataObjectMapAttribute doTokenFreq = new DataObjectMapAttribute("token", "text");
-		TokenFrequencyList tfl = originalHits.getCollocations();
+		TermFrequencyList tfl = originalHits.getCollocations();
 		tfl.sort();
-		for (TokenFrequency tf: tfl) {
-			doTokenFreq.put(tf.token, tf.frequency);
+		for (TermFrequency tf: tfl) {
+			doTokenFreq.put(tf.term, tf.frequency);
 		}
 		
 		DataObjectMapElement response = new DataObjectMapElement();
