@@ -47,6 +47,19 @@ public class JobHits extends JobWithHits {
 			}
 			try {
 				hits = searcher.find(textPattern, filterQuery);
+				
+				// Set the max retrieve/count value
+				int maxRetrieve = par.getInteger("maxretrieve");
+				if (searchMan.getMaxHitsToRetrieveAllowed() >= 0 && maxRetrieve > searchMan.getMaxHitsToRetrieveAllowed()) {
+					maxRetrieve = searchMan.getMaxHitsToRetrieveAllowed();
+				}
+				int maxCount = par.getInteger("maxcount");
+				if (searchMan.getMaxHitsToCountAllowed() >= 0 && maxCount > searchMan.getMaxHitsToCountAllowed()) {
+					maxCount = searchMan.getMaxHitsToCountAllowed();
+				}
+				hits.setMaxHitsToRetrieve(maxRetrieve);
+				hits.setMaxHitsToCount(maxCount);
+				
 			} catch (RuntimeException e) {
 				// TODO: catch a more specific exception!
 				throw new QueryException("SEARCH_ERROR", "Search error: " + e.getMessage());

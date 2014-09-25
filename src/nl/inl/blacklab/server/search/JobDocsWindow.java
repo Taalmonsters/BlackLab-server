@@ -36,14 +36,6 @@ public class JobDocsWindow extends Job {
 			first = 0;
 		}
 		window = docResults.window(first, requestedWindowSize);
-		//TODO context size
-//		int contextSize = par.getInteger("wordsaroundhit");
-//		if (contextSize > searchMan.maxContextSize) {
-//			debug(logger, "Clamping context size to " + searchMan.maxContextSize + " (" + contextSize + " requested)");
-//			contextSize = searchMan.maxContextSize;
-//		}
-//		window.setContextSize(contextSize);
-
 	}
 
 	public DocResultsWindow getWindow() {

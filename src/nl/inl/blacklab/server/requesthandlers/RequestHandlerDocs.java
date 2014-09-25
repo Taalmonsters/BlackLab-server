@@ -208,6 +208,8 @@ public class RequestHandlerDocs extends RequestHandler {
 		if (searchGrouped == null && hits != null) {
 			summary.put("numberOfHits", hits.countSoFarHitsCounted());
 			summary.put("numberOfHitsRetrieved", hits.countSoFarHitsRetrieved());
+			summary.put("stoppedCountingHits", hits.maxHitsCounted());
+			summary.put("stoppedRetrievingHits", hits.maxHitsRetrieved());
 		}
 		if (hits != null || group != null) {
 			summary.put("numberOfDocs", hits == null ? group.getResults().size() : hits.countSoFarDocsCounted());

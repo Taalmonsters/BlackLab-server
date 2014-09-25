@@ -73,6 +73,8 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 		summary.put("stillCounting", false);
 		summary.put("numberOfHits", hits.countSoFarHitsCounted());
 		summary.put("numberOfHitsRetrieved", hits.countSoFarHitsRetrieved());
+		summary.put("stoppedCountingHits", hits.maxHitsCounted());
+		summary.put("stoppedRetrievingHits", hits.maxHitsRetrieved());
 		summary.put("numberOfDocs", hits.countSoFarDocsCounted());
 		summary.put("numberOfDocsRetrieved", hits.countSoFarDocsRetrieved());
 		summary.put("numberOfGroups", groups.numberOfGroups());

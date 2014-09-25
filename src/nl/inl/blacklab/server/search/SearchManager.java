@@ -17,6 +17,7 @@ import nl.inl.blacklab.queryParser.corpusql.ParseException;
 import nl.inl.blacklab.queryParser.corpusql.TokenMgrError;
 import nl.inl.blacklab.queryParser.lucene.LuceneQueryParser;
 import nl.inl.blacklab.search.CompleteQuery;
+import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.TextPattern;
 import nl.inl.blacklab.server.ServletUtil;
@@ -138,6 +139,12 @@ public class SearchManager {
 	 */
 	private int clientCacheTimeSec;
 
+	/** Maximum allowed value for maxretrieve parameter (-1 = no limit). */
+	private int maxHitsToRetrieveAllowed;
+
+	/** Maximum allowed value for maxcount parameter (-1 = no limit). */
+	private int maxHitsToCountAllowed;
+
 	// private JSONObject properties;
 
 	public SearchManager(JSONObject properties) {
@@ -169,6 +176,11 @@ public class SearchManager {
 				5);
 		maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
 		maxSnippetSize = JsonUtil.getIntProp(reqProp, "maxSnippetSize", 100);
+		maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
+		Hits.setDefaultMaxHitsToRetrieve(JsonUtil.getIntProp(reqProp, "defaultMaxHitsToRetrieve", Hits.getDefaultMaxHitsToRetrieve()));
+		Hits.setDefaultMaxHitsToCount(JsonUtil.getIntProp(reqProp, "defaultMaxHitsToCount", Hits.getDefaultMaxHitsToCount()));
+		maxHitsToRetrieveAllowed = JsonUtil.getIntProp(reqProp, "maxHitsToRetrieveAllowed", 10000000);
+		maxHitsToCountAllowed = JsonUtil.getIntProp(reqProp, "maxHitsToCountAllowed", -1);
 		JSONArray jsonOverrideUserIdIps = reqProp
 				.getJSONArray("overrideUserIdIps");
 		overrideUserIdIps = new HashSet<String>();
@@ -231,7 +243,7 @@ public class SearchManager {
 				"pattfield", "filter", "filterlang", "sort", "group",
 				"viewgroup", "collator", "first", "number", "wordsaroundhit",
 				"hitstart", "hitend", "facets", "waitfortotal", "includetokencount",
-				"usecontent", "wordstart", "wordend", "calc");
+				"usecontent", "wordstart", "wordend", "calc", "maxretrieve", "maxcount");
 
 		// Set up the parameter default values
 		defaultParameterValues = new HashMap<String, String>();
@@ -252,6 +264,8 @@ public class SearchManager {
 		defaultParameterValues.put("wordstart", "-1");
 		defaultParameterValues.put("wordend", "-1");
 		defaultParameterValues.put("calc", "");
+		defaultParameterValues.put("maxretrieve", "" + Hits.getDefaultMaxHitsToRetrieve());
+		defaultParameterValues.put("maxcount", "" + Hits.getDefaultMaxHitsToCount());
 
 		// Start with empty cache
 		cache = new SearchCache(cacheProp);
@@ -427,7 +441,8 @@ public class SearchManager {
 	public JobWithHits searchHits(String userId, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang", "sort", "docpid");
+				"pattlang", "filter", "filterlang", "sort", "docpid",
+				"maxretrieve", "maxcount");
 		String sort = parBasic.get("sort");
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits
@@ -445,7 +460,8 @@ public class SearchManager {
 	public JobWithDocs searchDocs(String userId, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang", "sort", "usecontent");
+				"pattlang", "filter", "filterlang", "sort", "usecontent",
+				"maxretrieve", "maxcount");
 		String sort = parBasic.get("sort");
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits
@@ -464,7 +480,8 @@ public class SearchManager {
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
-				"wordsaroundhit", "usecontent");
+				"wordsaroundhit", "usecontent",
+				"maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobHitsWindow");
 		return (JobHitsWindow) search(userId, parBasic);
 	}
@@ -473,7 +490,8 @@ public class SearchManager {
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
-				"wordsaroundhit", "usecontent");
+				"wordsaroundhit", "usecontent",
+				"maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobDocsWindow");
 		return (JobDocsWindow) search(userId, parBasic);
 	}
@@ -481,7 +499,8 @@ public class SearchManager {
 	public JobHitsTotal searchHitsTotal(String userId, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang");
+				"pattlang", "filter", "filterlang",
+				"maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobHitsTotal");
 		return (JobHitsTotal) search(userId, parBasic);
 	}
@@ -489,7 +508,8 @@ public class SearchManager {
 	public JobDocsTotal searchDocsTotal(String userId, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang");
+				"pattlang", "filter", "filterlang",
+				"maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobDocsTotal");
 		return (JobDocsTotal) search(userId, parBasic);
 	}
@@ -497,7 +517,8 @@ public class SearchManager {
 	public JobHitsGrouped searchHitsGrouped(String userId, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang", "group", "sort");
+				"pattlang", "filter", "filterlang", "group", "sort",
+				"maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobHitsGrouped");
 		return (JobHitsGrouped) search(userId, parBasic);
 	}
@@ -505,7 +526,8 @@ public class SearchManager {
 	public JobDocsGrouped searchDocsGrouped(String userId, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang", "group", "sort");
+				"pattlang", "filter", "filterlang", "group", "sort",
+				"maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobDocsGrouped");
 		return (JobDocsGrouped) search(userId, parBasic);
 	}
@@ -851,6 +873,20 @@ public class SearchManager {
 				* 1000 / checkAgainAdviceDivider);
 
 		return checkAgainAdvice;
+	}
+
+	/** Get maximum allowed value for maxretrieve parameter.
+	 *  @param the maximum value, or -1 for no limit
+	 */
+	public int getMaxHitsToRetrieveAllowed() {
+		return maxHitsToRetrieveAllowed;
+	}
+
+	/** Get maximum allowed value for maxcount parameter.
+	 *  @param the maximum value, or -1 for no limit
+	 */
+	public int getMaxHitsToCountAllowed() {
+		return maxHitsToCountAllowed;
 	}
 
 }
