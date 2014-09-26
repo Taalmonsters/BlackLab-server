@@ -85,6 +85,9 @@ public class SearchManager {
 
 	/** Default number of hits/results per page [20] */
 	private int defaultPageSize;
+	
+	/** Maximum value allowed for number parameter */
+	private int maxPageSize;
 
 	private Map<String, IndexParam> indexParam;
 
@@ -166,6 +169,7 @@ public class SearchManager {
 			defaultOutputType = ServletUtil.getOutputTypeFromString(
 					reqProp.getString("defaultOutputType"), DataFormat.XML);
 		defaultPageSize = JsonUtil.getIntProp(reqProp, "defaultPageSize", 20);
+		maxPageSize = JsonUtil.getIntProp(reqProp, "maxPageSize", 1000);
 		defaultPatternLanguage = JsonUtil.getProperty(reqProp,
 				"defaultPatternLanguage", "corpusql");
 		defaultFilterLanguage = JsonUtil.getProperty(reqProp,
@@ -243,7 +247,8 @@ public class SearchManager {
 				"pattfield", "filter", "filterlang", "sort", "group",
 				"viewgroup", "collator", "first", "number", "wordsaroundhit",
 				"hitstart", "hitend", "facets", "waitfortotal", "includetokencount",
-				"usecontent", "wordstart", "wordend", "calc", "maxretrieve", "maxcount");
+				"usecontent", "wordstart", "wordend", "calc", "maxretrieve", "maxcount",
+				"property", "sensitive");
 
 		// Set up the parameter default values
 		defaultParameterValues = new HashMap<String, String>();
@@ -266,6 +271,8 @@ public class SearchManager {
 		defaultParameterValues.put("calc", "");
 		defaultParameterValues.put("maxretrieve", "" + Hits.getDefaultMaxHitsToRetrieve());
 		defaultParameterValues.put("maxcount", "" + Hits.getDefaultMaxHitsToCount());
+		defaultParameterValues.put("sensitive", "no");
+		defaultParameterValues.put("property", "word");
 
 		// Start with empty cache
 		cache = new SearchCache(cacheProp);
@@ -876,17 +883,25 @@ public class SearchManager {
 	}
 
 	/** Get maximum allowed value for maxretrieve parameter.
-	 *  @param the maximum value, or -1 for no limit
+	 * @return the maximum, or -1 if there's no limit 
 	 */
 	public int getMaxHitsToRetrieveAllowed() {
 		return maxHitsToRetrieveAllowed;
 	}
 
 	/** Get maximum allowed value for maxcount parameter.
-	 *  @param the maximum value, or -1 for no limit
+	 * @return the maximum, or -1 if there's no limit 
 	 */
 	public int getMaxHitsToCountAllowed() {
 		return maxHitsToCountAllowed;
+	}
+
+	public int getMaxPageSize() {
+		return maxPageSize;
+	}
+
+	public int getDefaultPageSize() {
+		return defaultPageSize;
 	}
 
 }

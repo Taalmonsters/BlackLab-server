@@ -102,7 +102,11 @@ public class RequestHandlerDocs extends RequestHandler {
 				docsSorted = group.getResults();
 
 			int first = searchParam.getInteger("first");
+			if (first < 0)
+				first = 0;
 			int number = searchParam.getInteger("number");
+			if (number < 0 || number > searchMan.getMaxPageSize())
+				number = searchMan.getDefaultPageSize();
 			window = docsSorted.window(first, number);
 
 		} else {

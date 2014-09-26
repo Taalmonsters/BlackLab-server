@@ -9,7 +9,6 @@ import nl.inl.blacklab.search.TermFrequency;
 import nl.inl.blacklab.search.TermFrequencyList;
 import nl.inl.blacklab.search.indexstructure.ComplexFieldDesc;
 import nl.inl.blacklab.search.indexstructure.IndexStructure;
-import nl.inl.blacklab.search.indexstructure.PropertyDesc;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
@@ -39,9 +38,10 @@ public class RequestHandlerTermFreq extends RequestHandler {
 		Searcher searcher = this.searchMan.getSearcher(indexName);
 		IndexStructure struct = searcher.getIndexStructure();
 		ComplexFieldDesc cfd = struct.getMainContentsField();
-		PropertyDesc mainProperty = cfd.getMainProperty();
+		String propName = searchParam.getString("property");
+		boolean sensitive = searchParam.getBoolean("sensitive");
 		Query q = SearchManager.parseFilter(searcher.getAnalyzer(), searchParam.getString("filter"), searchParam.getString("filterlang"));
-		Map<String, Integer> freq = searcher.termFrequencies(q, cfd.getName(), mainProperty.getName(), "s");
+		Map<String, Integer> freq = searcher.termFrequencies(q, cfd.getName(), propName, sensitive ? "s" : "i");
 		
 		TermFrequencyList tfl = new TermFrequencyList(freq.size());
 		for (Map.Entry<String, Integer> e: freq.entrySet()) {
@@ -49,8 +49,17 @@ public class RequestHandlerTermFreq extends RequestHandler {
 		}
 		tfl.sort();
 		
+		int first = searchParam.getInteger("first");
+		if (first < 0 || first >= tfl.size())
+			first = 0;
+		int number = searchParam.getInteger("number");
+		if (number < 0 || number > searchMan.getMaxPageSize())
+			number = searchMan.getDefaultPageSize();
+		int last = first + number;
+		if (last > tfl.size())
+			last = tfl.size();
 		DataObjectMapAttribute termFreq = new DataObjectMapAttribute("term", "text");
-		for (TermFrequency tf: tfl) {
+		for (TermFrequency tf: tfl.subList(first, last)) {
 			termFreq.put(tf.term, tf.frequency);
 		}
 

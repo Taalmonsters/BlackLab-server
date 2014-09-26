@@ -52,7 +52,11 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 		// TODO paging..?
 		doGroups = new DataObjectList("docgroup");
 		int first = searchParam.getInteger("first");
+		if (first < 0)
+			first = 0;
 		int number = searchParam.getInteger("number");
+		if (number < 0 || number > searchMan.getMaxPageSize())
+			number = searchMan.getDefaultPageSize();
 		int i = 0;
 		for (DocGroup group: groups) {
 			if (i >= first && i < first + number) {
