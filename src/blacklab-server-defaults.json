@@ -19,23 +19,46 @@
 	// ---------------------------------------------------------------
 	// (missing indices will be skipped)
 	
+	// A list of single indices, where they can be found,
+	// and whether or not full document content may be retrieved
+	// by users. 
 	"indices": {
-		"brown": {
-			"dir": "D:/dev/blacklab/brown/index",
-			"mayViewContent": true
-		},
-
-		"opensonar": {
-			"dir": "D:/dev/blacklab/opensonar/index",
-			"mayViewContent": true
-		},
-
-		"gysseling": {
-			"dir": "D:/dev/blacklab/gysseling/index",
-			"mayViewContent": true
-		},
+	
+//      e.g.:
+//		"brown": {
+//			"dir": "/data/blacklab/brown/index",
+//			"mayViewContent": true
+//		},
+//
+//		"opensonar": {
+//			"dir": "/data/blacklab/opensonar/index",
+//			"mayViewContent": true
+//		},
+//
+//		"gysseling": {
+//			"dir": "/data/blacklab/gysseling/index",
+//			"mayViewContent": true
+//		}
 	},
+	
+	// Index collections are multiple indices under a single directory.
+	// BLS will detect when an index is added and make it available to
+	// query. It will also detect if it is removed.
+	// NOTE: if multiple accessible collections contain indices with the 
+	// same name, one of them is picked at random (i.e. don't do this).  
+	"indexCollections": [
+	
+//      e.g.:
+//		"/data1/blacklab/public-indices/",
+//		"/data2/blacklab/public-indices/"
 
+	],
+
+	// Subdirectories of this directory will be used as user's personal
+	// index collections. So a subdirectory "jan" will contain indices 
+	// that belong to user jan. Indices in these collections are only
+	// available when that user is logged in.
+	"userCollectionsDir": "/data/blacklab/user-indices/",
 
 	// Configuration that affects how requests are handled
 	// ---------------------------------------------------------------

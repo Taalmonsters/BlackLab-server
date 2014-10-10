@@ -1,6 +1,8 @@
 package nl.inl.blacklab.server.search;
 
 import java.io.File;
+import java.io.FileFilter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -40,6 +42,14 @@ import org.apache.lucene.util.Version;
 
 public class SearchManager {
 	private static final Logger logger = Logger.getLogger(SearchManager.class);
+
+	/** A file filter that returns readable directories only; used for scanning collections dirs */
+	private static FileFilter readableDirFilter = new FileFilter() {
+		@Override
+		public boolean accept(File f) {
+			return f.isDirectory() && f.canRead();
+		}
+	};
 
 	/**
 	 * When the SearchManager was created. Used in logging to show ms since
@@ -89,7 +99,11 @@ public class SearchManager {
 	/** Maximum value allowed for number parameter */
 	private int maxPageSize;
 
+	/** Our current set of indices (with dir and mayViewContent setting) */
 	private Map<String, IndexParam> indexParam;
+	
+	/** Configured index collections directories */
+	private List<File> collectionsDirs;
 
 	/** The Searcher objects, one for each of the indices we can search. */
 	private Map<String, Searcher> searchers = new HashMap<String, Searcher>();
@@ -154,93 +168,132 @@ public class SearchManager {
 		logger.debug("SearchManager created");
 
 		// this.properties = properties;
-		JSONArray jsonDebugModeIps = properties.getJSONArray("debugModeIps");
-		debugModeIps = new HashSet<String>();
-		for (int i = 0; i < jsonDebugModeIps.length(); i++) {
-			debugModeIps.add(jsonDebugModeIps.getString(i));
+		if (properties.has("debugModeIps")) {
+			JSONArray jsonDebugModeIps = properties.getJSONArray("debugModeIps");
+			debugModeIps = new HashSet<String>();
+			for (int i = 0; i < jsonDebugModeIps.length(); i++) {
+				debugModeIps.add(jsonDebugModeIps.getString(i));
+			}
 		}
 
 		// Request properties
-		JSONObject reqProp = properties.getJSONObject("requests");
-		defaultOutputType = DataFormat.XML; // XML if nothing specified (because
-											// of browser's default Accept
-											// header)
-		if (reqProp.has("defaultOutputType"))
-			defaultOutputType = ServletUtil.getOutputTypeFromString(
-					reqProp.getString("defaultOutputType"), DataFormat.XML);
-		defaultPageSize = JsonUtil.getIntProp(reqProp, "defaultPageSize", 20);
-		maxPageSize = JsonUtil.getIntProp(reqProp, "maxPageSize", 1000);
-		defaultPatternLanguage = JsonUtil.getProperty(reqProp,
-				"defaultPatternLanguage", "corpusql");
-		defaultFilterLanguage = JsonUtil.getProperty(reqProp,
-				"defaultFilterLanguage", "luceneql");
-		defaultBlockingMode = JsonUtil.getBooleanProp(reqProp,
-				"defaultBlockingMode", true);
-		defaultContextSize = JsonUtil.getIntProp(reqProp, "defaultContextSize",
-				5);
-		maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
-		maxSnippetSize = JsonUtil.getIntProp(reqProp, "maxSnippetSize", 100);
-		maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
-		Hits.setDefaultMaxHitsToRetrieve(JsonUtil.getIntProp(reqProp, "defaultMaxHitsToRetrieve", Hits.getDefaultMaxHitsToRetrieve()));
-		Hits.setDefaultMaxHitsToCount(JsonUtil.getIntProp(reqProp, "defaultMaxHitsToCount", Hits.getDefaultMaxHitsToCount()));
-		maxHitsToRetrieveAllowed = JsonUtil.getIntProp(reqProp, "maxHitsToRetrieveAllowed", 10000000);
-		maxHitsToCountAllowed = JsonUtil.getIntProp(reqProp, "maxHitsToCountAllowed", -1);
-		JSONArray jsonOverrideUserIdIps = reqProp
-				.getJSONArray("overrideUserIdIps");
-		overrideUserIdIps = new HashSet<String>();
-		for (int i = 0; i < jsonOverrideUserIdIps.length(); i++) {
-			overrideUserIdIps.add(jsonOverrideUserIdIps.getString(i));
+		if (properties.has("requests")) {
+			JSONObject reqProp = properties.getJSONObject("requests");
+			defaultOutputType = DataFormat.XML; // XML if nothing specified (because
+												// of browser's default Accept
+												// header)
+			if (reqProp.has("defaultOutputType"))
+				defaultOutputType = ServletUtil.getOutputTypeFromString(
+						reqProp.getString("defaultOutputType"), DataFormat.XML);
+			defaultPageSize = JsonUtil.getIntProp(reqProp, "defaultPageSize", 20);
+			maxPageSize = JsonUtil.getIntProp(reqProp, "maxPageSize", 1000);
+			defaultPatternLanguage = JsonUtil.getProperty(reqProp,
+					"defaultPatternLanguage", "corpusql");
+			defaultFilterLanguage = JsonUtil.getProperty(reqProp,
+					"defaultFilterLanguage", "luceneql");
+			defaultBlockingMode = JsonUtil.getBooleanProp(reqProp,
+					"defaultBlockingMode", true);
+			defaultContextSize = JsonUtil.getIntProp(reqProp, "defaultContextSize",
+					5);
+			maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
+			maxSnippetSize = JsonUtil.getIntProp(reqProp, "maxSnippetSize", 100);
+			maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
+			Hits.setDefaultMaxHitsToRetrieve(JsonUtil.getIntProp(reqProp, "defaultMaxHitsToRetrieve", Hits.getDefaultMaxHitsToRetrieve()));
+			Hits.setDefaultMaxHitsToCount(JsonUtil.getIntProp(reqProp, "defaultMaxHitsToCount", Hits.getDefaultMaxHitsToCount()));
+			maxHitsToRetrieveAllowed = JsonUtil.getIntProp(reqProp, "maxHitsToRetrieveAllowed", 10000000);
+			maxHitsToCountAllowed = JsonUtil.getIntProp(reqProp, "maxHitsToCountAllowed", -1);
+			JSONArray jsonOverrideUserIdIps = reqProp
+					.getJSONArray("overrideUserIdIps");
+			overrideUserIdIps = new HashSet<String>();
+			for (int i = 0; i < jsonOverrideUserIdIps.length(); i++) {
+				overrideUserIdIps.add(jsonOverrideUserIdIps.getString(i));
+			}
 		}
 
 		// Performance properties
-		JSONObject perfProp = properties.getJSONObject("performance");
-		minFreeMemForSearchMegs = JsonUtil.getIntProp(perfProp,
-				"minFreeMemForSearchMegs", 50);
-		maxRunningJobsPerUser = JsonUtil.getIntProp(perfProp,
-				"maxRunningJobsPerUser", 20);
-		checkAgainAdviceMinimumMs = JsonUtil.getIntProp(perfProp,
-				"checkAgainAdviceMinimumMs", 200);
-		checkAgainAdviceDivider = JsonUtil.getIntProp(perfProp,
-				"checkAgainAdviceDivider", 5);
-		waitTimeInNonblockingModeMs = JsonUtil.getIntProp(perfProp,
-				"waitTimeInNonblockingModeMs", 100);
-		clientCacheTimeSec = JsonUtil.getIntProp(perfProp,
-				"clientCacheTimeSec", 3600);
-
-		// Cache properties
-		JSONObject cacheProp = perfProp.getJSONObject("cache");
+		if (properties.has("performance")) {
+			JSONObject perfProp = properties.getJSONObject("performance");
+			minFreeMemForSearchMegs = JsonUtil.getIntProp(perfProp,
+					"minFreeMemForSearchMegs", 50);
+			maxRunningJobsPerUser = JsonUtil.getIntProp(perfProp,
+					"maxRunningJobsPerUser", 20);
+			checkAgainAdviceMinimumMs = JsonUtil.getIntProp(perfProp,
+					"checkAgainAdviceMinimumMs", 200);
+			checkAgainAdviceDivider = JsonUtil.getIntProp(perfProp,
+					"checkAgainAdviceDivider", 5);
+			waitTimeInNonblockingModeMs = JsonUtil.getIntProp(perfProp,
+					"waitTimeInNonblockingModeMs", 100);
+			clientCacheTimeSec = JsonUtil.getIntProp(perfProp,
+					"clientCacheTimeSec", 3600);
+			
+			// Cache properties
+			JSONObject cacheProp = perfProp.getJSONObject("cache");
+			
+			// Start with empty cache
+			cache = new SearchCache(cacheProp);
+		}
 
 		// Find the indices
 		indexParam = new HashMap<String, IndexParam>();
-		JSONObject indicesMap = properties.getJSONObject("indices");
-		Iterator<?> it = indicesMap.keys();
-		while (it.hasNext()) {
-			String indexName = (String) it.next();
-			JSONObject indexConfig = indicesMap.getJSONObject(indexName);
-
-			File dir = JsonUtil.getFileProp(indexConfig, "dir", null);
-			if (dir == null || !dir.exists()) {
-				logger.error("Index directory for index '" + indexName
-						+ "' does not exist: " + dir);
-				continue;
+		boolean indicesFound = false;
+		if (properties.has("indices")) {
+			JSONObject indicesMap = properties.getJSONObject("indices");
+			Iterator<?> it = indicesMap.keys();
+			while (it.hasNext()) {
+				String indexName = (String) it.next();
+				JSONObject indexConfig = indicesMap.getJSONObject(indexName);
+	
+				File dir = JsonUtil.getFileProp(indexConfig, "dir", null);
+				if (dir == null || !dir.canRead()) {
+					logger.error("Index directory for index '" + indexName
+							+ "' does not exist or cannot be read: " + dir);
+					continue;
+				}
+	
+				String pid = JsonUtil.getProperty(indexConfig, "pid", "");
+				if (pid.length() == 0) {
+					// NOTE: pid may be specified in index metadata, don't warn
+					// here.
+					// logger.warn("No pid given for index '" + indexName +
+					// "'; using Lucene doc ids.");
+				}
+	
+				boolean mayViewContent = JsonUtil.getBooleanProp(indexConfig,
+						"mayViewContent", false);
+	
+				indexParam.put(indexName, new IndexParam(dir, pid, mayViewContent));
+				indicesFound = true;
 			}
-
-			String pid = JsonUtil.getProperty(indexConfig, "pid", "");
-			if (pid.length() == 0) {
-				// NOTE: pid may be specified in index metadata, don't warn
-				// here.
-				// logger.warn("No pid given for index '" + indexName +
-				// "'; using Lucene doc ids.");
-			}
-
-			boolean mayViewContent = JsonUtil.getBooleanProp(indexConfig,
-					"mayViewContent", false);
-
-			indexParam.put(indexName, new IndexParam(dir, pid, mayViewContent));
 		}
-		if (indexParam.size() == 0)
+		
+		// Collections
+		collectionsDirs = new ArrayList<File>();
+		if (properties.has("indexCollections")) {
+			JSONArray indexCollectionsList = properties.getJSONArray("indexCollections");
+			for (int i = 0; i < indexCollectionsList.length(); i++) {
+				String strIndexCollection = indexCollectionsList.getString(i);
+				File indexCollection = new File(strIndexCollection);
+				if (indexCollection.canRead()) {
+					indicesFound = true; // even if it contains none now, it could in the future
+					collectionsDirs.add(indexCollection);
+				} else {
+					logger.warn("Configured collection not found or not readable: " + indexCollection);
+				}
+			}
+		}
+		
+//		// User collections dir
+//		if (properties.has("userCollectionsDir")) {
+//			userCollectionsDir = new File(properties.getString("userCollectionsDir"));
+//			if (!userCollectionsDir.canRead()) {
+//				logger.error("Configured user collections dir not found or not readable: " + userCollectionsDir);
+//				userCollectionsDir = null;
+//			}
+//		}
+		
+		if (!indicesFound)
 			throw new RuntimeException(
-					"Configuration error: no indices available. Put blacklab-server.json on classpath (i.e. Tomcat shared or lib dir) with at least: { \"indices\": { \"myindex\": { \"dir\": \"/path/to/my/index\" } } } ");
+					"Configuration error: no indices or collections available. Put blacklab-server.json on classpath (i.e. Tomcat shared or lib dir) with at least: { \"indices\": { \"myindex\": { \"dir\": \"/path/to/my/index\" } } } ");
 
 		// Keep a list of searchparameters.
 		searchParameterNames = Arrays.asList("resultsType", "patt", "pattlang",
@@ -273,13 +326,96 @@ public class SearchManager {
 		defaultParameterValues.put("maxcount", "" + Hits.getDefaultMaxHitsToCount());
 		defaultParameterValues.put("sensitive", "no");
 		defaultParameterValues.put("property", "word");
-
-		// Start with empty cache
-		cache = new SearchCache(cacheProp);
 	}
+
+//	/**
+//	 * Return the current user's collection dir.
+//	 * 
+//	 * @return the user's collection dir, or null if none
+//	 */
+//	private File getUserCollectionDir() {
+//		if (userCollectionsDir == null)
+//			return null;
+//		String userId = getCurrentUserId();
+//		File dir = new File(userCollectionsDir, userId);
+//		if (!dir.canRead())
+//			return null;
+//		return dir;
+//	}
 
 	public List<String> getSearchParameterNames() {
 		return searchParameterNames;
+	}
+	
+	/**
+	 * Find an index, given its name.
+	 * 
+	 * Looks at explicitly configured indices as well as collections.
+	 * 
+	 * @param name the index name
+	 * @return the index dir and mayViewContents setting
+	 */
+	private IndexParam getIndexParam(String name) {
+		// Already in the cache?
+		if (indexParam.containsKey(name)) {
+			IndexParam p = indexParam.get(name);
+			
+			// Check if it's still there.
+			if (p.getDir().canRead())
+				return p;
+			
+			// Directory isn't accessible any more; remove from cache
+			indexParam.remove(name);
+		}
+		
+		// Find it in a collection
+		for (File collection: collectionsDirs) {
+			IndexParam p = findIndexInCollection(name, collection);
+			if (p != null)
+				return p;
+		}
+		
+//		// Find it in the current user's collection
+//		File userDir = getUserCollectionDir();
+//		if (userDir != null) {
+//			IndexParam p = findIndexInCollection(name, userDir);
+//			if (p != null)
+//				return p;
+//		}
+		
+		return null;
+	}
+
+	/**
+	 * If a user is logged in, return the user id.
+	 * 
+	 * Right now this always returns null.
+	 * 
+	 * @return the user id, or null if no logged in user
+	 */
+	private String getCurrentUserId() {
+		return null;
+	}
+
+	/**
+	 * Search a collection for an index name.
+	 * 
+	 * Adds index parameters to the cache if found.
+	 * 
+	 * @param name name of the index
+	 * @param collection the collection dir
+	 * @return the index parameters if found.
+	 */
+	private IndexParam findIndexInCollection(String name, File collection) {
+		// Look for the index in this collection dir
+		File dir = new File(collection, name);
+		if (dir.canRead()) {
+			// Found it. Add to the cache and return
+			IndexParam p = new IndexParam(dir, "", false);
+			indexParam.put(name, p);
+			return p;
+		}
+		return null;
 	}
 
 	/**
@@ -294,12 +430,18 @@ public class SearchManager {
 	public synchronized Searcher getSearcher(String indexName)
 			throws IndexOpenException {
 		if (searchers.containsKey(indexName)) {
-			return searchers.get(indexName);
+			Searcher searcher = searchers.get(indexName);
+			if (searcher.getIndexDirectory().canRead())
+				return searcher;
+			// Index was (re)moved; remove Searcher from cache.
+			searchers.remove(indexName);
+			// Maybe we can find an index with this name elsewhere?
 		}
-		File indexDir = getIndexDir(indexName);
-		if (indexDir == null) {
+		IndexParam par = getIndexParam(indexName);
+		if (par == null) {
 			throw new IndexOpenException("Index " + indexName + " not found");
 		}
+		File indexDir = par.getDir();
 		Searcher searcher;
 		try {
 			logger.debug("Opening index '" + indexName + "', dir = " + indexDir);
@@ -315,15 +457,11 @@ public class SearchManager {
 		String indexPid = searcher.getIndexStructure().pidField();
 		if (indexPid == null)
 			indexPid = "";
-		String configPid = getIndexPidField(indexName);
+		String configPid = par.getPidField();
 		if (indexPid.length() > 0 && !configPid.equals(indexPid)) {
 			if (configPid.length() > 0) {
 				logger.error("Different pid field configured in blacklab-server.json than in index metadata! ("
 						+ configPid + "/" + indexPid + ")");
-			}
-			IndexParam par = indexParam.get(indexName);
-			if (par == null) {
-				throw new IndexOpenException("Index '" + indexName + "' has no IndexParam!");
 			}
 			// Update index parameters with the pid field found in the metadata
 			par.setPidField(indexPid);
@@ -333,35 +471,6 @@ public class SearchManager {
 		}
 		
 		return searcher;
-	}
-
-	/**
-	 * Get the index directory based on index name
-	 *
-	 * @param indexName
-	 *            short name of the index
-	 * @return the index directory, or null if not found
-	 */
-	private File getIndexDir(String indexName) {
-		IndexParam p = indexParam.get(indexName);
-		if (p == null)
-			return null;
-		return p.getDir();
-	}
-
-	/**
-	 * Get the persistent identifier field for an index.
-	 *
-	 * @param indexName
-	 *            the index
-	 * @return the persistent identifier field, or empty if none (use Lucene doc
-	 *         id)
-	 */
-	public String getIndexPidField(String indexName) {
-		IndexParam p = indexParam.get(indexName);
-		if (p == null)
-			return null;
-		return p.getPidField();
 	}
 
 	/**
@@ -378,7 +487,7 @@ public class SearchManager {
 	 */
 	public String getDocumentPid(String indexName, int luceneDocId,
 			Document document) {
-		String pidField = getIndexPidField(indexName);
+		String pidField = getIndexParam(indexName).getPidField();
 		if (pidField.length() == 0)
 			return "" + luceneDocId;
 		return document.get(pidField);
@@ -396,7 +505,7 @@ public class SearchManager {
 	 */
 	public int getLuceneDocIdFromPid(String indexName, String pid)
 			throws IndexOpenException {
-		String pidField = getIndexPidField(indexName);
+		String pidField = getIndexParam(indexName).getPidField();
 		Searcher searcher = getSearcher(indexName);
 		if (pidField.length() == 0) {
 			int luceneDocId;
@@ -442,7 +551,42 @@ public class SearchManager {
 	 * @return the list of index names
 	 */
 	public Collection<String> getAvailableIndices() {
+		
+		// Scan collections for any new indices
+		for (File dir: collectionsDirs) {
+			addNewIndicesInCollection(dir);
+		}
+//		File userDir = getUserCollectionDir();
+//		if (userDir != null)
+//			addNewIndicesInCollection(userDir);
+		
+		// Remove indices that are no longer available 
+		List<String> remove = new ArrayList<String>();
+		for (Map.Entry<String, IndexParam> e: indexParam.entrySet()) {
+			if (!e.getValue().getDir().canRead()) {
+				remove.add(e.getKey());
+			}
+		}
+		for (String name: remove) {
+			indexParam.remove(name);
+		}
+		
 		return indexParam.keySet();
+	}
+
+	/**
+	 * Scan a collection dir and add any new indices to our cache.
+	 * 
+	 * @param collectionDir the collection directory
+	 */
+	private void addNewIndicesInCollection(File collectionDir) {
+		for (File f: collectionDir.listFiles(readableDirFilter)) {
+			if (!indexParam.containsKey(f.getName())) {
+				// New one; add it
+				IndexParam p = new IndexParam(f, "", false);
+				indexParam.put(f.getName(), p);
+			}
+		}
 	}
 
 	public JobWithHits searchHits(String userId, SearchParameters par)
