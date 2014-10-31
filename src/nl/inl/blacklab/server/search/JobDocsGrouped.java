@@ -15,15 +15,15 @@ public class JobDocsGrouped extends Job {
 
 	private DocResults docResults;
 
-	public JobDocsGrouped(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
-		super(searchMan, userId, par);
+	public JobDocsGrouped(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+		super(searchMan, user, par);
 	}
 
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking docs search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
-		JobWithDocs docsSearch = searchMan.searchDocs(userId, parNoGroup);
+		JobWithDocs docsSearch = searchMan.searchDocs(user, parNoGroup);
 		waitForJobToFinish(docsSearch);
 
 		// Now, group the docs.

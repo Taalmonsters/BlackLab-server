@@ -17,6 +17,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.QueryException;
+import nl.inl.blacklab.server.search.SearchManager;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
@@ -40,14 +41,14 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 			throw new QueryException("NO_DOC_ID", "Specify document pid.");
 		debug(logger, "REQ doc contents: " + indexName + "-" + docId);
 
-		int luceneDocId = searchMan.getLuceneDocIdFromPid(indexName, docId);
+		Searcher searcher = getSearcher();
+		int luceneDocId = SearchManager.getLuceneDocIdFromPid(searcher, docId);
 		if (luceneDocId < 0)
 			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
-		Document document = searchMan.getSearcher(indexName).document(luceneDocId);
+		Document document = searcher.document(luceneDocId);
 		if (document == null)
 			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 
-		Searcher searcher = searchMan.getSearcher(indexName);
 		
 		Hit hit;
 		int wordsAroundHit;

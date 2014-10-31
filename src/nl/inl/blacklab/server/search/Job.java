@@ -65,36 +65,36 @@ public abstract class Job implements Comparable<Job> {
 	 * and call the perform() method to start the search.
 	 *
 	 * @param searchMan the servlet
-	 * @param userId user creating the job
+	 * @param user user creating the job
 	 * @param par search parameters
 	 * @return the new Search object
 	 * @throws IndexOpenException
 	 * @throws QueryException
 	 */
-	public static Job create(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException, QueryException {
+	public static Job create(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException, QueryException {
 		Job search = null;
 		String jobClass = par.getString("jobclass");
 		// TODO: use a map of String -> Class<? extends Job>
 		if (jobClass.equals("JobHits")) {
-			search = new JobHits(searchMan, userId, par);
+			search = new JobHits(searchMan, user, par);
 		} else if (jobClass.equals("JobDocs")) {
-			search = new JobDocs(searchMan, userId, par);
+			search = new JobDocs(searchMan, user, par);
 		} else if (jobClass.equals("JobHitsSorted")) {
-			search = new JobHitsSorted(searchMan, userId, par);
+			search = new JobHitsSorted(searchMan, user, par);
 		} else if (jobClass.equals("JobDocsSorted")) {
-			search = new JobDocsSorted(searchMan, userId, par);
+			search = new JobDocsSorted(searchMan, user, par);
 		} else if (jobClass.equals("JobHitsWindow")) {
-			search = new JobHitsWindow(searchMan, userId, par);
+			search = new JobHitsWindow(searchMan, user, par);
 		} else if (jobClass.equals("JobDocsWindow")) {
-			search = new JobDocsWindow(searchMan, userId, par);
+			search = new JobDocsWindow(searchMan, user, par);
 		} else if (jobClass.equals("JobHitsTotal")) {
-			search = new JobHitsTotal(searchMan, userId, par);
+			search = new JobHitsTotal(searchMan, user, par);
 		} else if (jobClass.equals("JobDocsTotal")) {
-			search = new JobDocsTotal(searchMan, userId, par);
+			search = new JobDocsTotal(searchMan, user, par);
 		} else if (jobClass.equals("JobHitsGrouped")) {
-			search = new JobHitsGrouped(searchMan, userId, par);
+			search = new JobHitsGrouped(searchMan, user, par);
 		} else if (jobClass.equals("JobDocsGrouped")) {
-			search = new JobDocsGrouped(searchMan, userId, par);
+			search = new JobDocsGrouped(searchMan, user, par);
 		} else
 			throw new QueryException("INTERNAL_ERROR", "An internal error occurred. Please contact the administrator. Error code: 1.");
 
@@ -126,14 +126,14 @@ public abstract class Job implements Comparable<Job> {
 	protected SearchManager searchMan;
 
 	/** Who created this job? */
-	protected String userId;
+	protected User user;
 
-	public Job(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
+	public Job(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
 		super();
 		this.searchMan = searchMan;
-		this.userId = userId;
+		this.user = user;
 		this.par = par;
-		searcher = searchMan.getSearcher(par.getString("indexname"));
+		searcher = searchMan.getSearcher(par.getString("indexname"), user);
 		resetLastAccessed();
 		startedAt = -1;
 		finishedAt = -1;
@@ -372,7 +372,7 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	private String shortUserId() {
-		return userId.substring(0, 6);
+		return user.uniqueIdShort();
 	}
 
 	public void debug(Logger logger, String msg) {

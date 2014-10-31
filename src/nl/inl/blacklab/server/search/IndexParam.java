@@ -10,11 +10,25 @@ class IndexParam {
 
 	private boolean mayViewContents;
 
+	private boolean mayViewContentsSet;
+
 	public IndexParam(File dir, String pidField, boolean mayViewContents) {
 		super();
 		this.dir = dir;
 		this.pidField = pidField;
 		this.mayViewContents = mayViewContents;
+		mayViewContentsSet = true;
+	}
+
+	public IndexParam(File dir, String pidField) {
+		super();
+		this.dir = dir;
+		this.pidField = pidField;
+		mayViewContentsSet = false;
+	}
+
+	public IndexParam(File dir) {
+		this(dir, "");
 	}
 
 	public File getDir() {
@@ -29,8 +43,17 @@ class IndexParam {
 		return mayViewContents;
 	}
 
+	public boolean mayViewContentsSpecified() {
+		return mayViewContentsSet;
+	}
+
 	public void setPidField(String pidField) {
 		this.pidField = pidField;
+	}
+
+	public void setMayViewContent(boolean b) {
+		mayViewContents = false;
+		mayViewContentsSet = true;
 	}
 
 }

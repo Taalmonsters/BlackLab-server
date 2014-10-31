@@ -18,14 +18,14 @@ public class JobHitsWindow extends Job {
 
 	private int requestedWindowSize;
 
-	public JobHitsWindow(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
-		super(searchMan, userId, par);
+	public JobHitsWindow(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+		super(searchMan, user, par);
 	}
 
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking hits search.
-		JobWithHits hitsSearch = searchMan.searchHits(userId, par);
+		JobWithHits hitsSearch = searchMan.searchHits(user, par);
 		waitForJobToFinish(hitsSearch);
 
 		// Now, create a HitsWindow on these hits.

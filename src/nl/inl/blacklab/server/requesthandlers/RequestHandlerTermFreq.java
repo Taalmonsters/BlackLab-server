@@ -32,15 +32,17 @@ public class RequestHandlerTermFreq extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
+	public DataObject handle() throws IndexOpenException, QueryException {
 		debug(logger, "REQ termFreq: " + searchParam);
+		
+		//TODO: use background job?
 
-		Searcher searcher = this.searchMan.getSearcher(indexName);
+		Searcher searcher = getSearcher();
 		IndexStructure struct = searcher.getIndexStructure();
 		ComplexFieldDesc cfd = struct.getMainContentsField();
 		String propName = searchParam.getString("property");
 		boolean sensitive = searchParam.getBoolean("sensitive");
-		Query q = SearchManager.parseFilter(searcher.getAnalyzer(), searchParam.getString("filter"), searchParam.getString("filterlang"));
+		Query q = SearchManager.parseFilter(searcher, searchParam.getString("filter"), searchParam.getString("filterlang"));
 		Map<String, Integer> freq = searcher.termFrequencies(q, cfd.getName(), propName, sensitive ? "s" : "i");
 		
 		TermFrequencyList tfl = new TermFrequencyList(freq.size());

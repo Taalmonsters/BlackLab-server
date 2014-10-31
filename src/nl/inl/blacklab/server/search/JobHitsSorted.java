@@ -9,15 +9,15 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
  */
 public class JobHitsSorted extends JobWithHits {
 
-	public JobHitsSorted(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
-		super(searchMan, userId, par);
+	public JobHitsSorted(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+		super(searchMan, user, par);
 	}
 
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking hits search.
 		SearchParameters parNoSort = par.copyWithout("sort");
-		JobWithHits hitsSearch = searchMan.searchHits(userId, parNoSort);
+		JobWithHits hitsSearch = searchMan.searchHits(user, parNoSort);
 		waitForJobToFinish(hitsSearch);
 
 		// Now, sort the hits.

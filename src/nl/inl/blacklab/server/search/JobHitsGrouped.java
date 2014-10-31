@@ -15,15 +15,15 @@ public class JobHitsGrouped extends Job {
 
 	private Hits hits;
 
-	public JobHitsGrouped(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
-		super(searchMan, userId, par);
+	public JobHitsGrouped(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+		super(searchMan, user, par);
 	}
 
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking hits search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
-		JobWithHits hitsSearch = searchMan.searchHits(userId, parNoGroup);
+		JobWithHits hitsSearch = searchMan.searchHits(user, parNoGroup);
 		waitForJobToFinish(hitsSearch);
 
 		// Now, group the hits.

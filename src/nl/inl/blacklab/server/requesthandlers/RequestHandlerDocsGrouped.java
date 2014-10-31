@@ -32,7 +32,7 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 		debug(logger, "REQ docsgrouped: " + searchParam);
 
 		// Get the window we're interested in
-		JobDocsGrouped search = searchMan.searchDocsGrouped(getUserId(), searchParam);
+		JobDocsGrouped search = searchMan.searchDocsGrouped(user, searchParam);
 		if (getBoolParameter("block")) {
 			search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 			if (!search.finished())

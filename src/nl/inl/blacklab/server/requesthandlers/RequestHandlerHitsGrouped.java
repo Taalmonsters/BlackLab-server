@@ -32,7 +32,7 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 		debug(logger, "REQ hitsgrouped: " + searchParam);
 
 		// Get the window we're interested in
-		JobHitsGrouped search = searchMan.searchHitsGrouped(getUserId(), searchParam);
+		JobHitsGrouped search = searchMan.searchHitsGrouped(user, searchParam);
 		if (getBoolParameter("block")) {
 			search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 			if (!search.finished())

@@ -36,7 +36,7 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 			throw new QueryException("NO_DOC_ID", "Specify document pid.");
 		}
 
-		Searcher searcher = searchMan.getSearcher(indexName);
+		Searcher searcher = getSearcher();
 		IndexStructure struct = searcher.getIndexStructure();
 		
 		DataObjectMapElement response = new DataObjectMapElement();

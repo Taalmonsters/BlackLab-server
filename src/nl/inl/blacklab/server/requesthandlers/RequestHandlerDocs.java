@@ -15,7 +15,6 @@ import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.Kwic;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.grouping.HitPropValue;
-import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectContextList;
@@ -68,7 +67,7 @@ public class RequestHandlerDocs extends RequestHandler {
 			// TODO: clean up, do using JobHitsGroupedViewGroup or something (also cache sorted group!)
 
 			// Yes. Group, then show hits from the specified group
-			search = searchGrouped = searchMan.searchDocsGrouped(getUserId(), searchParam);
+			search = searchGrouped = searchMan.searchDocsGrouped(user, searchParam);
 			if (block) {
 				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 				if (!search.finished())
@@ -112,7 +111,7 @@ public class RequestHandlerDocs extends RequestHandler {
 		} else {
 			// Regular set of docs (no grouping first)
 
-			search = searchWindow = searchMan.searchDocsWindow(getUserId(), searchParam);
+			search = searchWindow = searchMan.searchDocsWindow(user, searchParam);
 			if (block) {
 				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 				if (!search.finished())
@@ -121,7 +120,7 @@ public class RequestHandlerDocs extends RequestHandler {
 
 			// Also determine the total number of hits
 			// (usually nonblocking, unless "waitfortotal=yes" was passed)
-			total = searchMan.searchDocsTotal(getUserId(), searchParam);
+			total = searchMan.searchDocsTotal(user, searchParam);
 			if (searchParam.getBoolean("waitfortotal")) {
 				total.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 				if (!total.finished())
@@ -140,61 +139,69 @@ public class RequestHandlerDocs extends RequestHandler {
 		DataObjectMapAttribute doFacets = null;
 		if (parFacets != null && parFacets.length() > 0) {
 			// Now, group the docs according to the requested facets.
+			//TODO: use background job?
 			DocResults docsToFacet = window.getOriginalDocs();
 			doFacets = getFacets(docsToFacet, parFacets);
 		}
+		
+		Searcher searcher = search.getSearcher();
 		
 		boolean includeTokenCount = searchParam.getBoolean("includetokencount");
 		int totalTokens = -1;
 		if (includeTokenCount) {
 			// Determine total number of tokens in result set
-			String fieldName = searchMan.getSearcher(indexName).getIndexStructure().getMainContentsField().getName();
+			//TODO: use background job?
+			String fieldName = searcher.getIndexStructure().getMainContentsField().getName();
 			DocProperty propTokens = new DocPropertyComplexFieldLength(fieldName);
 			totalTokens = window.getOriginalDocs().intSum(propTokens);
 		}
 
 		// Search is done; construct the results object
-		Searcher searcher = search.getSearcher();
-		IndexStructure struct = searcher.getIndexStructure();
 
 		// The hits and document info
 		DataObjectList docList = new DataObjectList("doc");
 		for (DocResult result: window) {
 			// Doc info (metadata, etc.)
 			Document document = result.getDocument();
-			DataObjectMapElement docInfo = getDocumentInfo(indexName, struct, document);
+			DataObjectMapElement docInfo = getDocumentInfo(searcher, document);
 
 			// Snippets
 			Hits hits = result.getHits(5); // TODO: make num. snippets configurable
-			DataObjectList doSnippetList = new DataObjectList("snippet");
-			for (Hit hit: hits) {
-				DataObjectMapElement hitMap = new DataObjectMapElement();
-				if (searchParam.getString("usecontent").equals("orig")) {
-					// Add concordance from original XML
-					Concordance c = hits.getConcordance(hit);
-					hitMap.put("left", new DataObjectPlain(c.left()));
-					hitMap.put("match", new DataObjectPlain(c.match()));
-					hitMap.put("right", new DataObjectPlain(c.right()));
-					doSnippetList.add(hitMap);
-				} else {
-					// Add KWIC info
-					Kwic c = hits.getKwic(hit);
-					hitMap.put("left", new DataObjectContextList(c.getProperties(), c.getLeft()));
-					hitMap.put("match", new DataObjectContextList(c.getProperties(), c.getMatch()));
-					hitMap.put("right", new DataObjectContextList(c.getProperties(), c.getRight()));
-					doSnippetList.add(hitMap);
+			DataObjectList doSnippetList = null;
+			if (hits.sizeAtLeast(1)) {
+				doSnippetList = new DataObjectList("snippet");
+				for (Hit hit: hits) {
+					DataObjectMapElement hitMap = new DataObjectMapElement();
+					if (searchParam.getString("usecontent").equals("orig")) {
+						// Add concordance from original XML
+						Concordance c = hits.getConcordance(hit);
+						hitMap.put("left", new DataObjectPlain(c.left()));
+						hitMap.put("match", new DataObjectPlain(c.match()));
+						hitMap.put("right", new DataObjectPlain(c.right()));
+						doSnippetList.add(hitMap);
+					} else {
+						// Add KWIC info
+						Kwic c = hits.getKwic(hit);
+						hitMap.put("left", new DataObjectContextList(c.getProperties(), c.getLeft()));
+						hitMap.put("match", new DataObjectContextList(c.getProperties(), c.getMatch()));
+						hitMap.put("right", new DataObjectContextList(c.getProperties(), c.getRight()));
+						doSnippetList.add(hitMap);
+					}
 				}
 			}
 
 			// Find pid
-			String pid = searchMan.getDocumentPid(indexName, result.getDocId(), document);
+			String pid = getDocumentPid(searcher, result.getDocId(), document);
 
 			// Combine all
 			DataObjectMapElement docMap = new DataObjectMapElement();
 			docMap.put("docPid", pid);
-			docMap.put("numberOfHits", result.getNumberOfHits());
+			int numHits = result.getNumberOfHits();
+			if (numHits > 0)
+				docMap.put("numberOfHits", numHits);
 			docMap.put("docInfo", docInfo);
-			docMap.put("snippets", doSnippetList);
+			if (doSnippetList != null)
+				docMap.put("snippets", doSnippetList);
 
 			docList.add(docMap);
 		}

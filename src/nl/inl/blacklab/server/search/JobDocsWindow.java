@@ -17,14 +17,14 @@ public class JobDocsWindow extends Job {
 
 	private int requestedWindowSize;
 
-	public JobDocsWindow(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
-		super(searchMan, userId, par);
+	public JobDocsWindow(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+		super(searchMan, user, par);
 	}
 
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking docs search.
-		JobWithDocs docsSearch = searchMan.searchDocs(userId, par);
+		JobWithDocs docsSearch = searchMan.searchDocs(user, par);
 		waitForJobToFinish(docsSearch);
 
 		// Now, create a HitsWindow on these hits.

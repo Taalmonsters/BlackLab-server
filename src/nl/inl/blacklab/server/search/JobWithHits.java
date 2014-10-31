@@ -11,8 +11,8 @@ public class JobWithHits extends Job {
 	/** The hits found */
 	protected Hits hits;
 
-	public JobWithHits(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
-		super(searchMan, userId, par);
+	public JobWithHits(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+		super(searchMan, user, par);
 	}
 
 	public Hits getHits() {

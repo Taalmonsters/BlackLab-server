@@ -10,14 +10,14 @@ public class JobDocsTotal extends Job {
 
 	private JobWithDocs docsSearch;
 
-	public JobDocsTotal(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
-		super(searchMan, userId, par);
+	public JobDocsTotal(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+		super(searchMan, user, par);
 	}
 
 	@Override
 	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
 		// First, execute blocking docs search.
-		docsSearch = searchMan.searchDocs(userId, par);
+		docsSearch = searchMan.searchDocs(user, par);
 		waitForJobToFinish(docsSearch);
 
 		// Get the total number of docs (we ignore the return value because you can monitor progress

@@ -17,7 +17,6 @@ import nl.inl.blacklab.search.grouping.HitGroup;
 import nl.inl.blacklab.search.grouping.HitGroups;
 import nl.inl.blacklab.search.grouping.HitPropValue;
 import nl.inl.blacklab.search.grouping.HitProperty;
-import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectContextList;
@@ -71,7 +70,7 @@ public class RequestHandlerHits extends RequestHandler {
 			// TODO: clean up, do using JobHitsGroupedViewGroup or something (also cache sorted group!)
 
 			// Yes. Group, then show hits from the specified group
-			search = searchGrouped = searchMan.searchHitsGrouped(getUserId(), searchParam);
+			search = searchGrouped = searchMan.searchHitsGrouped(user, searchParam);
 			if (block) {
 				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 				if (!search.finished())
@@ -114,7 +113,7 @@ public class RequestHandlerHits extends RequestHandler {
 		} else {
 			// Regular set of hits (no grouping first)
 
-			search = searchWindow = searchMan.searchHitsWindow(getUserId(), searchParam);
+			search = searchWindow = searchMan.searchHitsWindow(user, searchParam);
 			if (block) {
 				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 				if (!search.finished())
@@ -123,7 +122,7 @@ public class RequestHandlerHits extends RequestHandler {
 
 			// Also determine the total number of hits
 			// (usually nonblocking, unless "waitfortotal=yes" was passed)
-			total = searchMan.searchHitsTotal(getUserId(), searchParam);
+			total = searchMan.searchHitsTotal(user, searchParam);
 			if (searchParam.getBoolean("waitfortotal")) {
 				total.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
 				if (!total.finished())
@@ -151,20 +150,20 @@ public class RequestHandlerHits extends RequestHandler {
 			doFacets = getFacets(perDocResults, parFacets);
 		}
 
+		Searcher searcher = search.getSearcher();
+
 		boolean includeTokenCount = searchParam.getBoolean("includetokencount");
 		int totalTokens = -1;
 		if (includeTokenCount) {
 			if (perDocResults == null)
 				perDocResults = window.getOriginalHits().perDocResults();
 			// Determine total number of tokens in result set
-			String fieldName = searchMan.getSearcher(indexName).getIndexStructure().getMainContentsField().getName();
+			String fieldName = searcher.getIndexStructure().getMainContentsField().getName();
 			DocProperty propTokens = new DocPropertyComplexFieldLength(fieldName);
 			totalTokens = perDocResults.intSum(propTokens);
 		}
 
 		// Search is done; construct the results object
-		Searcher searcher = search.getSearcher();
-		IndexStructure struct = searcher.getIndexStructure();
 
 		// The hits and document info
 		DataObjectList hitList = new DataObjectList("hit");
@@ -174,7 +173,7 @@ public class RequestHandlerHits extends RequestHandler {
 
 			// Find pid
 			Document document = searcher.document(hit.doc);
-			String pid = searchMan.getDocumentPid(indexName, hit.doc, document);
+			String pid = getDocumentPid(searcher, hit.doc, document);
 
 			// Add basic hit info
 			hitMap.put("docPid", pid);
@@ -199,7 +198,7 @@ public class RequestHandlerHits extends RequestHandler {
 
 			// Add document info if we didn't already
 			if (!docInfos.containsKey(hit.doc)) {
-				docInfos.put(pid, getDocumentInfo(indexName, struct, searcher.document(hit.doc)));
+				docInfos.put(pid, getDocumentInfo(searcher, searcher.document(hit.doc)));
 			}
 		}
 

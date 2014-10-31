@@ -15,6 +15,7 @@ import nl.inl.blacklab.perdocument.DocGroupProperty;
 import nl.inl.blacklab.perdocument.DocProperty;
 import nl.inl.blacklab.perdocument.DocPropertyMultiple;
 import nl.inl.blacklab.perdocument.DocResults;
+import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.ServletUtil;
@@ -27,6 +28,7 @@ import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.SearchParameters;
 import nl.inl.blacklab.server.search.SearchUtil;
+import nl.inl.blacklab.server.search.User;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
@@ -128,7 +130,7 @@ public abstract class RequestHandler {
 					return DataObject.errorObject("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
 				Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
 				Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, String.class, String.class, String.class);
-				servlet.getSearchManager().getSearcher(indexName); // make sure it's open
+				//servlet.getSearchManager().getSearcher(indexName); // make sure it's open
 				requestHandler = ctor.newInstance(servlet, request, indexName, urlResource, urlPathInfo);
 			} catch (NoSuchMethodException e) {
 				// (can only happen if the required constructor is not available in the RequestHandler subclass)
@@ -146,9 +148,9 @@ public abstract class RequestHandler {
 			} catch (InvocationTargetException e) {
 				logger.error("Could not create request handler", e);
 				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 6));
-			} catch (IndexOpenException e) {
+			}/* catch (IndexOpenException e) {
 				return DataObject.errorObject("CANNOT_OPEN_INDEX", "Could not open index '" + indexName + "'. Please check the name.");
-			}
+			}*/
 		}
 		if (debugMode)
 			requestHandler.setDebug(debugMode);
@@ -195,8 +197,8 @@ public abstract class RequestHandler {
 	/** The search manager, which executes and caches our searches */
 	SearchManager searchMan;
 
-	/** Our user id */
-	String userId;
+	/** User id (if logged in) and/or session id */
+	User user;
 
 	RequestHandler(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathInfo) {
 		this.servlet = servlet;
@@ -207,12 +209,15 @@ public abstract class RequestHandler {
 		this.urlResource = urlResource;
 		this.urlPathInfo = urlPathInfo;
 
-		userId = request.getSession().getId();
+		String sessionId = request.getSession().getId();
+		String userId = null;  // TODO: determine user id
 		if (searchMan.mayOverrideUserId(request.getRemoteAddr()) && request.getParameter("userid") != null) {
 			userId = request.getParameter("userid");
 			logger.debug("userid overridden: " + userId);
 		}
-
+		if (userId != null && userId.length() == 0)
+			userId = null;
+		user = new User(userId, sessionId);
 	}
 
 	private void setDebug(boolean debugMode) {
@@ -220,19 +225,19 @@ public abstract class RequestHandler {
 	}
 
 	public void debug(Logger logger, String msg) {
-		logger.debug(shortUserId() + " " + msg);
+		logger.debug(user.uniqueIdShort() + " " + msg);
 	}
 
 	public void warn(Logger logger, String msg) {
-		logger.warn(shortUserId() + " " + msg);
+		logger.warn(user.uniqueIdShort() + " " + msg);
 	}
 
 	public void info(Logger logger, String msg) {
-		logger.info(shortUserId() + " " + msg);
+		logger.info(user.uniqueIdShort() + " " + msg);
 	}
 
 	public void error(Logger logger, String msg) {
-		logger.error(shortUserId() + " " + msg);
+		logger.error(user.uniqueIdShort() + " " + msg);
 	}
 
 	/**
@@ -251,30 +256,6 @@ public abstract class RequestHandler {
 		else
 			queryString = "?" + queryString;
 		return request.getServletPath() + pathInfo + queryString;
-	}
-
-	/**
-	 * Get the user id.
-	 *
-	 * Used for logging and making sure 1 user doesn't run too many queries.
-	 *
-	 * Right now, we simply use the session id, or the value sent in a parameter.
-	 *
-	 * @return the unique user id
-	 */
-	public String getUserId() {
-		return userId;
-	}
-
-	/**
-	 * Return the start of the user id.
-	 *
-	 * Useful for logging; should be enough for unique identification.
-	 *
-	 * @return the unique session id
-	 */
-	public String shortUserId() {
-		return getUserId().substring(0, 6);
 	}
 
 	/**
@@ -337,7 +318,7 @@ public abstract class RequestHandler {
 		try {
 			return SearchUtil.strToBool(str);
 		} catch (IllegalArgumentException e) {
-			debug(logger, "Illegal integer value for parameter '" + paramName + "': " + str);
+			debug(logger, "Illegal boolean value for parameter '" + paramName + "': " + str);
 			return false;
 		}
 	}
@@ -345,13 +326,13 @@ public abstract class RequestHandler {
 	/**
 	 * Get document information (metadata, contents authorization)
 	 *
-	 * @param indexName name of the index
-	 * @param struct the index structure
+	 * @param searcher our index
 	 * @param document Lucene document
 	 * @return the document information
 	 */
-	public DataObjectMapElement getDocumentInfo(String indexName, IndexStructure struct, Document document) {
+	public DataObjectMapElement getDocumentInfo(Searcher searcher, Document document) {
 		DataObjectMapElement docInfo = new DataObjectMapElement();
+		IndexStructure struct = searcher.getIndexStructure();
 		for (String metadataFieldName: struct.getMetadataFields()) {
 			String value = document.get(metadataFieldName);
 			if (value != null)
@@ -360,7 +341,7 @@ public abstract class RequestHandler {
 		String tokenLengthField = struct.getMainContentsField().getTokenLengthField();
 		if (tokenLengthField != null)
 			docInfo.put("lengthInTokens", document.get(tokenLengthField));
-		docInfo.put("mayView", searchMan.mayViewContents(indexName, document));
+		docInfo.put("mayView", struct.contentViewable());
 		return docInfo;
 	}
 
@@ -404,6 +385,29 @@ public abstract class RequestHandler {
 			doFacets.put(facetBy.getName(), doFacet);
 		}
 		return doFacets;
+	}
+
+	protected Searcher getSearcher() throws IndexOpenException {
+		return searchMan.getSearcher(indexName, user);
+	}
+
+	/**
+	 * Get the pid for the specified document
+	 * 
+	 * @param searcher where we got this document from
+	 * @param luceneDocId
+	 *            Lucene document id
+	 * @param document
+	 *            the document object
+	 * @return the pid string (or Lucene doc id in string form if index has no
+	 *         pid field)
+	 */
+	public static String getDocumentPid(Searcher searcher, int luceneDocId,
+			Document document) {
+		String pidField = searcher.getIndexStructure().pidField(); //getIndexParam(indexName, user).getPidField();
+		if (pidField.length() == 0)
+			return "" + luceneDocId;
+		return document.get(pidField);
 	}
 
 }

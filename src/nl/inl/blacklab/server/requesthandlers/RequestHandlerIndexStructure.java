@@ -32,7 +32,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 	public DataObject handle() throws IndexOpenException {
 		debug(logger, "REQ struct: " + indexName);
 
-		Searcher searcher = searchMan.getSearcher(indexName);
+		Searcher searcher = getSearcher();
 		IndexStructure struct = searcher.getIndexStructure();
 
 		// Complex fields
@@ -88,6 +88,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		response.put("indexName", indexName);
 		response.put("displayName", struct.getDisplayName());
 		response.put("description", struct.getDescription());
+		response.put("contentsViewable", struct.contentViewable());
 		response.put("versionInfo", doVersionInfo);
 		response.put("fieldInfo", doFieldInfo);
 		

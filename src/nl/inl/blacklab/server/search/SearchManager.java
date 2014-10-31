@@ -33,7 +33,6 @@ import nl.inl.util.json.JSONObject;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.Query;
@@ -43,7 +42,10 @@ import org.apache.lucene.util.Version;
 public class SearchManager {
 	private static final Logger logger = Logger.getLogger(SearchManager.class);
 
-	/** A file filter that returns readable directories only; used for scanning collections dirs */
+	/**
+	 * A file filter that returns readable directories only; used for scanning
+	 * collections dirs
+	 */
 	private static FileFilter readableDirFilter = new FileFilter() {
 		@Override
 		public boolean accept(File f) {
@@ -95,15 +97,21 @@ public class SearchManager {
 
 	/** Default number of hits/results per page [20] */
 	private int defaultPageSize;
-	
+
 	/** Maximum value allowed for number parameter */
 	private int maxPageSize;
 
 	/** Our current set of indices (with dir and mayViewContent setting) */
 	private Map<String, IndexParam> indexParam;
-	
+
 	/** Configured index collections directories */
 	private List<File> collectionsDirs;
+
+	/**
+	 * Logged-in users will have their own private collections dir. This is the
+	 * parent of that dir.
+	 */
+	private File userCollectionsDir;
 
 	/** The Searcher objects, one for each of the indices we can search. */
 	private Map<String, Searcher> searchers = new HashMap<String, Searcher>();
@@ -144,8 +152,7 @@ public class SearchManager {
 	private DataFormat defaultOutputType;
 
 	/**
-	 * Which IPs are allowed to override the userId using a parameter (for other
-	 * IPs, the session id is the userId)
+	 * Which IPs are allowed to override the userId using a parameter.
 	 */
 	private Set<String> overrideUserIdIps;
 
@@ -169,7 +176,8 @@ public class SearchManager {
 
 		// this.properties = properties;
 		if (properties.has("debugModeIps")) {
-			JSONArray jsonDebugModeIps = properties.getJSONArray("debugModeIps");
+			JSONArray jsonDebugModeIps = properties
+					.getJSONArray("debugModeIps");
 			debugModeIps = new HashSet<String>();
 			for (int i = 0; i < jsonDebugModeIps.length(); i++) {
 				debugModeIps.add(jsonDebugModeIps.getString(i));
@@ -179,13 +187,15 @@ public class SearchManager {
 		// Request properties
 		if (properties.has("requests")) {
 			JSONObject reqProp = properties.getJSONObject("requests");
-			defaultOutputType = DataFormat.XML; // XML if nothing specified (because
+			defaultOutputType = DataFormat.XML; // XML if nothing specified
+												// (because
 												// of browser's default Accept
 												// header)
 			if (reqProp.has("defaultOutputType"))
 				defaultOutputType = ServletUtil.getOutputTypeFromString(
 						reqProp.getString("defaultOutputType"), DataFormat.XML);
-			defaultPageSize = JsonUtil.getIntProp(reqProp, "defaultPageSize", 20);
+			defaultPageSize = JsonUtil.getIntProp(reqProp, "defaultPageSize",
+					20);
 			maxPageSize = JsonUtil.getIntProp(reqProp, "maxPageSize", 1000);
 			defaultPatternLanguage = JsonUtil.getProperty(reqProp,
 					"defaultPatternLanguage", "corpusql");
@@ -193,15 +203,21 @@ public class SearchManager {
 					"defaultFilterLanguage", "luceneql");
 			defaultBlockingMode = JsonUtil.getBooleanProp(reqProp,
 					"defaultBlockingMode", true);
-			defaultContextSize = JsonUtil.getIntProp(reqProp, "defaultContextSize",
-					5);
+			defaultContextSize = JsonUtil.getIntProp(reqProp,
+					"defaultContextSize", 5);
 			maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
-			maxSnippetSize = JsonUtil.getIntProp(reqProp, "maxSnippetSize", 100);
+			maxSnippetSize = JsonUtil
+					.getIntProp(reqProp, "maxSnippetSize", 100);
 			maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
-			Hits.setDefaultMaxHitsToRetrieve(JsonUtil.getIntProp(reqProp, "defaultMaxHitsToRetrieve", Hits.getDefaultMaxHitsToRetrieve()));
-			Hits.setDefaultMaxHitsToCount(JsonUtil.getIntProp(reqProp, "defaultMaxHitsToCount", Hits.getDefaultMaxHitsToCount()));
-			maxHitsToRetrieveAllowed = JsonUtil.getIntProp(reqProp, "maxHitsToRetrieveAllowed", 10000000);
-			maxHitsToCountAllowed = JsonUtil.getIntProp(reqProp, "maxHitsToCountAllowed", -1);
+			Hits.setDefaultMaxHitsToRetrieve(JsonUtil.getIntProp(reqProp,
+					"defaultMaxHitsToRetrieve",
+					Hits.getDefaultMaxHitsToRetrieve()));
+			Hits.setDefaultMaxHitsToCount(JsonUtil.getIntProp(reqProp,
+					"defaultMaxHitsToCount", Hits.getDefaultMaxHitsToCount()));
+			maxHitsToRetrieveAllowed = JsonUtil.getIntProp(reqProp,
+					"maxHitsToRetrieveAllowed", 10000000);
+			maxHitsToCountAllowed = JsonUtil.getIntProp(reqProp,
+					"maxHitsToCountAllowed", -1);
 			JSONArray jsonOverrideUserIdIps = reqProp
 					.getJSONArray("overrideUserIdIps");
 			overrideUserIdIps = new HashSet<String>();
@@ -225,10 +241,10 @@ public class SearchManager {
 					"waitTimeInNonblockingModeMs", 100);
 			clientCacheTimeSec = JsonUtil.getIntProp(perfProp,
 					"clientCacheTimeSec", 3600);
-			
+
 			// Cache properties
 			JSONObject cacheProp = perfProp.getJSONObject("cache");
-			
+
 			// Start with empty cache
 			cache = new SearchCache(cacheProp);
 		}
@@ -242,55 +258,72 @@ public class SearchManager {
 			while (it.hasNext()) {
 				String indexName = (String) it.next();
 				JSONObject indexConfig = indicesMap.getJSONObject(indexName);
-	
+
 				File dir = JsonUtil.getFileProp(indexConfig, "dir", null);
 				if (dir == null || !dir.canRead()) {
 					logger.error("Index directory for index '" + indexName
 							+ "' does not exist or cannot be read: " + dir);
 					continue;
 				}
-	
+
 				String pid = JsonUtil.getProperty(indexConfig, "pid", "");
-				if (pid.length() == 0) {
-					// NOTE: pid may be specified in index metadata, don't warn
-					// here.
-					// logger.warn("No pid given for index '" + indexName +
-					// "'; using Lucene doc ids.");
+				if (pid.length() != 0) {
+					// Should be specified in index metadata now, not in
+					// blacklab-server.json.
+					logger.error("blacklab-server.json specifies 'pid' property for index '"
+							+ indexName
+							+ "'; this setting should not be in blacklab-server.json but in the blacklab index metadata!");
 				}
-	
-				boolean mayViewContent = JsonUtil.getBooleanProp(indexConfig,
-						"mayViewContent", false);
-	
-				indexParam.put(indexName, new IndexParam(dir, pid, mayViewContent));
+
+				// Does the settings file indicate whether or not contents may
+				// be viewed?
+				boolean mayViewContentsSet = indexConfig.has("mayViewContent");
+				if (mayViewContentsSet) {
+					// Yes; store the setting.
+					boolean mayViewContent = indexConfig
+							.getBoolean("mayViewContent");
+					indexParam.put(indexName, new IndexParam(dir, pid,
+							mayViewContent));
+				} else {
+					// No; record that we don't know (i.e. use the index
+					// metadata setting).
+					indexParam.put(indexName, new IndexParam(dir, pid));
+				}
+
 				indicesFound = true;
 			}
 		}
-		
+
 		// Collections
 		collectionsDirs = new ArrayList<File>();
 		if (properties.has("indexCollections")) {
-			JSONArray indexCollectionsList = properties.getJSONArray("indexCollections");
+			JSONArray indexCollectionsList = properties
+					.getJSONArray("indexCollections");
 			for (int i = 0; i < indexCollectionsList.length(); i++) {
 				String strIndexCollection = indexCollectionsList.getString(i);
 				File indexCollection = new File(strIndexCollection);
 				if (indexCollection.canRead()) {
-					indicesFound = true; // even if it contains none now, it could in the future
+					indicesFound = true; // even if it contains none now, it
+											// could in the future
 					collectionsDirs.add(indexCollection);
 				} else {
-					logger.warn("Configured collection not found or not readable: " + indexCollection);
+					logger.warn("Configured collection not found or not readable: "
+							+ indexCollection);
 				}
 			}
 		}
-		
-//		// User collections dir
-//		if (properties.has("userCollectionsDir")) {
-//			userCollectionsDir = new File(properties.getString("userCollectionsDir"));
-//			if (!userCollectionsDir.canRead()) {
-//				logger.error("Configured user collections dir not found or not readable: " + userCollectionsDir);
-//				userCollectionsDir = null;
-//			}
-//		}
-		
+
+		// User collections dir
+		if (properties.has("userCollectionsDir")) {
+			userCollectionsDir = new File(
+					properties.getString("userCollectionsDir"));
+			if (!userCollectionsDir.canRead()) {
+				logger.error("Configured user collections dir not found or not readable: "
+						+ userCollectionsDir);
+				userCollectionsDir = null;
+			}
+		}
+
 		if (!indicesFound)
 			throw new RuntimeException(
 					"Configuration error: no indices or collections available. Put blacklab-server.json on classpath (i.e. Tomcat shared or lib dir) with at least: { \"indices\": { \"myindex\": { \"dir\": \"/path/to/my/index\" } } } ");
@@ -299,9 +332,9 @@ public class SearchManager {
 		searchParameterNames = Arrays.asList("resultsType", "patt", "pattlang",
 				"pattfield", "filter", "filterlang", "sort", "group",
 				"viewgroup", "collator", "first", "number", "wordsaroundhit",
-				"hitstart", "hitend", "facets", "waitfortotal", "includetokencount",
-				"usecontent", "wordstart", "wordend", "calc", "maxretrieve", "maxcount",
-				"property", "sensitive");
+				"hitstart", "hitend", "facets", "waitfortotal",
+				"includetokencount", "usecontent", "wordstart", "wordend",
+				"calc", "maxretrieve", "maxcount", "property", "sensitive");
 
 		// Set up the parameter default values
 		defaultParameterValues = new HashMap<String, String>();
@@ -322,78 +355,75 @@ public class SearchManager {
 		defaultParameterValues.put("wordstart", "-1");
 		defaultParameterValues.put("wordend", "-1");
 		defaultParameterValues.put("calc", "");
-		defaultParameterValues.put("maxretrieve", "" + Hits.getDefaultMaxHitsToRetrieve());
-		defaultParameterValues.put("maxcount", "" + Hits.getDefaultMaxHitsToCount());
+		defaultParameterValues.put("maxretrieve",
+				"" + Hits.getDefaultMaxHitsToRetrieve());
+		defaultParameterValues.put("maxcount",
+				"" + Hits.getDefaultMaxHitsToCount());
 		defaultParameterValues.put("sensitive", "no");
 		defaultParameterValues.put("property", "word");
 	}
 
-//	/**
-//	 * Return the current user's collection dir.
-//	 * 
-//	 * @return the user's collection dir, or null if none
-//	 */
-//	private File getUserCollectionDir() {
-//		if (userCollectionsDir == null)
-//			return null;
-//		String userId = getCurrentUserId();
-//		File dir = new File(userCollectionsDir, userId);
-//		if (!dir.canRead())
-//			return null;
-//		return dir;
-//	}
+	/**
+	 * Return the current user's collection dir.
+	 * 
+	 * @param userId
+	 *            the current user
+	 * 
+	 * @return the user's collection dir, or null if none
+	 */
+	private File getUserCollectionDir(String userId) {
+		if (userCollectionsDir == null)
+			return null;
+		File dir = new File(userCollectionsDir, userId);
+		if (!dir.canRead())
+			return null;
+		return dir;
+	}
 
 	public List<String> getSearchParameterNames() {
 		return searchParameterNames;
 	}
-	
+
 	/**
-	 * Find an index, given its name.
+	 * Find an index given its name.
 	 * 
 	 * Looks at explicitly configured indices as well as collections.
 	 * 
-	 * @param name the index name
+	 * If a user is logged in, only looks in the user's private index
+	 * collection.
+	 * 
+	 * @param name
+	 *            the index name
+	 * @param user
+	 *            the user (userid if logged in, otherwise only session id)
 	 * @return the index dir and mayViewContents setting
 	 */
-	private IndexParam getIndexParam(String name) {
+	private IndexParam getIndexParam(String name, User user) {
+		if (user.isLoggedIn()) {
+			// User is logged in; only look in user's private index collection.
+			File dir = getUserCollectionDir(user.getUserId());
+			return findIndexInCollection(name, dir, false);
+		}
+
 		// Already in the cache?
 		if (indexParam.containsKey(name)) {
 			IndexParam p = indexParam.get(name);
-			
+
 			// Check if it's still there.
 			if (p.getDir().canRead())
 				return p;
-			
+
 			// Directory isn't accessible any more; remove from cache
 			indexParam.remove(name);
 		}
-		
+
 		// Find it in a collection
-		for (File collection: collectionsDirs) {
-			IndexParam p = findIndexInCollection(name, collection);
+		for (File collection : collectionsDirs) {
+			IndexParam p = findIndexInCollection(name, collection, true);
 			if (p != null)
 				return p;
 		}
-		
-//		// Find it in the current user's collection
-//		File userDir = getUserCollectionDir();
-//		if (userDir != null) {
-//			IndexParam p = findIndexInCollection(name, userDir);
-//			if (p != null)
-//				return p;
-//		}
-		
-		return null;
-	}
 
-	/**
-	 * If a user is logged in, return the user id.
-	 * 
-	 * Right now this always returns null.
-	 * 
-	 * @return the user id, or null if no logged in user
-	 */
-	private String getCurrentUserId() {
 		return null;
 	}
 
@@ -402,17 +432,23 @@ public class SearchManager {
 	 * 
 	 * Adds index parameters to the cache if found.
 	 * 
-	 * @param name name of the index
-	 * @param collection the collection dir
+	 * @param name
+	 *            name of the index
+	 * @param collection
+	 *            the collection dir
+	 * @param addToCache
+	 *            if true, add parameters to the cache if found
 	 * @return the index parameters if found.
 	 */
-	private IndexParam findIndexInCollection(String name, File collection) {
+	private IndexParam findIndexInCollection(String name, File collection,
+			boolean addToCache) {
 		// Look for the index in this collection dir
 		File dir = new File(collection, name);
-		if (dir.canRead()) {
+		if (dir.canRead() && Searcher.isIndex(dir)) {
 			// Found it. Add to the cache and return
-			IndexParam p = new IndexParam(dir, "", false);
-			indexParam.put(name, p);
+			IndexParam p = new IndexParam(dir);
+			if (addToCache)
+				indexParam.put(name, p);
 			return p;
 		}
 		return null;
@@ -423,21 +459,32 @@ public class SearchManager {
 	 * 
 	 * @param indexName
 	 *            the index we want to search
+	 * @param user
+	 *            user that wants to access the index
 	 * @return the Searcher object for that index
 	 * @throws IndexOpenException
 	 *             if not found or open error
 	 */
-	public synchronized Searcher getSearcher(String indexName)
+	@SuppressWarnings("deprecation")
+	// for call to _setPidField() and _setContentViewable()
+	public synchronized Searcher getSearcher(String indexName, User user)
 			throws IndexOpenException {
-		if (searchers.containsKey(indexName)) {
-			Searcher searcher = searchers.get(indexName);
+		if (!indexName.matches("[\\w_\\-]+"))
+			throw new RuntimeException(
+					"Illegal index name (only word characters, underscore and dash allowed): "
+							+ indexName);
+
+		String prefixedName = getPrefixedIndexName(indexName, user);
+
+		if (searchers.containsKey(prefixedName)) {
+			Searcher searcher = searchers.get(prefixedName);
 			if (searcher.getIndexDirectory().canRead())
 				return searcher;
 			// Index was (re)moved; remove Searcher from cache.
-			searchers.remove(indexName);
+			searchers.remove(prefixedName);
 			// Maybe we can find an index with this name elsewhere?
 		}
-		IndexParam par = getIndexParam(indexName);
+		IndexParam par = getIndexParam(indexName, user);
 		if (par == null) {
 			throw new IndexOpenException("Index " + indexName + " not found");
 		}
@@ -451,9 +498,9 @@ public class SearchManager {
 			throw new IndexOpenException("Could not open index '" + indexName
 					+ "'", e);
 		}
-		searchers.put(indexName, searcher);
-		
-		// Figure out the pid from the index metadata and/or BLS config. 
+		searchers.put(prefixedName, searcher);
+
+		// Figure out the pid from the index metadata and/or BLS config.
 		String indexPid = searcher.getIndexStructure().pidField();
 		if (indexPid == null)
 			indexPid = "";
@@ -461,52 +508,62 @@ public class SearchManager {
 		if (indexPid.length() > 0 && !configPid.equals(indexPid)) {
 			if (configPid.length() > 0) {
 				logger.error("Different pid field configured in blacklab-server.json than in index metadata! ("
-						+ configPid + "/" + indexPid + ")");
+						+ configPid + "/" + indexPid + "); using the latter");
 			}
 			// Update index parameters with the pid field found in the metadata
 			par.setPidField(indexPid);
+		} else {
+			// No pid configured in index, only in blacklab-server.json. We want
+			// to get rid
+			// of this (prints an error on startup), but it should still work
+			// for now. Inject
+			// the setting into the searcher.
+			searcher.getIndexStructure()._setPidField(configPid);
 		}
 		if (indexPid.length() == 0 && configPid.length() == 0) {
-			logger.warn("No pid given for index '" + indexName + "'; using Lucene doc ids.");
+			logger.warn("No pid given for index '" + indexName
+					+ "'; using Lucene doc ids.");
 		}
-		
+
+		// Look for the contentViewable setting in the index metadata
+		boolean contentViewable = searcher.getIndexStructure()
+				.contentViewable();
+		boolean blsConfigContentViewable = par.mayViewContents();
+		if (par.mayViewContentsSpecified()
+				&& contentViewable != blsConfigContentViewable) {
+			logger.error("Index metadata and blacklab-server.json configuration disagree on content view settings! Disallowing free content viewing.");
+			par.setMayViewContent(false);
+			searcher.getIndexStructure()._setContentViewable(false);
+		}
+
 		return searcher;
 	}
 
-	/**
-	 * Get the pid for the specified document
-	 * 
-	 * @param indexName
-	 *            index name
-	 * @param luceneDocId
-	 *            Lucene document id
-	 * @param document
-	 *            the document object
-	 * @return the pid string (or Lucene doc id in string form if index has no
-	 *         pid field)
-	 */
-	public String getDocumentPid(String indexName, int luceneDocId,
-			Document document) {
-		String pidField = getIndexParam(indexName).getPidField();
-		if (pidField.length() == 0)
-			return "" + luceneDocId;
-		return document.get(pidField);
+	private String getPrefixedIndexName(String indexName, User user) {
+		String indexNameWithUserPrefix;
+		if (user.isLoggedIn()) {
+			indexNameWithUserPrefix = user.getUserId() + "/" + indexName;
+		} else {
+			indexNameWithUserPrefix = indexName;
+		}
+		return indexNameWithUserPrefix;
 	}
 
 	/**
 	 * Get the Lucene Document id given the pid
 	 * 
-	 * @param indexName
-	 *            index name
+	 * @param searcher
+	 *            our index
 	 * @param pid
 	 *            the pid string (or Lucene doc id if we don't use a pid)
 	 * @return the document id, or -1 if it doesn't exist
 	 * @throws IndexOpenException
 	 */
-	public int getLuceneDocIdFromPid(String indexName, String pid)
+	public static int getLuceneDocIdFromPid(Searcher searcher, String pid)
 			throws IndexOpenException {
-		String pidField = getIndexParam(indexName).getPidField();
-		Searcher searcher = getSearcher(indexName);
+		String pidField = searcher.getIndexStructure().pidField(); // getIndexParam(indexName,
+																	// user).getPidField();
+		// Searcher searcher = getSearcher(indexName, user);
 		if (pidField.length() == 0) {
 			int luceneDocId;
 			try {
@@ -526,11 +583,13 @@ public class SearchManager {
 			TermQuery documentFilterQuery = new TermQuery(new Term(pidField, p));
 			docResults = searcher.queryDocuments(documentFilterQuery);
 			if (docResults.size() > 1) {
-				// HACK: temporarily turned off because some documents are
-				// indexed twice..
-				// throw new
-				// IllegalArgumentException("Pid must uniquely identify a document, but it has "
-				// + docResults.size() + " hits: " + pid);
+				// Should probably throw a fatal exception, but sometimes
+				// documents
+				// accidentally occur twice in a dataset...
+				// TODO: make configurable whether or not a fatal exception is
+				// thrown
+				logger.error("Pid must uniquely identify a document, but it has "
+						+ docResults.size() + " hits: " + pid);
 			}
 			if (docResults.size() == 0) {
 				if (lowerCase)
@@ -548,48 +607,59 @@ public class SearchManager {
 	/**
 	 * Return the list of indices available for searching.
 	 * 
+	 * @param user
+	 *            the current user (either userid for logged in user, or session
+	 *            id otherwise)
 	 * @return the list of index names
 	 */
-	public Collection<String> getAvailableIndices() {
-		
+	public Collection<String> getAvailableIndices(User user) {
+
+		if (user.isLoggedIn()) {
+			File dir = getUserCollectionDir(user.getUserId());
+			Set<String> indices = new HashSet<String>();
+			if (dir != null) {
+				for (File f : dir.listFiles(readableDirFilter)) {
+					indices.add(f.getName());
+				}
+			}
+			return indices;
+		}
+
 		// Scan collections for any new indices
-		for (File dir: collectionsDirs) {
+		for (File dir : collectionsDirs) {
 			addNewIndicesInCollection(dir);
 		}
-//		File userDir = getUserCollectionDir();
-//		if (userDir != null)
-//			addNewIndicesInCollection(userDir);
-		
-		// Remove indices that are no longer available 
+
+		// Remove indices that are no longer available
 		List<String> remove = new ArrayList<String>();
-		for (Map.Entry<String, IndexParam> e: indexParam.entrySet()) {
+		for (Map.Entry<String, IndexParam> e : indexParam.entrySet()) {
 			if (!e.getValue().getDir().canRead()) {
 				remove.add(e.getKey());
 			}
 		}
-		for (String name: remove) {
+		for (String name : remove) {
 			indexParam.remove(name);
 		}
-		
+
 		return indexParam.keySet();
 	}
 
 	/**
 	 * Scan a collection dir and add any new indices to our cache.
 	 * 
-	 * @param collectionDir the collection directory
+	 * @param collectionDir
+	 *            the collection directory
 	 */
 	private void addNewIndicesInCollection(File collectionDir) {
-		for (File f: collectionDir.listFiles(readableDirFilter)) {
+		for (File f : collectionDir.listFiles(readableDirFilter)) {
 			if (!indexParam.containsKey(f.getName())) {
 				// New one; add it
-				IndexParam p = new IndexParam(f, "", false);
-				indexParam.put(f.getName(), p);
+				indexParam.put(f.getName(), new IndexParam(f));
 			}
 		}
 	}
 
-	public JobWithHits searchHits(String userId, SearchParameters par)
+	public JobWithHits searchHits(User user, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "docpid",
@@ -598,17 +668,17 @@ public class SearchManager {
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits
 			parBasic.put("jobclass", "JobHitsSorted");
-			return (JobHitsSorted) search(userId, parBasic);
+			return (JobHitsSorted) search(user, parBasic);
 		}
 
 		// No sort
 		parBasic.remove("sort"); // unsorted must not include sort parameter, or
 									// it's cached wrong
 		parBasic.put("jobclass", "JobHits");
-		return (JobHits) search(userId, parBasic);
+		return (JobHits) search(user, parBasic);
 	}
 
-	public JobWithDocs searchDocs(String userId, SearchParameters par)
+	public JobWithDocs searchDocs(User user, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "usecontent",
@@ -617,85 +687,81 @@ public class SearchManager {
 		if (sort != null && sort.length() > 0) {
 			// Sorted hits
 			parBasic.put("jobclass", "JobDocsSorted");
-			return (JobDocsSorted) search(userId, parBasic);
+			return (JobDocsSorted) search(user, parBasic);
 		}
 
 		// No sort
 		parBasic.remove("sort"); // unsorted must not include sort parameter, or
 									// it's cached wrong
 		parBasic.put("jobclass", "JobDocs");
-		return (JobDocs) search(userId, parBasic);
+		return (JobDocs) search(user, parBasic);
 	}
 
-	public JobHitsWindow searchHitsWindow(String userId, SearchParameters par)
+	public JobHitsWindow searchHitsWindow(User user, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
-				"wordsaroundhit", "usecontent",
-				"maxretrieve", "maxcount");
+				"wordsaroundhit", "usecontent", "maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobHitsWindow");
-		return (JobHitsWindow) search(userId, parBasic);
+		return (JobHitsWindow) search(user, parBasic);
 	}
 
-	public JobDocsWindow searchDocsWindow(String userId, SearchParameters par)
+	public JobDocsWindow searchDocsWindow(User user, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
-				"wordsaroundhit", "usecontent",
-				"maxretrieve", "maxcount");
+				"wordsaroundhit", "usecontent", "maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobDocsWindow");
-		return (JobDocsWindow) search(userId, parBasic);
+		return (JobDocsWindow) search(user, parBasic);
 	}
 
-	public JobHitsTotal searchHitsTotal(String userId, SearchParameters par)
+	public JobHitsTotal searchHitsTotal(User user, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang",
-				"maxretrieve", "maxcount");
+				"pattlang", "filter", "filterlang", "maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobHitsTotal");
-		return (JobHitsTotal) search(userId, parBasic);
+		return (JobHitsTotal) search(user, parBasic);
 	}
 
-	public JobDocsTotal searchDocsTotal(String userId, SearchParameters par)
+	public JobDocsTotal searchDocsTotal(User user, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
-				"pattlang", "filter", "filterlang",
-				"maxretrieve", "maxcount");
+				"pattlang", "filter", "filterlang", "maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobDocsTotal");
-		return (JobDocsTotal) search(userId, parBasic);
+		return (JobDocsTotal) search(user, parBasic);
 	}
 
-	public JobHitsGrouped searchHitsGrouped(String userId, SearchParameters par)
+	public JobHitsGrouped searchHitsGrouped(User user, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "group", "sort",
 				"maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobHitsGrouped");
-		return (JobHitsGrouped) search(userId, parBasic);
+		return (JobHitsGrouped) search(user, parBasic);
 	}
 
-	public JobDocsGrouped searchDocsGrouped(String userId, SearchParameters par)
+	public JobDocsGrouped searchDocsGrouped(User user, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "group", "sort",
 				"maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobDocsGrouped");
-		return (JobDocsGrouped) search(userId, parBasic);
+		return (JobDocsGrouped) search(user, parBasic);
 	}
 
-	public JobFacets searchFacets(String userId, SearchParameters par)
+	public JobFacets searchFacets(User user, SearchParameters par)
 			throws IndexOpenException, QueryException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("facets", "indexname",
 				"patt", "pattlang", "filter", "filterlang");
 		parBasic.put("jobclass", "JobFacets");
-		return (JobFacets) search(userId, parBasic);
+		return (JobFacets) search(user, parBasic);
 	}
 
 	/**
 	 * Start a new search or return an existing Search object corresponding to
 	 * these search parameters.
 	 *
-	 * @param userId
+	 * @param user
 	 *            user creating the job
 	 * @param searchParameters
 	 *            the search parameters
@@ -710,7 +776,7 @@ public class SearchManager {
 	 * @throws InterruptedException
 	 *             if the search thread was interrupted
 	 */
-	private Job search(String userId, SearchParameters searchParameters)
+	private Job search(User user, SearchParameters searchParameters)
 			throws IndexOpenException, QueryException, InterruptedException {
 		// Search the cache / running jobs for this search, create new if not
 		// found.
@@ -732,11 +798,12 @@ public class SearchManager {
 					throw new QueryException("SERVER_BUSY",
 							"The server is under heavy load right now. Please try again later.");
 				}
-				//logger.debug("Enough free memory: " + freeMegs + "M");
+				// logger.debug("Enough free memory: " + freeMegs + "M");
 
 				// Is this user allowed to start another search?
 				int numRunningJobs = 0;
-				Set<Job> runningJobs = runningJobsPerUser.get(userId);
+				String uniqueId = user.uniqueId();
+				Set<Job> runningJobs = runningJobsPerUser.get(uniqueId);
 				Set<Job> newRunningJobs = new HashSet<Job>();
 				if (runningJobs != null) {
 					for (Job job : runningJobs) {
@@ -748,8 +815,9 @@ public class SearchManager {
 				}
 				if (numRunningJobs >= maxRunningJobsPerUser) {
 					// User has too many running jobs. Can't start another one.
-					runningJobsPerUser.put(userId, newRunningJobs); // refresh
-																	// the list
+					runningJobsPerUser.put(uniqueId, newRunningJobs); // refresh
+																		// the
+																		// list
 					logger.warn("Can't start new search, user already has "
 							+ numRunningJobs + " jobs running.");
 					throw new QueryException(
@@ -759,12 +827,12 @@ public class SearchManager {
 
 				// Create a new search object with these parameters and place it
 				// in the cache
-				search = Job.create(this, userId, searchParameters);
+				search = Job.create(this, user, searchParameters);
 				cache.put(search);
 
 				// Update running jobs
 				newRunningJobs.add(search);
-				runningJobsPerUser.put(userId, newRunningJobs);
+				runningJobsPerUser.put(uniqueId, newRunningJobs);
 
 				performSearch = true;
 			}
@@ -836,12 +904,12 @@ public class SearchManager {
 		return rv;
 	}
 
-	public TextPattern parsePatt(String indexName, String pattern,
+	public TextPattern parsePatt(Searcher searcher, String pattern,
 			String language) throws QueryException {
-		return parsePatt(indexName, pattern, language, true);
+		return parsePatt(searcher, pattern, language, true);
 	}
 
-	public TextPattern parsePatt(String indexName, String pattern,
+	public TextPattern parsePatt(Searcher searcher, String pattern,
 			String language, boolean required) throws QueryException {
 		if (pattern == null || pattern.length() == 0) {
 			if (required)
@@ -862,7 +930,7 @@ public class SearchManager {
 			}
 		} else if (language.equals("contextql")) {
 			try {
-				CompleteQuery q = ContextualQueryLanguageParser.parse(pattern);
+				CompleteQuery q = ContextualQueryLanguageParser.parse(searcher, pattern);
 				return q.getContentsQuery();
 			} catch (nl.inl.blacklab.queryParser.contextql.TokenMgrError e) {
 				throw new QueryException("PATT_SYNTAX_ERROR",
@@ -873,15 +941,11 @@ public class SearchManager {
 			}
 		} else if (language.equals("luceneql")) {
 			try {
-				Searcher searcher = getSearcher(indexName);
 				String field = searcher.getIndexStructure()
 						.getMainContentsField().getName();
 				LuceneQueryParser parser = new LuceneQueryParser(
 						Version.LUCENE_42, field, searcher.getAnalyzer());
 				return parser.parse(pattern);
-			} catch (IndexOpenException e) {
-				throw new RuntimeException(e); // should never happen at this
-												// point
 			} catch (nl.inl.blacklab.queryParser.lucene.ParseException e) {
 				throw new QueryException("PATT_SYNTAX_ERROR",
 						"Syntax error in LuceneQL pattern: " + e.getMessage());
@@ -896,13 +960,13 @@ public class SearchManager {
 						+ "'. Supported: corpusql, contextql, luceneql.");
 	}
 
-	public static Query parseFilter(Analyzer analyzer, String filter, String filterLang)
-			throws QueryException {
-		return parseFilter(analyzer, filter, filterLang, false);
+	public static Query parseFilter(Searcher searcher, String filter,
+			String filterLang) throws QueryException {
+		return parseFilter(searcher, filter, filterLang, false);
 	}
 
-	public static Query parseFilter(Analyzer analyzer, String filter, String filterLang,
-			boolean required) throws QueryException {
+	public static Query parseFilter(Searcher searcher, String filter,
+			String filterLang, boolean required) throws QueryException {
 		if (filter == null || filter.length() == 0) {
 			if (required)
 				throw new QueryException("NO_FILTER_GIVEN",
@@ -910,6 +974,7 @@ public class SearchManager {
 			return null; // not required
 		}
 
+		Analyzer analyzer = searcher.getAnalyzer();
 		if (filterLang.equals("luceneql")) {
 			try {
 				QueryParser parser = new QueryParser(Version.LUCENE_42, "",
@@ -928,7 +993,7 @@ public class SearchManager {
 			}
 		} else if (filterLang.equals("contextql")) {
 			try {
-				CompleteQuery q = ContextualQueryLanguageParser.parse(filter);
+				CompleteQuery q = ContextualQueryLanguageParser.parse(searcher, filter);
 				return q.getFilterQuery();
 			} catch (nl.inl.blacklab.queryParser.contextql.TokenMgrError e) {
 				throw new QueryException("FILTER_SYNTAX_ERROR",
@@ -967,12 +1032,13 @@ public class SearchManager {
 		return cache;
 	}
 
-	public boolean mayViewContents(String indexName, Document document) {
-		IndexParam p = indexParam.get(indexName);
-		if (p == null)
-			return false;
-		return p.mayViewContents();
-	}
+	// public boolean mayViewContents(User user, String indexName, Document
+	// document) {
+	// IndexParam p = indexParam.get(indexName);
+	// if (p == null)
+	// return false;
+	// return p.mayViewContents();
+	// }
 
 	public DataFormat getContentsFormat(String indexName) {
 		return DataFormat.XML; // could be made configurable
@@ -1026,15 +1092,19 @@ public class SearchManager {
 		return checkAgainAdvice;
 	}
 
-	/** Get maximum allowed value for maxretrieve parameter.
-	 * @return the maximum, or -1 if there's no limit 
+	/**
+	 * Get maximum allowed value for maxretrieve parameter.
+	 * 
+	 * @return the maximum, or -1 if there's no limit
 	 */
 	public int getMaxHitsToRetrieveAllowed() {
 		return maxHitsToRetrieveAllowed;
 	}
 
-	/** Get maximum allowed value for maxcount parameter.
-	 * @return the maximum, or -1 if there's no limit 
+	/**
+	 * Get maximum allowed value for maxcount parameter.
+	 * 
+	 * @return the maximum, or -1 if there's no limit
 	 */
 	public int getMaxHitsToCountAllowed() {
 		return maxHitsToCountAllowed;

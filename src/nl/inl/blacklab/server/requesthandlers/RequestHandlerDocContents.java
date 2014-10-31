@@ -12,6 +12,7 @@ import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.JobWithHits;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
+import nl.inl.blacklab.server.search.SearchManager;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
@@ -35,14 +36,15 @@ public class RequestHandlerDocContents extends RequestHandler {
 			throw new QueryException("NO_DOC_ID", "Specify document pid.");
 		debug(logger, "REQ doc contents: " + indexName + "-" + docId);
 
+		Searcher searcher = getSearcher();
 		DataFormat type = searchMan.getContentsFormat(indexName);
-		int luceneDocId = searchMan.getLuceneDocIdFromPid(indexName, docId);
+		int luceneDocId = SearchManager.getLuceneDocIdFromPid(searcher, docId);
 		if (luceneDocId < 0)
 			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
-		Document document = searchMan.getSearcher(indexName).document(luceneDocId); //searchMan.getDocumentFromPid(indexName, docId);
+		Document document = searcher.document(luceneDocId); //searchMan.getDocumentFromPid(indexName, docId);
 		if (document == null)
 			throw new QueryException("INTERNAL_ERROR", "An internal error occurred. Please contact the administrator. Error code: 8.");
-		if (!searchMan.mayViewContents(indexName, document)) {
+		if (!searcher.getIndexStructure().contentViewable()) {
 			DataObject errObj = DataObject.errorObject("NOT_AUTHORIZED", "Sorry, you're not authorized to retrieve the full contents of this document.");
 			errObj.overrideType(type); // Application expects this MIME type, don't disappoint
 			return errObj;
@@ -53,14 +55,13 @@ public class RequestHandlerDocContents extends RequestHandler {
 		if (patt != null && patt.length() > 0) {
 			//@@@ TODO: filter on document!
 			searchParam.put("docpid", docId);
-			JobWithHits search = searchMan.searchHits(getUserId(), searchParam);
+			JobWithHits search = searchMan.searchHits(user, searchParam);
 			search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC);
 			if (!search.finished())
 				return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
 			hits = search.getHits();
 		}
 
-		Searcher searcher = searchMan.getSearcher(indexName);
 		String content;
 		int startAtWord = searchParam.getInteger("wordstart");
 		int endAtWord = searchParam.getInteger("wordend");

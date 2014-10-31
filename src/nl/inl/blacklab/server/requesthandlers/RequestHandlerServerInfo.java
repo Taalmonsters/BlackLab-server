@@ -23,7 +23,7 @@ public class RequestHandlerServerInfo extends RequestHandler {
 	public DataObject handle() {
 		debug(logger, "REQ serverinfo");
 
-		Collection<String> indices = searchMan.getAvailableIndices();
+		Collection<String> indices = searchMan.getAvailableIndices(user);
 		DataObjectList doIndices = new DataObjectList("index");
 		//DataObjectMapAttribute doIndices = new DataObjectMapAttribute("index", "name");
 		for (String indexName: indices) {

@@ -10,8 +10,8 @@ public class JobWithDocs extends Job {
 
 	DocResults docResults;
 
-	public JobWithDocs(SearchManager searchMan, String userId, SearchParameters par) throws IndexOpenException {
-		super(searchMan, userId, par);
+	public JobWithDocs(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+		super(searchMan, user, par);
 	}
 
 	public DocResults getDocResults() {
