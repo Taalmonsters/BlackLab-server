@@ -14,16 +14,12 @@ import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
 import nl.inl.blacklab.server.search.SearchManager;
 
-import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
 
 /**
  * Get information about the structure of an index.
  */
 public class RequestHandlerDocContents extends RequestHandler {
-	@SuppressWarnings("hiding")
-	private static final Logger logger = Logger.getLogger(RequestHandlerDocContents.class);
-
 	public RequestHandlerDocContents(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
 	}
@@ -34,7 +30,6 @@ public class RequestHandlerDocContents extends RequestHandler {
 		String docId = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;
 		if (docId.length() == 0)
 			throw new QueryException("NO_DOC_ID", "Specify document pid.");
-		debug(logger, "REQ doc contents: " + indexName + "-" + docId);
 
 		Searcher searcher = getSearcher();
 		DataFormat type = searchMan.getContentsFormat(indexName);

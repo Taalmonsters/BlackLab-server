@@ -30,24 +30,18 @@ import nl.inl.blacklab.server.search.JobDocsWindow;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
 
-import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
 
 /**
  * Request handler for the doc results.
  */
 public class RequestHandlerDocs extends RequestHandler {
-	@SuppressWarnings("hiding")
-	private static final Logger logger = Logger.getLogger(RequestHandlerDocs.class);
-	
 	public RequestHandlerDocs(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
 	}
 
 	@Override
 	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
-		debug(logger, "REQ docs: " + searchParam);
-
 		// Do we want to view a single group after grouping?
 		String groupBy = searchParam.getString("group");
 		if (groupBy == null)

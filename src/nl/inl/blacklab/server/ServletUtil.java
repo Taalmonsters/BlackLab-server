@@ -239,5 +239,41 @@ public class ServletUtil {
 		response.setContentType(ServletUtil.getContentType(getOutputType(request, defaultFormat)));
 	}
 
+	/**
+	 * Returns the path info and query string (if any) of the request URL
+	 * 
+	 * @param request the servlet request 
+	 *
+	 * @return the path and query string (if any)
+	 */
+	public static String getPathAndQueryString(HttpServletRequest request) {
+		String pathInfo = request.getPathInfo();
+		if (pathInfo == null)
+			pathInfo = "";
+		String queryString = request.getQueryString();
+		if (queryString == null)
+			queryString = "";
+		else
+			queryString = "?" + queryString;
+		return request.getServletPath() + pathInfo + queryString;
+	}
+
+	/**
+	 * Returns the complete request URL
+	 * 
+	 * @param request the servlet request 
+	 *
+	 * @return the complete request URL
+	 */
+	public static String getRequestUrl(HttpServletRequest request) {
+		int port = request.getLocalPort();
+		String optPort = port == 80 ? "" : ":" + port;
+		return request.getProtocol() + "://" + request.getServerName() + optPort + getPathAndQueryString(request);
+	}
+
+	public static String shortenIpv6(String longAddress) {
+		return longAddress.replaceFirst("(^|:)(0+(:|$)){2,8}", "::").replaceAll("(:|^)0+([0-9A-Fa-f])", "$1$2");
+	}
+
 
 }

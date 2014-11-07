@@ -17,8 +17,6 @@ public class RequestHandlerBlsHelp extends RequestHandler {
 
 	@Override
 	public DataObject handle() {
-		debug(logger, "REQ help");
-
 		DataObjectMapElement response = new DataObjectMapElement();
 		String urlPrefix = servlet.getServletContext().getContextPath() + "/";
 		String urlIndexPrefix = servlet.getServletContext().getContextPath() + "/myIndexName/";

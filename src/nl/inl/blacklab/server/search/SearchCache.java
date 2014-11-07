@@ -157,7 +157,7 @@ public class SearchCache {
 				}
 				if (minSearchesToRemove > 0 || removeBecauseOfCacheSizeOrAge) {
 					// Search is too old or cache is too big. Keep removing searches until that's no longer the case
-					logger.debug("Remove from cache: " + search);
+					//logger.debug("Remove from cache: " + search);
 					cachedSearches.remove(search.getParameters());
 					cacheSizeBytes -= search.estimateSizeBytes();
 					removed = true;

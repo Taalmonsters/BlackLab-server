@@ -14,23 +14,16 @@ import nl.inl.blacklab.server.search.JobDocsGrouped;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
 
-import org.apache.log4j.Logger;
-
 /**
  * Request handler for grouped doc results.
  */
 public class RequestHandlerDocsGrouped extends RequestHandler {
-	@SuppressWarnings("hiding")
-	private static final Logger logger = Logger.getLogger(RequestHandlerDocsGrouped.class);
-
 	public RequestHandlerDocsGrouped(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
 	}
 
 	@Override
 	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
-		debug(logger, "REQ docsgrouped: " + searchParam);
-
 		// Get the window we're interested in
 		JobDocsGrouped search = searchMan.searchDocsGrouped(user, searchParam);
 		if (getBoolParameter("block")) {

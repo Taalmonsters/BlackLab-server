@@ -17,15 +17,12 @@ import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchManager;
 
-import org.apache.log4j.Logger;
 import org.apache.lucene.search.Query;
 
 /**
  * Request handler for term frequencies for a set of documents.
  */
 public class RequestHandlerTermFreq extends RequestHandler {
-	@SuppressWarnings("hiding")
-	private static final Logger logger = Logger.getLogger(RequestHandlerTermFreq.class);
 	
 	public RequestHandlerTermFreq(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
@@ -33,8 +30,6 @@ public class RequestHandlerTermFreq extends RequestHandler {
 
 	@Override
 	public DataObject handle() throws IndexOpenException, QueryException {
-		debug(logger, "REQ termFreq: " + searchParam);
-		
 		//TODO: use background job?
 
 		Searcher searcher = getSearcher();

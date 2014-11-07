@@ -47,17 +47,18 @@ public abstract class RequestHandler {
 	// Fill the map with all the handler classes
 	static {
 		availableHandlers = new HashMap<String, Class<? extends RequestHandler>>();
+		//availableHandlers.put("cache-info", RequestHandlerCacheInfo.class);
 		availableHandlers.put("debug", RequestHandlerDebug.class);
-		availableHandlers.put("hits", RequestHandlerHits.class);
-		availableHandlers.put("hits-grouped", RequestHandlerHitsGrouped.class);
 		availableHandlers.put("docs", RequestHandlerDocs.class);
 		availableHandlers.put("docs-grouped", RequestHandlerDocsGrouped.class);
 		availableHandlers.put("doc-contents", RequestHandlerDocContents.class);
 		availableHandlers.put("doc-snippet", RequestHandlerDocSnippet.class);
 		availableHandlers.put("doc-info", RequestHandlerDocInfo.class);
-		availableHandlers.put("cache-info", RequestHandlerCacheInfo.class);
 		availableHandlers.put("fields", RequestHandlerFieldInfo.class);
-		availableHandlers.put("help", RequestHandlerBlsHelp.class);
+		//availableHandlers.put("help", RequestHandlerBlsHelp.class);
+		availableHandlers.put("hits", RequestHandlerHits.class);
+		availableHandlers.put("hits-grouped", RequestHandlerHitsGrouped.class);
+		availableHandlers.put("status", RequestHandlerIndexStatus.class);
 		availableHandlers.put("termfreq", RequestHandlerTermFreq.class);
 		availableHandlers.put("", RequestHandlerIndexStructure.class);
 	}
@@ -85,8 +86,6 @@ public abstract class RequestHandler {
 		String urlResource = parts.length >= 2 ? parts[1] : "";
 		String urlPathInfo = parts.length >= 3 ? parts[2] : "";
 
-		logger.debug("IP: " + request.getRemoteAddr());
-
 		// Choose the RequestHandler subclass
 		RequestHandler requestHandler;
 		if (indexName.equals("cache-info") && debugMode) {
@@ -101,12 +100,12 @@ public abstract class RequestHandler {
 			try {
 				String handlerName = urlResource;
 
+				if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs") && !handlerName.equals("fields") && !handlerName.equals("termfreq") && !handlerName.equals("status")) {
+					handlerName = "debug";
+				}
 				// HACK to avoid having a different url resource for
 				// the lists of (hit|doc) groups: instantiate a different
 				// request handler class in this case.
-				if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs") && !handlerName.equals("fields") && !handlerName.equals("termfreq")) {
-					handlerName = "debug";
-				}
 				else if (handlerName.equals("docs") && urlPathInfo.length() > 0) {
 					handlerName = "doc-info";
 					String p = urlPathInfo;
@@ -218,6 +217,8 @@ public abstract class RequestHandler {
 		if (userId != null && userId.length() == 0)
 			userId = null;
 		user = new User(userId, sessionId);
+		
+		logger.info(ServletUtil.shortenIpv6(request.getRemoteAddr()) + " " + user.uniqueIdShort() + " " + request.getMethod() + " " + ServletUtil.getPathAndQueryString(request));
 	}
 
 	private void setDebug(boolean debugMode) {
@@ -238,24 +239,6 @@ public abstract class RequestHandler {
 
 	public void error(Logger logger, String msg) {
 		logger.error(user.uniqueIdShort() + " " + msg);
-	}
-
-	/**
-	 * Returns the complete request URL
-	 *
-	 * @return the complete request URL
-	 */
-	@SuppressWarnings("unused")
-	private String getRequestUrl() {
-		String pathInfo = request.getPathInfo();
-		if (pathInfo == null)
-			pathInfo = "";
-		String queryString = request.getQueryString();
-		if (queryString == null)
-			queryString = "";
-		else
-			queryString = "?" + queryString;
-		return request.getServletPath() + pathInfo + queryString;
 	}
 
 	/**

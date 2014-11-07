@@ -848,7 +848,6 @@ public class SearchManager {
 			search.rethrowException();
 		}
 
-		logger.debug("Search done");
 		return search;
 	}
 

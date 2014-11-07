@@ -15,14 +15,10 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.util.StringUtil;
 
-import org.apache.log4j.Logger;
-
 /**
  * Get information about the structure of an index.
  */
 public class RequestHandlerIndexStructure extends RequestHandler {
-	@SuppressWarnings("hiding")
-	private static final Logger logger = Logger.getLogger(RequestHandlerIndexStructure.class);
 
 	public RequestHandlerIndexStructure(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, indexName, urlResource, urlPathPart);
@@ -30,8 +26,6 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 
 	@Override
 	public DataObject handle() throws IndexOpenException {
-		debug(logger, "REQ struct: " + indexName);
-
 		Searcher searcher = getSearcher();
 		IndexStructure struct = searcher.getIndexStructure();
 
