@@ -24,10 +24,11 @@ public class RequestHandlerIndexStatus extends RequestHandler {
 		// Assemble response
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("indexName", indexName);
-		response.put("status", "available");
+		response.put("status", searchMan.getIndexStatus(indexName));
 		
 		// Remove any empty settings
 		response.removeEmptyMapValues();
+		response.setCacheAllowed(false); // because status might change
 
 		return response;
 	}

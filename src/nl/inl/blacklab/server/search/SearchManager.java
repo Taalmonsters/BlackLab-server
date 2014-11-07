@@ -2,6 +2,7 @@ package nl.inl.blacklab.server.search;
 
 import java.io.File;
 import java.io.FileFilter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -40,6 +41,8 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.Version;
 
 public class SearchManager {
+	private static final int MAX_USER_INDICES = 10;
+
 	private static final Logger logger = Logger.getLogger(SearchManager.class);
 
 	/**
@@ -103,6 +106,12 @@ public class SearchManager {
 
 	/** Our current set of indices (with dir and mayViewContent setting) */
 	private Map<String, IndexParam> indexParam;
+	
+	/**
+	 * The status of each index, i.e. "available" or "indexing".
+	 * If no status is stored here, the status is "available".
+	 */
+	Map<String, String> indexStatus;
 
 	/** Configured index collections directories */
 	private List<File> collectionsDirs;
@@ -251,6 +260,7 @@ public class SearchManager {
 
 		// Find the indices
 		indexParam = new HashMap<String, IndexParam>();
+		indexStatus = new HashMap<String, String>();
 		boolean indicesFound = false;
 		if (properties.has("indices")) {
 			JSONObject indicesMap = properties.getJSONObject("indices");
@@ -453,6 +463,10 @@ public class SearchManager {
 		}
 		return null;
 	}
+	
+	public static boolean isValidIndexName(String indexName) {
+		return indexName.matches("[\\w_\\-]+");
+	}
 
 	/**
 	 * Get the Searcher object for the specified index.
@@ -464,15 +478,14 @@ public class SearchManager {
 	 * @return the Searcher object for that index
 	 * @throws IndexOpenException
 	 *             if not found or open error
+	 * @throws QueryException  if an illegal index name was supplied
 	 */
 	@SuppressWarnings("deprecation")
 	// for call to _setPidField() and _setContentViewable()
 	public synchronized Searcher getSearcher(String indexName, User user)
 			throws IndexOpenException {
-		if (!indexName.matches("[\\w_\\-]+"))
-			throw new RuntimeException(
-					"Illegal index name (only word characters, underscore and dash allowed): "
-							+ indexName);
+		if (!isValidIndexName(indexName))
+			throw new RuntimeException("Illegal index name (only word characters, underscore and dash allowed): " + indexName);
 
 		String prefixedName = getPrefixedIndexName(indexName, user);
 
@@ -537,6 +550,54 @@ public class SearchManager {
 		}
 
 		return searcher;
+	}
+	
+	/**
+	 * Does the specified index exist?
+	 * 
+	 * @param indexName
+	 *            the index we want to check for
+	 * @param user
+	 *            user that wants to access the index
+	 * @return true iff the index exists
+	 * @throws QueryException 
+	 */
+	public boolean indexExists(String indexName, User user) throws QueryException {
+		try {
+			getSearcher(indexName, user);
+		} catch (IndexOpenException e) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Create an empty user index.
+	 * 
+	 * @param indexName the index name
+	 * @param user the logged-in user
+	 * 
+	 * @throws QueryException if we're not allowed to create the index for whatever reason
+	 * @throws IOException if creation failed unexpectedly
+	 */
+	public void createIndex(String indexName, User user) throws QueryException, IOException {
+		if (!user.isLoggedIn())
+			throw new QueryException("CANNOT_CREATE_INDEX ", "Could not create index. Must be logged in.");
+		if (!isValidIndexName(indexName))
+			throw new QueryException("ILLEGAL_INDEX_NAME", "Illegal index name (only word characters, underscore and dash allowed): " + indexName);
+		if (indexExists(indexName, user))
+			throw new QueryException("INDEX_ALREADY_EXISTS", "Could not create index. Index already exists.");
+		int n = getAvailableIndices(user).size();
+		if (n >= MAX_USER_INDICES)
+			throw new QueryException("CANNOT_CREATE_INDEX ", "Could not create index. You already have the maximum of " + n + " indices.");
+		
+		File userDir = getUserCollectionDir(user.getUserId());
+		if (!userDir.canWrite())
+			throw new QueryException("CANNOT_CREATE_INDEX ", "Could not create index. Cannot write in use dir.");
+		
+		File indexDir = new File(userDir, indexName);
+		Searcher searcher = Searcher.createIndex(indexDir);
+		searcher.close();
 	}
 
 	private String getPrefixedIndexName(String indexName, User user) {
@@ -1115,6 +1176,43 @@ public class SearchManager {
 
 	public int getDefaultPageSize() {
 		return defaultPageSize;
+	}
+	
+	/**
+	 * Check the current status of an index
+	 * 
+	 * @param indexName the index
+	 * @return the current status
+	 */
+	public String getIndexStatus(String indexName) {
+		synchronized (indexStatus) {
+			String status = indexStatus.get(indexName);
+			if (status == null)
+				status = "available";
+			return status;
+		}
+	}
+
+	/**
+	 * Check if the index status is (still) the specified status,
+	 * and if so, update the status to the new one.
+	 * 
+	 * To check if setting was succesful, see if the returned value
+	 * equals the requested status.
+	 * 
+	 * @param indexName the index to set the status for
+	 * @param checkOldStatus only set the new status if this is the current status
+	 * @param status the new status
+	 * @return the resulting status of the index
+	 */
+	public String setIndexStatus(String indexName, String checkOldStatus, String status) {
+		synchronized (indexStatus) {
+			String oldStatus = getIndexStatus(indexName);
+			if (!oldStatus.equals(checkOldStatus))
+				return oldStatus;
+			indexStatus.put(indexName, status);
+			return status;
+		}
 	}
 
 }

@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -84,32 +85,58 @@ public class BlackLabServer extends HttpServlet {
 		logger.info("BlackLab Server ready.");
 
 	}
+	
+	/**
+	 * Process POST requests (create a index, add data to one)
+	 * @throws ServletException 
+	 */
+	@Override
+	protected void doPost(HttpServletRequest request, HttpServletResponse responseObject) throws ServletException {
+		
+		boolean debugMode = searchManager.isDebugMode(request.getRemoteAddr());
+		DataObject response = RequestHandler.handleGetPost(this, request, debugMode);
+		writeResponse(request, responseObject, debugMode, response);
+	}
 
 	/**
-	 * Process GET request (the only kind we accept)
+	 * Process DELETE requests (create a index, add data to one)
+	 * 
+	 * @throws ServletException 
+	 */
+	@Override
+	protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException {
+		throw new ServletException("Illegal DELETE request.");
+	}
+
+	/**
+	 * Process GET requests (information retrieval)
 	 *
 	 * @param request HTTP request object
 	 * @param responseObject where to write our response
 	 */
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse responseObject) {
+		boolean debugMode = searchManager.isDebugMode(request.getRemoteAddr());
+		DataObject response = RequestHandler.handleGetPost(this, request, debugMode);
+		writeResponse(request, responseObject, debugMode, response);
+	}
+
+	private void writeResponse(HttpServletRequest request,
+			HttpServletResponse responseObject, boolean debugMode,
+			DataObject response) {
+		// Determine response type
+		DataFormat outputType = response.getOverrideType(); // some responses override the user's request (i.e. article XML)
+		if (outputType == null) {
+			outputType = ServletUtil.getOutputType(request, searchManager.getDefaultOutputType());
+		}
+
+		// Write HTTP headers (content type and cache)
+		responseObject.setCharacterEncoding("utf-8");
+		responseObject.setContentType(ServletUtil.getContentType(outputType));
+		int cacheTime = response.isCacheAllowed() ? searchManager.getClientCacheTimeSec() : 0;
+		ServletUtil.writeCacheHeaders(responseObject, cacheTime);
+
 		try {
-			// Handle the request
-			boolean debugMode = searchManager.isDebugMode(request.getRemoteAddr());
-			DataObject response = RequestHandler.handle(this, request, debugMode);
-
-			// Determine response type
-			DataFormat outputType = response.getOverrideType(); // some responses override the user's request (i.e. article XML)
-			if (outputType == null) {
-				outputType = ServletUtil.getOutputType(request, searchManager.getDefaultOutputType());
-			}
-
-			// Write HTTP headers (content type and cache)
-			responseObject.setCharacterEncoding("utf-8");
-			responseObject.setContentType(ServletUtil.getContentType(outputType));
-			int cacheTime = response.isCacheAllowed() ? searchManager.getClientCacheTimeSec() : 0;
-			ServletUtil.writeCacheHeaders(responseObject, cacheTime);
-
 			// Write the response
 			OutputStreamWriter out = new OutputStreamWriter(responseObject.getOutputStream(), "utf-8");
 			boolean prettyPrint = ServletUtil.getParameter(request, "prettyprint", debugMode);
@@ -126,7 +153,8 @@ public class BlackLabServer extends HttpServlet {
 			}
 			response.serializeDocument(rootEl, out, outputType, prettyPrint, callbackFunction);
 			out.flush();
-
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException(e);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}

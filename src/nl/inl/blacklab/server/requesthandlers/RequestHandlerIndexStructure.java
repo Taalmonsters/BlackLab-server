@@ -82,12 +82,14 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		response.put("indexName", indexName);
 		response.put("displayName", struct.getDisplayName());
 		response.put("description", struct.getDescription());
+		response.put("status", searchMan.getIndexStatus(indexName));
 		response.put("contentsViewable", struct.contentViewable());
 		response.put("versionInfo", doVersionInfo);
 		response.put("fieldInfo", doFieldInfo);
 		
 		// Remove any empty settings
 		response.removeEmptyMapValues();
+		response.setCacheAllowed(false); // because status might change
 
 		return response;
 	}

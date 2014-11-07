@@ -259,6 +259,19 @@ public class ServletUtil {
 	}
 
 	/**
+	 * Returns the servlte's base URL, including the context path
+	 * 
+	 * @param request the servlet request 
+	 *
+	 * @return the base URL, e.g. http://myserver:8080/myroot
+	 */
+	public static String getServletBaseUrl(HttpServletRequest request) {
+		int port = request.getLocalPort();
+		String optPort = port == 80 ? "" : ":" + port;
+		return request.getScheme() + "://" + request.getServerName() + optPort + request.getContextPath();
+	}
+
+	/**
 	 * Returns the complete request URL
 	 * 
 	 * @param request the servlet request 
@@ -266,9 +279,7 @@ public class ServletUtil {
 	 * @return the complete request URL
 	 */
 	public static String getRequestUrl(HttpServletRequest request) {
-		int port = request.getLocalPort();
-		String optPort = port == 80 ? "" : ":" + port;
-		return request.getProtocol() + "://" + request.getServerName() + optPort + getPathAndQueryString(request);
+		return getServletBaseUrl(request) + getPathAndQueryString(request);
 	}
 
 	public static String shortenIpv6(String longAddress) {

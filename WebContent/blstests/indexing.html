@@ -1,0 +1,81 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<title>BlackLab Server Test Suite</title>
+		<script src='jQuery.js'></script>
+		<style>
+textarea, input {
+	display: block;
+	padding-left: 10px;
+}
+		
+textarea {
+	background-color: black;
+	color: yellow;
+	border: 1px solid yellow;
+	padding: 3px;
+	width: 100%;
+	height: 200px;
+	overflow: auto;
+}
+
+label {
+	display: block;
+}
+		</style>
+		<script>
+
+// Shim Date.now() (for pre-ES5 browsers)
+if (!Date.now) {
+    Date.now = function() { return new Date().getTime(); };
+}
+
+// Show test output
+function output(msg) {
+	$("#output").append(msg + "\n");
+}
+
+var queryNum = 1;
+
+// Run the test with the given parameters
+function runTest() {
+	var indexName = $("#indexName")[0].value;
+	output("Creating index: " + indexName);
+	
+	$.ajax("../", {
+		"type": "POST",
+		"accept": "application/json",
+		"dataType": "json",
+		"data": {
+			"action": "createIndex",
+			"indexName": indexName,
+			"userid": "jan" // test; only works if user override allowed for IP
+		},
+		"success": function (data) {
+			if (data['error'])
+				output("Error for create request: " + data['error']['message']);
+			else
+				output("Success; URL = " + data['url']);
+		},
+		"error": function (jqXHR, textStatus, errorThrown) {
+			output("Error for create request: " + textStatus + "; " + errorThrown);
+		},
+	});
+	
+	return false; // don't submit
+}
+		</script>
+	</head>
+	<body>
+		<h1>BlackLab Server Indexing Test</h1>
+		<form onsubmit='return runTest();'>
+			<label for='output'>Console:</label>
+			<textarea id='output'></textarea>
+			<hr/>
+			<label for='indexName'>Index name:</label>
+			<input type='text' id='indexName' value='gysseling' />
+			<input type='submit' value='Run test' />
+		</form>
+	</body>
+</html>

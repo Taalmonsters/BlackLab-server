@@ -71,7 +71,7 @@ public abstract class RequestHandler {
 	 * @param debugMode whether we're in debug mode
 	 * @return the response data
 	 */
-	public static DataObject handle(BlackLabServer servlet, HttpServletRequest request, boolean debugMode) {
+	public static DataObject handleGetPost(BlackLabServer servlet, HttpServletRequest request, boolean debugMode) {
 
 		// Parse the URL
 		String servletPath = request.getServletPath();
@@ -85,71 +85,96 @@ public abstract class RequestHandler {
 		String indexName = parts.length >= 1 ? parts[0] : "";
 		String urlResource = parts.length >= 2 ? parts[1] : "";
 		String urlPathInfo = parts.length >= 3 ? parts[2] : "";
-
+		
 		// Choose the RequestHandler subclass
 		RequestHandler requestHandler;
-		if (indexName.equals("cache-info") && debugMode) {
-			requestHandler = new RequestHandlerCacheInfo(servlet, request, indexName, urlResource, urlPathInfo);
-		} else if (indexName.equals("help")) {
-			requestHandler = new RequestHandlerBlsHelp(servlet, request, indexName, urlResource, urlPathInfo);
-		} else if (indexName.length() == 0) {
-			// No index or operation given; server info
-			requestHandler = new RequestHandlerServerInfo(servlet, request, indexName, urlResource, urlPathInfo);
+		
+		String method = request.getMethod();
+		if (method.equals("POST")) {
+			if (indexName.length() == 0) {
+				// POST to /blacklab-server/ : create new index
+				requestHandler = new RequestHandlerCreateIndex(servlet, request, indexName, urlResource, urlPathInfo);
+			} else if (urlResource.equals("docs")) {
+				if (!SearchManager.isValidIndexName(indexName))
+					return DataObject.errorObject("ILLEGAL_INDEX_NAME", "Illegal index name (only word characters, underscore and dash allowed): " + indexName);
+				
+				// POST to /blacklab-server/indexName/docs/ : add data to index
+				requestHandler = new RequestHandlerAddToIndex(servlet, request, indexName, urlResource, urlPathInfo);
+			} else {
+				return DataObject.errorObject("ILLEGAL_POST_REQUEST", "Cannot service this POST request. All retrieval must be done using GET.");
+			}
+		} else if (method.equals("GET")) {
+			if (indexName.equals("cache-info") && debugMode) {
+				requestHandler = new RequestHandlerCacheInfo(servlet, request, indexName, urlResource, urlPathInfo);
+			} else if (indexName.equals("help")) {
+				requestHandler = new RequestHandlerBlsHelp(servlet, request, indexName, urlResource, urlPathInfo);
+			} else if (indexName.length() == 0) {
+				// No index or operation given; server info
+				requestHandler = new RequestHandlerServerInfo(servlet, request, indexName, urlResource, urlPathInfo);
+			} else {
+				// Choose based on urlResource
+				try {
+					String handlerName = urlResource;
+	
+					SearchManager searchManager = servlet.getSearchManager();
+					String status = searchManager.getIndexStatus(indexName);
+					if (!status.equals("available") && handlerName.length() > 0 && !handlerName.equals("debug") && !handlerName.equals("fields") && !handlerName.equals("status")) {
+						return DataObject.errorObject("INDEX_UNAVAILABLE", "The index '" + indexName + "' is not available right now. Status: " + status);
+					}
+					
+					if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs") && !handlerName.equals("fields") && !handlerName.equals("termfreq") && !handlerName.equals("status")) {
+						handlerName = "debug";
+					}
+					// HACK to avoid having a different url resource for
+					// the lists of (hit|doc) groups: instantiate a different
+					// request handler class in this case.
+					else if (handlerName.equals("docs") && urlPathInfo.length() > 0) {
+						handlerName = "doc-info";
+						String p = urlPathInfo;
+						if (p.endsWith("/"))
+							p = p.substring(0, p.length() - 1);
+						if (urlPathInfo.endsWith("/contents")) {
+							handlerName = "doc-contents";
+						} else if (urlPathInfo.endsWith("/snippet")) {
+							handlerName = "doc-snippet";
+						}
+					}
+					else if (handlerName.equals("hits") || handlerName.equals("docs")) {
+						if (request.getParameter("group") != null) {
+							String viewgroup = request.getParameter("viewgroup");
+							if (viewgroup == null || viewgroup.length() == 0)
+								handlerName += "-grouped"; // list of groups instead of contents
+						}
+					}
+	
+					if (!availableHandlers.containsKey(handlerName))
+						return DataObject.errorObject("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
+					Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
+					Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, String.class, String.class, String.class);
+					//servlet.getSearchManager().getSearcher(indexName); // make sure it's open
+					requestHandler = ctor.newInstance(servlet, request, indexName, urlResource, urlPathInfo);
+				} catch (NoSuchMethodException e) {
+					// (can only happen if the required constructor is not available in the RequestHandler subclass)
+					logger.error("Could not get constructor to create request handler", e);
+					return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 2));
+				} catch (IllegalArgumentException e) {
+					logger.error("Could not create request handler", e);
+					return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 3));
+				} catch (InstantiationException e) {
+					logger.error("Could not create request handler", e);
+					return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 4));
+				} catch (IllegalAccessException e) {
+					logger.error("Could not create request handler", e);
+					return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 5));
+				} catch (InvocationTargetException e) {
+					logger.error("Could not create request handler", e);
+					return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 6));
+				}/* catch (IndexOpenException e) {
+					return DataObject.errorObject("CANNOT_OPEN_INDEX", "Could not open index '" + indexName + "'. Please check the name.");
+				}*/
+			}
 		} else {
-			// Choose based on urlResource
-			try {
-				String handlerName = urlResource;
-
-				if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs") && !handlerName.equals("fields") && !handlerName.equals("termfreq") && !handlerName.equals("status")) {
-					handlerName = "debug";
-				}
-				// HACK to avoid having a different url resource for
-				// the lists of (hit|doc) groups: instantiate a different
-				// request handler class in this case.
-				else if (handlerName.equals("docs") && urlPathInfo.length() > 0) {
-					handlerName = "doc-info";
-					String p = urlPathInfo;
-					if (p.endsWith("/"))
-						p = p.substring(0, p.length() - 1);
-					if (urlPathInfo.endsWith("/contents")) {
-						handlerName = "doc-contents";
-					} else if (urlPathInfo.endsWith("/snippet")) {
-						handlerName = "doc-snippet";
-					}
-				}
-				else if (handlerName.equals("hits") || handlerName.equals("docs")) {
-					if (request.getParameter("group") != null) {
-						String viewgroup = request.getParameter("viewgroup");
-						if (viewgroup == null || viewgroup.length() == 0)
-							handlerName += "-grouped"; // list of groups instead of contents
-					}
-				}
-
-				if (!availableHandlers.containsKey(handlerName))
-					return DataObject.errorObject("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
-				Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
-				Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, String.class, String.class, String.class);
-				//servlet.getSearchManager().getSearcher(indexName); // make sure it's open
-				requestHandler = ctor.newInstance(servlet, request, indexName, urlResource, urlPathInfo);
-			} catch (NoSuchMethodException e) {
-				// (can only happen if the required constructor is not available in the RequestHandler subclass)
-				logger.error("Could not get constructor to create request handler", e);
-				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 2));
-			} catch (IllegalArgumentException e) {
-				logger.error("Could not create request handler", e);
-				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 3));
-			} catch (InstantiationException e) {
-				logger.error("Could not create request handler", e);
-				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 4));
-			} catch (IllegalAccessException e) {
-				logger.error("Could not create request handler", e);
-				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 5));
-			} catch (InvocationTargetException e) {
-				logger.error("Could not create request handler", e);
-				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 6));
-			}/* catch (IndexOpenException e) {
-				return DataObject.errorObject("CANNOT_OPEN_INDEX", "Could not open index '" + indexName + "'. Please check the name.");
-			}*/
+			return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(new RuntimeException("RequestHandler.doGetPost called with wrong method"), debugMode, 10));
 		}
 		if (debugMode)
 			requestHandler.setDebug(debugMode);
