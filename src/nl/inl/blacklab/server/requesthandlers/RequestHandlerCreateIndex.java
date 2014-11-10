@@ -1,7 +1,5 @@
 package nl.inl.blacklab.server.requesthandlers;
 
-import java.io.IOException;
-
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.server.BlackLabServer;
@@ -20,21 +18,20 @@ public class RequestHandlerCreateIndex extends RequestHandler {
 
 	@Override
 	public DataObject handle() throws QueryException {
-		//DataObjectMapElement response = new DataObjectMapElement();
-		//response.put("result", "nothing");
-
 		indexName = getStringParameter("indexName");
 		if (indexName != null && indexName.length() > 0) {
 			// Create index and return success
 			try {
 				searchMan.createIndex(indexName, user);
-			} catch (IOException e) {
+				
+				DataObjectMapElement response = DataObject.statusObject("SUCCESS", "Index created succesfully.");
+				response.put("url", ServletUtil.getServletBaseUrl(request) + "/" + indexName);
+				return response;
+			} catch (QueryException e) {
+				throw e;
+			} catch (Exception e) {
 				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 11));
 			}
-			
-			DataObjectMapElement response = new DataObjectMapElement();
-			response.put("url", ServletUtil.getServletBaseUrl(request) + "/" + indexName);
-			return response;
 		}
 		
 		return DataObject.errorObject("CANNOT_CREATE_INDEX", "Could not create index '" + indexName + "'. Specify a valid name.");

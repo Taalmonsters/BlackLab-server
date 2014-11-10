@@ -5,7 +5,6 @@ import javax.servlet.http.HttpServletRequest;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
-import nl.inl.blacklab.server.search.IndexOpenException;
 
 /**
  * Get information about the structure of an index.
@@ -17,7 +16,7 @@ public class RequestHandlerIndexStatus extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() throws IndexOpenException {
+	public DataObject handle() {
 		//Searcher searcher = getSearcher();
 		//IndexStructure struct = searcher.getIndexStructure();
 

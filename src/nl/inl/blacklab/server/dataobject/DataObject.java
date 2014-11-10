@@ -154,15 +154,15 @@ public abstract class DataObject {
 	/**
 	 * Construct a simple status response object.
 	 *
-	 * Status response indicates the server is carrying out the request
-	 * and will have results later.
+	 * Status response may indicate success, or e.g. that the 
+	 * server is carrying out the request and will have results later.
 	 *
 	 * @param code (string) status code
 	 * @param msg the message
 	 * @param checkAgainMs advice for how long to wait before asking again (ms) (if 0, don't include this)
 	 * @return the data object representing the error message
 	 */
-	public static DataObject statusObject(String code, String msg, int checkAgainMs) {
+	public static DataObjectMapElement statusObject(String code, String msg, int checkAgainMs) {
 		DataObjectMapElement status = new DataObjectMapElement();
 		status.put("code", new DataObjectString(code));
 		status.put("message", new DataObjectString(msg));
@@ -175,13 +175,27 @@ public abstract class DataObject {
 	}
 
 	/**
+	 * Construct a simple status response object.
+	 *
+	 * Status response may indicate success, or e.g. that the 
+	 * server is carrying out the request and will have results later.
+	 *
+	 * @param code (string) status code
+	 * @param msg the message
+	 * @return the data object representing the error message
+	 */
+	public static DataObjectMapElement statusObject(String code, String msg) {
+		return statusObject(code, msg, 0);
+	}
+
+	/**
 	 * Construct a simple error response object.
 	 *
 	 * @param code (string) error code
 	 * @param msg the error message
 	 * @return the data object representing the error message
 	 */
-	public static DataObject errorObject(String code, String msg) {
+	public static DataObjectMapElement errorObject(String code, String msg) {
 		DataObjectMapElement error = new DataObjectMapElement();
 		error.put("code", new DataObjectString(code));
 		error.put("message", new DataObjectString(msg));

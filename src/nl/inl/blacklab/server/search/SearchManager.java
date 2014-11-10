@@ -28,7 +28,9 @@ import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectString;
+import nl.inl.util.FileUtil;
 import nl.inl.util.MemoryUtil;
+import nl.inl.util.FileUtil.FileTask;
 import nl.inl.util.json.JSONArray;
 import nl.inl.util.json.JSONObject;
 
@@ -44,6 +46,8 @@ public class SearchManager {
 	private static final int MAX_USER_INDICES = 10;
 
 	private static final Logger logger = Logger.getLogger(SearchManager.class);
+
+	private static final String ILLEGAL_NAME_ERROR = "Illegal index name (only letters, digits, underscores and dashes allowed): ";
 
 	/**
 	 * A file filter that returns readable directories only; used for scanning
@@ -106,10 +110,10 @@ public class SearchManager {
 
 	/** Our current set of indices (with dir and mayViewContent setting) */
 	private Map<String, IndexParam> indexParam;
-	
+
 	/**
-	 * The status of each index, i.e. "available" or "indexing".
-	 * If no status is stored here, the status is "available".
+	 * The status of each index, i.e. "available" or "indexing". If no status is
+	 * stored here, the status is "available".
 	 */
 	Map<String, String> indexStatus;
 
@@ -463,9 +467,9 @@ public class SearchManager {
 		}
 		return null;
 	}
-	
+
 	public static boolean isValidIndexName(String indexName) {
-		return indexName.matches("[\\w_\\-]+");
+		return indexName.matches("[a-zA-Z0-9_\\-]+");
 	}
 
 	/**
@@ -478,14 +482,13 @@ public class SearchManager {
 	 * @return the Searcher object for that index
 	 * @throws IndexOpenException
 	 *             if not found or open error
-	 * @throws QueryException  if an illegal index name was supplied
 	 */
 	@SuppressWarnings("deprecation")
 	// for call to _setPidField() and _setContentViewable()
 	public synchronized Searcher getSearcher(String indexName, User user)
 			throws IndexOpenException {
 		if (!isValidIndexName(indexName))
-			throw new RuntimeException("Illegal index name (only word characters, underscore and dash allowed): " + indexName);
+			throw new RuntimeException(ILLEGAL_NAME_ERROR + indexName);
 
 		String prefixedName = getPrefixedIndexName(indexName, user);
 
@@ -551,7 +554,7 @@ public class SearchManager {
 
 		return searcher;
 	}
-	
+
 	/**
 	 * Does the specified index exist?
 	 * 
@@ -560,44 +563,166 @@ public class SearchManager {
 	 * @param user
 	 *            user that wants to access the index
 	 * @return true iff the index exists
-	 * @throws QueryException 
+	 * @throws QueryException
 	 */
-	public boolean indexExists(String indexName, User user) throws QueryException {
-		try {
-			getSearcher(indexName, user);
-		} catch (IndexOpenException e) {
+	public boolean indexExists(String indexName, User user)
+			throws QueryException {
+		if (!isValidIndexName(indexName))
+			throw new RuntimeException(ILLEGAL_NAME_ERROR + indexName);
+		IndexParam par = getIndexParam(indexName, user);
+		if (par == null) {
 			return false;
 		}
-		return true;
+		return Searcher.isIndex(par.getDir());
 	}
 
 	/**
 	 * Create an empty user index.
 	 * 
-	 * @param indexName the index name
-	 * @param user the logged-in user
+	 * Indices may only be created by a logged-in user in his own private area.
+	 * The index name is strictly validated, disallowing any weird input.
 	 * 
-	 * @throws QueryException if we're not allowed to create the index for whatever reason
-	 * @throws IOException if creation failed unexpectedly
+	 * @param indexName
+	 *            the index name
+	 * @param user
+	 *            the logged-in user
+	 * 
+	 * @throws QueryException
+	 *             if we're not allowed to create the index for whatever reason
+	 * @throws IOException
+	 *             if creation failed unexpectedly
 	 */
-	public void createIndex(String indexName, User user) throws QueryException, IOException {
+	public void createIndex(String indexName, User user) throws QueryException,
+			IOException {
 		if (!user.isLoggedIn())
-			throw new QueryException("CANNOT_CREATE_INDEX ", "Could not create index. Must be logged in.");
+			throw new QueryException("CANNOT_CREATE_INDEX ",
+					"Could not create index. Must be logged in.");
 		if (!isValidIndexName(indexName))
-			throw new QueryException("ILLEGAL_INDEX_NAME", "Illegal index name (only word characters, underscore and dash allowed): " + indexName);
+			throw new QueryException("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR
+					+ indexName);
 		if (indexExists(indexName, user))
-			throw new QueryException("INDEX_ALREADY_EXISTS", "Could not create index. Index already exists.");
+			throw new QueryException("INDEX_ALREADY_EXISTS",
+					"Could not create index. Index already exists.");
 		int n = getAvailableIndices(user).size();
 		if (n >= MAX_USER_INDICES)
-			throw new QueryException("CANNOT_CREATE_INDEX ", "Could not create index. You already have the maximum of " + n + " indices.");
-		
+			throw new QueryException("CANNOT_CREATE_INDEX ",
+					"Could not create index. You already have the maximum of "
+							+ n + " indices.");
+
 		File userDir = getUserCollectionDir(user.getUserId());
 		if (!userDir.canWrite())
-			throw new QueryException("CANNOT_CREATE_INDEX ", "Could not create index. Cannot write in use dir.");
-		
+			throw new QueryException("CANNOT_CREATE_INDEX ",
+					"Could not create index. Cannot write in use dir.");
+
 		File indexDir = new File(userDir, indexName);
 		Searcher searcher = Searcher.createIndex(indexDir);
 		searcher.close();
+	}
+
+	/**
+	 * Delete a user index.
+	 * 
+	 * Only user indices are deletable. The owner must be logged in. The index
+	 * name is strictly validated, disallowing any weird input. Many other
+	 * checks are done to root out all kinds of special cases.
+	 * 
+	 * @param indexName
+	 *            the index name
+	 * @param user
+	 *            the logged-in user
+	 * 
+	 * @throws QueryException
+	 *             if we're not allowed to delete the index
+	 */
+	public void deleteUserIndex(String indexName, User user)
+			throws QueryException {
+		if (!user.isLoggedIn())
+			throw new QueryException("CANNOT_DELETE_INDEX",
+					"Could not delete index. Must be logged in.");
+		if (!isValidIndexName(indexName))
+			throw new QueryException("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR
+					+ indexName);
+		if (!indexExists(indexName, user))
+			throw new QueryException("CANNOT_OPEN_INDEX",
+					"Could not open index '" + indexName
+							+ "'. Please check the name.");
+		File userDir = getUserCollectionDir(user.getUserId());
+		File indexDir = new File(userDir, indexName);
+		if (!indexDir.isDirectory())
+			throw new QueryException("CANNOT_DELETE_INDEX ",
+					"Could not delete index. Not an index.");
+		if (!userDir.canWrite() || !indexDir.canWrite())
+			throw new QueryException("CANNOT_DELETE_INDEX ",
+					"Could not delete index. Check file permissions.");
+		if (!indexDir.getParentFile().equals(userDir)) { // Yes, we're paranoid..
+			throw new QueryException("CANNOT_DELETE_INDEX ",
+					"Could not delete index. Not found in user dir.");
+		}
+		if (!Searcher.isIndex(indexDir)) { // ..but are we paranoid enough?
+			throw new QueryException("CANNOT_DELETE_INDEX ",
+					"Could not delete index. Not a BlackLab index.");
+		}
+
+		// Don't follow symlinks
+		try {
+			if (isSymlink(indexDir)) {
+				throw new QueryException("CANNOT_DELETE_INDEX ", "Could not delete index. Is a symlink.");
+			}
+		} catch (IOException e1) {
+			throw new QueryException("INTERNAL_ERROR", "An internal error occurred. Please contact the administrator. Error code: 13.");
+		}
+
+		// Can we even delete the whole tree? If not, don't even try.
+		try {
+			FileUtil.processTree(indexDir, new FileTask() {
+				@Override
+				public void process(File f) {
+					if (!f.canWrite())
+						throw new RuntimeException("Cannot delete " + f);
+				}
+			});
+		} catch (Exception e) {
+			throw new QueryException("CANNOT_DELETE_INDEX ",
+					"Could not delete index. Can't delete all files/dirs.");
+		}
+
+		// Everything seems ok. Delete the index.
+		delTree(indexDir);
+	}
+
+	// Copied from Apache Commons
+	// (as allowed under the Apache License 2.0)
+	public static boolean isSymlink(File file) throws IOException {
+		if (file == null)
+			throw new NullPointerException("File must not be null");
+		File canon;
+		if (file.getParent() == null) {
+			canon = file;
+		} else {
+			File canonDir = file.getParentFile().getCanonicalFile();
+			canon = new File(canonDir, file.getName());
+		}
+		return !canon.getCanonicalFile().equals(canon.getAbsoluteFile());
+	}
+
+	/**
+	 * Delete an entire tree with files, subdirectories, etc.
+	 * 
+	 * CAREFUL, DANGEROUS!
+	 *
+	 * @param root
+	 *            the directory tree to delete
+	 */
+	private static void delTree(File root) {
+		if (!root.isDirectory())
+			throw new RuntimeException("Not a directory: " + root);
+		for (File f : root.listFiles()) {
+			if (f.isDirectory())
+				delTree(f);
+			else
+				f.delete();
+		}
+		root.delete();
 	}
 
 	private String getPrefixedIndexName(String indexName, User user) {
@@ -990,7 +1115,8 @@ public class SearchManager {
 			}
 		} else if (language.equals("contextql")) {
 			try {
-				CompleteQuery q = ContextualQueryLanguageParser.parse(searcher, pattern);
+				CompleteQuery q = ContextualQueryLanguageParser.parse(searcher,
+						pattern);
 				return q.getContentsQuery();
 			} catch (nl.inl.blacklab.queryParser.contextql.TokenMgrError e) {
 				throw new QueryException("PATT_SYNTAX_ERROR",
@@ -1053,7 +1179,8 @@ public class SearchManager {
 			}
 		} else if (filterLang.equals("contextql")) {
 			try {
-				CompleteQuery q = ContextualQueryLanguageParser.parse(searcher, filter);
+				CompleteQuery q = ContextualQueryLanguageParser.parse(searcher,
+						filter);
 				return q.getFilterQuery();
 			} catch (nl.inl.blacklab.queryParser.contextql.TokenMgrError e) {
 				throw new QueryException("FILTER_SYNTAX_ERROR",
@@ -1177,11 +1304,12 @@ public class SearchManager {
 	public int getDefaultPageSize() {
 		return defaultPageSize;
 	}
-	
+
 	/**
 	 * Check the current status of an index
 	 * 
-	 * @param indexName the index
+	 * @param indexName
+	 *            the index
 	 * @return the current status
 	 */
 	public String getIndexStatus(String indexName) {
@@ -1194,18 +1322,22 @@ public class SearchManager {
 	}
 
 	/**
-	 * Check if the index status is (still) the specified status,
-	 * and if so, update the status to the new one.
+	 * Check if the index status is (still) the specified status, and if so,
+	 * update the status to the new one.
 	 * 
-	 * To check if setting was succesful, see if the returned value
-	 * equals the requested status.
+	 * To check if setting was succesful, see if the returned value equals the
+	 * requested status.
 	 * 
-	 * @param indexName the index to set the status for
-	 * @param checkOldStatus only set the new status if this is the current status
-	 * @param status the new status
+	 * @param indexName
+	 *            the index to set the status for
+	 * @param checkOldStatus
+	 *            only set the new status if this is the current status
+	 * @param status
+	 *            the new status
 	 * @return the resulting status of the index
 	 */
-	public String setIndexStatus(String indexName, String checkOldStatus, String status) {
+	public String setIndexStatus(String indexName, String checkOldStatus,
+			String status) {
 		synchronized (indexStatus) {
 			String oldStatus = getIndexStatus(indexName);
 			if (!oldStatus.equals(checkOldStatus))

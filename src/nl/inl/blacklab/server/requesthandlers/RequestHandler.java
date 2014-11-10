@@ -68,10 +68,10 @@ public abstract class RequestHandler {
 	 *
 	 * @param servlet the servlet object
 	 * @param request the request object
-	 * @param debugMode whether we're in debug mode
 	 * @return the response data
 	 */
-	public static DataObject handleGetPost(BlackLabServer servlet, HttpServletRequest request, boolean debugMode) {
+	public static DataObject handle(BlackLabServer servlet, HttpServletRequest request) {
+		boolean debugMode = servlet.getSearchManager().isDebugMode(request.getRemoteAddr());
 
 		// Parse the URL
 		String servletPath = request.getServletPath();
@@ -90,7 +90,13 @@ public abstract class RequestHandler {
 		RequestHandler requestHandler;
 		
 		String method = request.getMethod();
-		if (method.equals("POST")) {
+		if (method.equals("DELETE")) {
+			// Index given and nothing else?
+			if (indexName.length() == 0 || urlResource.length() > 0 || urlPathInfo.length() > 0) {
+				return DataObject.errorObject("ILLEGAL_DELETE_REQUEST", "Illegal DELETE request.");
+			}
+			requestHandler = new RequestHandlerDeleteIndex(servlet, request, indexName, null, null);
+		} else if (method.equals("POST")) {
 			if (indexName.length() == 0) {
 				// POST to /blacklab-server/ : create new index
 				requestHandler = new RequestHandlerCreateIndex(servlet, request, indexName, urlResource, urlPathInfo);
@@ -174,7 +180,7 @@ public abstract class RequestHandler {
 				}*/
 			}
 		} else {
-			return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(new RuntimeException("RequestHandler.doGetPost called with wrong method"), debugMode, 10));
+			return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(new RuntimeException("RequestHandler.doGetPost called with wrong method: " + method), debugMode, 10));
 		}
 		if (debugMode)
 			requestHandler.setDebug(debugMode);

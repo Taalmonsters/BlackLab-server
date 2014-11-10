@@ -92,10 +92,7 @@ public class BlackLabServer extends HttpServlet {
 	 */
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse responseObject) throws ServletException {
-		
-		boolean debugMode = searchManager.isDebugMode(request.getRemoteAddr());
-		DataObject response = RequestHandler.handleGetPost(this, request, debugMode);
-		writeResponse(request, responseObject, debugMode, response);
+		writeResponse(request, responseObject, RequestHandler.handle(this, request));
 	}
 
 	/**
@@ -104,10 +101,10 @@ public class BlackLabServer extends HttpServlet {
 	 * @throws ServletException 
 	 */
 	@Override
-	protected void doDelete(HttpServletRequest request, HttpServletResponse response) throws ServletException {
-		throw new ServletException("Illegal DELETE request.");
+	protected void doDelete(HttpServletRequest request, HttpServletResponse responseObject) throws ServletException {
+		writeResponse(request, responseObject, RequestHandler.handle(this, request));
 	}
-
+	
 	/**
 	 * Process GET requests (information retrieval)
 	 *
@@ -116,14 +113,15 @@ public class BlackLabServer extends HttpServlet {
 	 */
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse responseObject) {
-		boolean debugMode = searchManager.isDebugMode(request.getRemoteAddr());
-		DataObject response = RequestHandler.handleGetPost(this, request, debugMode);
-		writeResponse(request, responseObject, debugMode, response);
+		writeResponse(request, responseObject, RequestHandler.handle(this, request));
 	}
 
 	private void writeResponse(HttpServletRequest request,
-			HttpServletResponse responseObject, boolean debugMode,
+			HttpServletResponse responseObject,
 			DataObject response) {
+		
+		boolean debugMode = searchManager.isDebugMode(request.getRemoteAddr());
+		
 		// Determine response type
 		DataFormat outputType = response.getOverrideType(); // some responses override the user's request (i.e. article XML)
 		if (outputType == null) {
