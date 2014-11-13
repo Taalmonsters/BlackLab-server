@@ -121,6 +121,8 @@ public class ServletUtil {
 				return DataFormat.JSON;
 			if (accept.contains("xml"))
 				return DataFormat.XML;
+			if (accept.contains("javascript"))
+				return DataFormat.JSON;
 		}
 
 		// Unspecified. Use the configured default format.

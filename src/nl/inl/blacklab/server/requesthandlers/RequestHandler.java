@@ -93,13 +93,17 @@ public abstract class RequestHandler {
 		if (method.equals("DELETE")) {
 			// Index given and nothing else?
 			if (indexName.length() == 0 || urlResource.length() > 0 || urlPathInfo.length() > 0) {
-				return DataObject.errorObject("ILLEGAL_DELETE_REQUEST", "Illegal DELETE request.");
+				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal DELETE request.");
 			}
 			requestHandler = new RequestHandlerDeleteIndex(servlet, request, indexName, null, null);
+		} else if (method.equals("PUT")) {
+			if (indexName.length() <= 0)
+				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal POST request. Create new index with PUT to /blacklab-server/indexName");
+			requestHandler = new RequestHandlerCreateIndex(servlet, request, indexName, urlResource, urlPathInfo);
 		} else if (method.equals("POST")) {
 			if (indexName.length() == 0) {
-				// POST to /blacklab-server/ : create new index
-				requestHandler = new RequestHandlerCreateIndex(servlet, request, indexName, urlResource, urlPathInfo);
+				// POST to /blacklab-server/ : you probably meant PUT to /blacklab-server/indexName
+				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal POST request. Create new index with PUT to /blacklab-server/indexName");
 			} else if (urlResource.equals("docs")) {
 				if (!SearchManager.isValidIndexName(indexName))
 					return DataObject.errorObject("ILLEGAL_INDEX_NAME", "Illegal index name (only word characters, underscore and dash allowed): " + indexName);
@@ -107,7 +111,7 @@ public abstract class RequestHandler {
 				// POST to /blacklab-server/indexName/docs/ : add data to index
 				requestHandler = new RequestHandlerAddToIndex(servlet, request, indexName, urlResource, urlPathInfo);
 			} else {
-				return DataObject.errorObject("ILLEGAL_POST_REQUEST", "Cannot service this POST request. All retrieval must be done using GET.");
+				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal POST request. Note that retrieval can only be done using GET.");
 			}
 		} else if (method.equals("GET")) {
 			if (indexName.equals("cache-info") && debugMode) {

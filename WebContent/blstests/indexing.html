@@ -47,26 +47,22 @@ function createIndex() {
 	var indexName = $("#indexName")[0].value;
 	output("Creating index: " + indexName);
 	
-	var data = {
-		"action": "createIndex",
-		"indexName": indexName
-	};
+	var addParam = '';
 	if (!testFail) {
-		data.userid = "jan"; // test; only works if user override allowed for IP
+		// NOTE: "data" doesn't work for DELETE in jQuery;
+		// manually put params in URI
+		addParam = "?userid=jan";
 	}
 	
-	$.ajax("../", {
-		"type": "POST",
+	$.ajax("../" + indexName + addParam, {
+		"type": "PUT",
 		"accept": "application/json",
 		"dataType": "json",
-		"data": data,
 		"success": function (data) {
 			if (data['error'])
 				output("Error for create request: " + data['error']['message']);
-			else {
+			else
 				output("Success; message = " + data['status']['message']);
-				output("URL = " + data['url']);
-			}
 		},
 		"error": function (jqXHR, textStatus, errorThrown) {
 			output("Error for create request: " + textStatus + "; " + errorThrown);

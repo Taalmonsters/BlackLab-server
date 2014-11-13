@@ -3,7 +3,6 @@ package nl.inl.blacklab.server.requesthandlers;
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.ServletUtil;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.QueryException;
@@ -18,14 +17,13 @@ public class RequestHandlerCreateIndex extends RequestHandler {
 
 	@Override
 	public DataObject handle() throws QueryException {
-		indexName = getStringParameter("indexName");
 		if (indexName != null && indexName.length() > 0) {
 			// Create index and return success
 			try {
 				searchMan.createIndex(indexName, user);
 				
 				DataObjectMapElement response = DataObject.statusObject("SUCCESS", "Index created succesfully.");
-				response.put("url", ServletUtil.getServletBaseUrl(request) + "/" + indexName);
+				//response.put("url", ServletUtil.getServletBaseUrl(request) + "/" + indexName);
 				return response;
 			} catch (QueryException e) {
 				throw e;

@@ -87,11 +87,20 @@ public class BlackLabServer extends HttpServlet {
 	}
 	
 	/**
-	 * Process POST requests (create a index, add data to one)
+	 * Process POST requests (add data to index)
 	 * @throws ServletException 
 	 */
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse responseObject) throws ServletException {
+		writeResponse(request, responseObject, RequestHandler.handle(this, request));
+	}
+
+	/**
+	 * Process PUT requests (create index)
+	 * @throws ServletException 
+	 */
+	@Override
+	protected void doPut(HttpServletRequest request, HttpServletResponse responseObject) throws ServletException {
 		writeResponse(request, responseObject, RequestHandler.handle(this, request));
 	}
 
