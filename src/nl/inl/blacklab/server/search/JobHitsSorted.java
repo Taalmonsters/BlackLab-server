@@ -31,9 +31,20 @@ public class JobHitsSorted extends JobWithHits {
 			sortBy = sortBy.substring(1);
 		}
 		HitProperty sortProp = HitProperty.deserialize(hitsUnsorted, sortBy);
-		if (sortProp == null)
+		/*if (sortProp == null)
 			throw new QueryException("UNKNOWN_SORT_PROPERTY", "Unknown sort property '" + sortBy + "'.");
-		hits = hitsUnsorted.sortedBy(sortProp, reverse);
+		*/
+		if (sortProp != null) {
+			// Be lenient of clients passing wrong sortBy values,
+			// e.g. trying to sort a per-document search by hit context.
+			// The problem is that applications might remember your
+			// preferred sort and pass it with subsequent searches, even
+			// if that particular sort cannot be performed on that type of search.
+			// We don't want the client to have to validate this, so we simply
+			// ignore sort requests we can't carry out.
+			hits = hitsUnsorted.sortedBy(sortProp, reverse);
+		} else
+			hits = hitsUnsorted;
 	}
 
 	@Override
