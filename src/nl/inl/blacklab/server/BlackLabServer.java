@@ -81,9 +81,8 @@ public class BlackLabServer extends HttpServlet {
 		}
 
 		searchManager = new SearchManager(config);
-
+		
 		logger.info("BlackLab Server ready.");
-
 	}
 	
 	/**

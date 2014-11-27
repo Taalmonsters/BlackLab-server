@@ -44,6 +44,8 @@ var queryNum = 1;
 function createIndex() {
 	var testFail = $("#testFail").prop("checked");
 	
+	var userId = "jan";
+	
 	var indexName = $("#indexName")[0].value;
 	output("Creating index: " + indexName);
 	
@@ -51,7 +53,7 @@ function createIndex() {
 	if (!testFail) {
 		// NOTE: "data" doesn't work for DELETE in jQuery;
 		// manually put params in URI
-		addParam = "?userid=jan";
+		addParam = "?userid=" + userId;
 	}
 	
 	$.ajax("../" + indexName + addParam, {
@@ -73,6 +75,8 @@ function createIndex() {
 function deleteIndex() {
 	var testFail = $("#testFail").prop("checked");
 	
+	var userId = "jan";
+	
 	var indexName = $("#indexName")[0].value;
 	output("Deleting index: " + indexName);
 	
@@ -80,7 +84,7 @@ function deleteIndex() {
 	if (!testFail) {
 		// NOTE: "data" doesn't work for DELETE in jQuery;
 		// manually put params in URI
-		addParam = "?userid=jan";
+		addParam = "?userid=" + userId;
 	}
 	
 	$.ajax("../" + indexName + addParam, {
@@ -108,7 +112,7 @@ function deleteIndex() {
 			<textarea id='output'></textarea>
 			<hr/>
 			<label for='indexName'>Index name:</label> 
-			<input type='text' id='indexName' value='gysseling' />
+			<input type='text' id='indexName' value='jan:gysseling' />
 			<input type='button' value='Create index' onclick='createIndex();' />
 			<input type='button' value='Delete index' onclick='deleteIndex();' /><br/>
 			<input type='checkbox' id='testFail' /> <label for='testFail'>Test auth failure?</label>

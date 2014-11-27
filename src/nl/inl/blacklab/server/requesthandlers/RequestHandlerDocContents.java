@@ -13,6 +13,7 @@ import nl.inl.blacklab.server.search.JobWithHits;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
 import nl.inl.blacklab.server.search.SearchManager;
+import nl.inl.blacklab.server.search.User;
 
 import org.apache.lucene.document.Document;
 
@@ -20,8 +21,8 @@ import org.apache.lucene.document.Document;
  * Get information about the structure of an index.
  */
 public class RequestHandlerDocContents extends RequestHandler {
-	public RequestHandlerDocContents(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
-		super(servlet, request, indexName, urlResource, urlPathPart);
+	public RequestHandlerDocContents(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
+		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
 
 	@Override
@@ -40,7 +41,7 @@ public class RequestHandlerDocContents extends RequestHandler {
 		if (document == null)
 			throw new QueryException("INTERNAL_ERROR", "An internal error occurred. Please contact the administrator. Error code: 9.");
 		if (!searcher.getIndexStructure().contentViewable()) {
-			DataObject errObj = DataObject.errorObject("NOT_AUTHORIZED", "Sorry, you're not authorized to retrieve the full contents of this document.");
+			DataObject errObj = DataObject.errorObject("NOT_AUTHORIZED", "Unauthorized operation. Viewing the full contents of this document is not allowed.");
 			errObj.overrideType(type); // Application expects this MIME type, don't disappoint
 			return errObj;
 		}

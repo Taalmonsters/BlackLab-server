@@ -18,6 +18,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchManager;
+import nl.inl.blacklab.server.search.User;
 
 import org.apache.lucene.document.Document;
 
@@ -25,8 +26,8 @@ import org.apache.lucene.document.Document;
  * Get information about the structure of an index.
  */
 public class RequestHandlerDocSnippet extends RequestHandler {
-	public RequestHandlerDocSnippet(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
-		super(servlet, request, indexName, urlResource, urlPathPart);
+	public RequestHandlerDocSnippet(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
+		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
 
 	@Override

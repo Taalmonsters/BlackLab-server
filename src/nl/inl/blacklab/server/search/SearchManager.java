@@ -3,6 +3,7 @@ package nl.inl.blacklab.server.search;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -12,6 +13,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.queryParser.contextql.ContextualQueryLanguageParser;
@@ -43,11 +47,11 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.Version;
 
 public class SearchManager {
-	private static final int MAX_USER_INDICES = 10;
-
 	private static final Logger logger = Logger.getLogger(SearchManager.class);
 
-	private static final String ILLEGAL_NAME_ERROR = "Illegal index name (only letters, digits, underscores and dashes allowed): ";
+	private static final int MAX_USER_INDICES = 10;
+
+	public static final String ILLEGAL_NAME_ERROR = "Illegal index name (only letters, digits, underscores and dashes allowed): ";
 
 	/**
 	 * A file filter that returns readable directories only; used for scanning
@@ -99,9 +103,6 @@ public class SearchManager {
 	/** Default values for request parameters */
 	private Map<String, String> defaultParameterValues;
 
-	// /** Run in debug mode or not? [no] */
-	// private boolean debugMode;
-
 	/** Default number of hits/results per page [20] */
 	private int defaultPageSize;
 
@@ -117,6 +118,9 @@ public class SearchManager {
 	 */
 	Map<String, String> indexStatus;
 
+	/** The Searcher objects, one for each of the indices we can search. */
+	private Map<String, Searcher> searchers = new HashMap<String, Searcher>();
+
 	/** Configured index collections directories */
 	private List<File> collectionsDirs;
 
@@ -125,9 +129,6 @@ public class SearchManager {
 	 * parent of that dir.
 	 */
 	private File userCollectionsDir;
-
-	/** The Searcher objects, one for each of the indices we can search. */
-	private Map<String, Searcher> searchers = new HashMap<String, Searcher>();
 
 	/** All running searches as well as recently run searches */
 	private SearchCache cache;
@@ -182,8 +183,13 @@ public class SearchManager {
 	/** Maximum allowed value for maxcount parameter (-1 = no limit). */
 	private int maxHitsToCountAllowed;
 
-	// private JSONObject properties;
-
+	/** The authentication system, giving information about the currently logged-in user
+        (or at least a session id) */
+	private Object authSystem;
+	
+	/** The method to invoke for determining the current user. */
+	private Method authSystemDetermineCurrentUser;
+	
 	public SearchManager(JSONObject properties) {
 		logger.debug("SearchManager created");
 
@@ -279,6 +285,10 @@ public class SearchManager {
 							+ "' does not exist or cannot be read: " + dir);
 					continue;
 				}
+				if (!Searcher.isIndex(dir)) {
+					logger.warn("Directory " + dir + " does not contain a BlackLab index.");
+					continue;
+				}
 
 				String pid = JsonUtil.getProperty(indexConfig, "pid", "");
 				if (pid.length() != 0) {
@@ -337,11 +347,32 @@ public class SearchManager {
 				userCollectionsDir = null;
 			}
 		}
-
+		
 		if (!indicesFound)
 			throw new RuntimeException(
 					"Configuration error: no indices or collections available. Put blacklab-server.json on classpath (i.e. Tomcat shared or lib dir) with at least: { \"indices\": { \"myindex\": { \"dir\": \"/path/to/my/index\" } } } ");
 
+		// Init auth system
+		String className = "";
+		if (properties.has("authSystem")) {
+			JSONObject propAuth = properties.getJSONObject("authSystem");
+			if (propAuth.has("class")) {
+				className = propAuth.getString("class");
+			}
+		}
+		if (className.length() > 0) {
+			try {
+				Class<?> cl = Class.forName(className);
+				authSystem = cl.getConstructor().newInstance();
+				authSystemDetermineCurrentUser = cl.getMethod("determineCurrentUser", HttpServlet.class, HttpServletRequest.class);
+			} catch (Exception e) {
+				throw new RuntimeException("Error instantiating AuthSystem", e);
+			}
+			logger.info("Auth system initialized: " + className);
+		} else {
+			logger.info("No auth system configured");
+		}
+		
 		// Keep a list of searchparameters.
 		searchParameterNames = Arrays.asList("resultsType", "patt", "pattlang",
 				"pattfield", "filter", "filterlang", "sort", "group",
@@ -377,18 +408,36 @@ public class SearchManager {
 		defaultParameterValues.put("property", "word");
 	}
 
+	public User determineCurrentUser(HttpServlet servlet, HttpServletRequest request) {
+		
+		// If no auth system is configured, all users are anonymous
+		if (authSystem == null) {
+			User user = User.anonymous(request.getSession().getId());
+			logger.debug("No auth system, user = " + user);
+			return user;
+		}
+		
+		// Let auth system determine the current user.
+		try {
+			User user = (User)authSystemDetermineCurrentUser.invoke(authSystem, servlet, request);
+			logger.debug("User = " + user);
+			return user;
+		} catch (Exception e) {
+			throw new RuntimeException("Error determining current user", e);
+		}
+	}
+	
 	/**
-	 * Return the current user's collection dir.
+	 * Return the specified user's collection dir.
 	 * 
-	 * @param userId
-	 *            the current user
+	 * @param userId the user
 	 * 
 	 * @return the user's collection dir, or null if none
 	 */
 	private File getUserCollectionDir(String userId) {
 		if (userCollectionsDir == null)
 			return null;
-		File dir = new File(userCollectionsDir, userId);
+		File dir = new File(userCollectionsDir, FileUtil.sanitizeFilename(userId));
 		if (!dir.canRead())
 			return null;
 		return dir;
@@ -406,34 +455,36 @@ public class SearchManager {
 	 * If a user is logged in, only looks in the user's private index
 	 * collection.
 	 * 
-	 * @param name
+	 * @param indexName
 	 *            the index name
-	 * @param user
-	 *            the user (userid if logged in, otherwise only session id)
 	 * @return the index dir and mayViewContents setting
 	 */
-	private IndexParam getIndexParam(String name, User user) {
-		if (user.isLoggedIn()) {
-			// User is logged in; only look in user's private index collection.
-			File dir = getUserCollectionDir(user.getUserId());
-			return findIndexInCollection(name, dir, false);
-		}
+	private IndexParam getIndexParam(String indexName) {
 
 		// Already in the cache?
-		if (indexParam.containsKey(name)) {
-			IndexParam p = indexParam.get(name);
+		if (indexParam.containsKey(indexName)) {
+			IndexParam p = indexParam.get(indexName);
 
 			// Check if it's still there.
 			if (p.getDir().canRead())
 				return p;
 
 			// Directory isn't accessible any more; remove from cache
-			indexParam.remove(name);
+			indexParam.remove(indexName);
+			cache.clearCacheForIndex(indexName);
+		}
+		
+		// Is it a private index?
+		if (indexName.contains(":")) {
+			// Yes; look in user's private index collection.
+			String[] parts = indexName.split(":");
+			File dir = getUserCollectionDir(parts[0]);
+			return findIndexInCollection(parts[1], dir, true, parts[0] + ":");
 		}
 
 		// Find it in a collection
 		for (File collection : collectionsDirs) {
-			IndexParam p = findIndexInCollection(name, collection, true);
+			IndexParam p = findIndexInCollection(indexName, collection, true, "");
 			if (p != null)
 				return p;
 		}
@@ -447,28 +498,41 @@ public class SearchManager {
 	 * Adds index parameters to the cache if found.
 	 * 
 	 * @param name
-	 *            name of the index
+	 *            name of the index, without user prefix (if any)
 	 * @param collection
 	 *            the collection dir
 	 * @param addToCache
 	 *            if true, add parameters to the cache if found
+	 * @param userIdPrefix what to prefix the name with when putting it in the cache
+	 * @param parts 
 	 * @return the index parameters if found.
 	 */
 	private IndexParam findIndexInCollection(String name, File collection,
-			boolean addToCache) {
+			boolean addToCache, String userIdPrefix) {
 		// Look for the index in this collection dir
 		File dir = new File(collection, name);
 		if (dir.canRead() && Searcher.isIndex(dir)) {
 			// Found it. Add to the cache and return
 			IndexParam p = new IndexParam(dir);
 			if (addToCache)
-				indexParam.put(name, p);
+				indexParam.put(userIdPrefix + name, p);
 			return p;
 		}
 		return null;
 	}
 
+	/**
+	 * Check the index name part (not the user id part, if any)
+	 * of the specified index name.
+	 * 
+	 * @param indexName the index name, possibly including user id prefix
+	 * @return whether or not the index name part is valid
+	 */
 	public static boolean isValidIndexName(String indexName) {
+		if (indexName.contains(":")) {
+			String[] parts = indexName.split(":");
+			indexName = parts[1];
+		}
 		return indexName.matches("[a-zA-Z0-9_\\-]+");
 	}
 
@@ -477,30 +541,26 @@ public class SearchManager {
 	 * 
 	 * @param indexName
 	 *            the index we want to search
-	 * @param user
-	 *            user that wants to access the index
 	 * @return the Searcher object for that index
 	 * @throws IndexOpenException
 	 *             if not found or open error
 	 */
 	@SuppressWarnings("deprecation")
 	// for call to _setPidField() and _setContentViewable()
-	public synchronized Searcher getSearcher(String indexName, User user)
+	public synchronized Searcher getSearcher(String indexName)
 			throws IndexOpenException {
 		if (!isValidIndexName(indexName))
 			throw new RuntimeException(ILLEGAL_NAME_ERROR + indexName);
 
-		String prefixedName = getPrefixedIndexName(indexName, user);
-
-		if (searchers.containsKey(prefixedName)) {
-			Searcher searcher = searchers.get(prefixedName);
+		if (searchers.containsKey(indexName)) {
+			Searcher searcher = searchers.get(indexName);
 			if (searcher.getIndexDirectory().canRead())
 				return searcher;
 			// Index was (re)moved; remove Searcher from cache.
-			searchers.remove(prefixedName);
+			searchers.remove(indexName);
 			// Maybe we can find an index with this name elsewhere?
 		}
-		IndexParam par = getIndexParam(indexName, user);
+		IndexParam par = getIndexParam(indexName);
 		if (par == null) {
 			throw new IndexOpenException("Index " + indexName + " not found");
 		}
@@ -514,7 +574,7 @@ public class SearchManager {
 			throw new IndexOpenException("Could not open index '" + indexName
 					+ "'", e);
 		}
-		searchers.put(prefixedName, searcher);
+		searchers.put(indexName, searcher);
 
 		// Figure out the pid from the index metadata and/or BLS config.
 		String indexPid = searcher.getIndexStructure().pidField();
@@ -560,16 +620,14 @@ public class SearchManager {
 	 * 
 	 * @param indexName
 	 *            the index we want to check for
-	 * @param user
-	 *            user that wants to access the index
 	 * @return true iff the index exists
 	 * @throws QueryException
 	 */
-	public boolean indexExists(String indexName, User user)
+	public boolean indexExists(String indexName)
 			throws QueryException {
 		if (!isValidIndexName(indexName))
 			throw new RuntimeException(ILLEGAL_NAME_ERROR + indexName);
-		IndexParam par = getIndexParam(indexName, user);
+		IndexParam par = getIndexParam(indexName);
 		if (par == null) {
 			return false;
 		}
@@ -583,38 +641,38 @@ public class SearchManager {
 	 * The index name is strictly validated, disallowing any weird input.
 	 * 
 	 * @param indexName
-	 *            the index name
-	 * @param user
-	 *            the logged-in user
+	 *            the index name, including user prefix
 	 * 
 	 * @throws QueryException
 	 *             if we're not allowed to create the index for whatever reason
 	 * @throws IOException
 	 *             if creation failed unexpectedly
 	 */
-	public void createIndex(String indexName, User user) throws QueryException,
+	public void createIndex(String indexName) throws QueryException,
 			IOException {
-		if (!user.isLoggedIn())
-			throw new QueryException("CANNOT_CREATE_INDEX ",
-					"Could not create index. Must be logged in.");
+		if (!indexName.contains(":"))
+			throw new QueryException("NOT_AUTHORIZED", "Unauthorized operation. Can only create private indices.");
 		if (!isValidIndexName(indexName))
 			throw new QueryException("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR
 					+ indexName);
-		if (indexExists(indexName, user))
+		if (indexExists(indexName))
 			throw new QueryException("INDEX_ALREADY_EXISTS",
 					"Could not create index. Index already exists.");
-		int n = getAvailableIndices(user).size();
+		String[] parts = indexName.split(":");
+		String userId = parts[0];
+		String indexNameWithoutUsePrefix = parts[1];
+		int n = getAvailablePrivateIndices(userId).size();
 		if (n >= MAX_USER_INDICES)
 			throw new QueryException("CANNOT_CREATE_INDEX ",
 					"Could not create index. You already have the maximum of "
 							+ n + " indices.");
 
-		File userDir = getUserCollectionDir(user.getUserId());
+		File userDir = getUserCollectionDir(userId);
 		if (!userDir.canWrite())
 			throw new QueryException("CANNOT_CREATE_INDEX ",
 					"Could not create index. Cannot write in use dir.");
 
-		File indexDir = new File(userDir, indexName);
+		File indexDir = new File(userDir, indexNameWithoutUsePrefix);
 		Searcher searcher = Searcher.createIndex(indexDir);
 		searcher.close();
 	}
@@ -628,26 +686,26 @@ public class SearchManager {
 	 * 
 	 * @param indexName
 	 *            the index name
-	 * @param user
-	 *            the logged-in user
 	 * 
 	 * @throws QueryException
 	 *             if we're not allowed to delete the index
 	 */
-	public void deleteUserIndex(String indexName, User user)
+	public void deleteUserIndex(String indexName)
 			throws QueryException {
-		if (!user.isLoggedIn())
-			throw new QueryException("CANNOT_DELETE_INDEX",
-					"Could not delete index. Must be logged in.");
+		if (!indexName.contains(":"))
+			throw new QueryException("NOT_AUTHORIZED", "Unauthorized operation. Can only delete private indices.");
 		if (!isValidIndexName(indexName))
 			throw new QueryException("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR
 					+ indexName);
-		if (!indexExists(indexName, user))
+		if (!indexExists(indexName))
 			throw new QueryException("CANNOT_OPEN_INDEX",
 					"Could not open index '" + indexName
 							+ "'. Please check the name.");
-		File userDir = getUserCollectionDir(user.getUserId());
-		File indexDir = new File(userDir, indexName);
+		String[] parts = indexName.split(":");
+		String userId = parts[0];
+		String indexNameNoUserPrefix = parts[1];
+		File userDir = getUserCollectionDir(userId);
+		File indexDir = new File(userDir, indexNameNoUserPrefix);
 		if (!indexDir.isDirectory())
 			throw new QueryException("CANNOT_DELETE_INDEX ",
 					"Could not delete index. Not an index.");
@@ -725,16 +783,6 @@ public class SearchManager {
 		root.delete();
 	}
 
-	private String getPrefixedIndexName(String indexName, User user) {
-		String indexNameWithUserPrefix;
-		if (user.isLoggedIn()) {
-			indexNameWithUserPrefix = user.getUserId() + "/" + indexName;
-		} else {
-			indexNameWithUserPrefix = indexName;
-		}
-		return indexNameWithUserPrefix;
-	}
-
 	/**
 	 * Get the Lucene Document id given the pid
 	 * 
@@ -791,58 +839,57 @@ public class SearchManager {
 	}
 
 	/**
-	 * Return the list of indices available for searching.
+	 * Return the list of private indices available for searching.
 	 * 
-	 * @param user
-	 *            the current user (either userid for logged in user, or session
-	 *            id otherwise)
+	 * @param userId the user
 	 * @return the list of index names
 	 */
-	public Collection<String> getAvailableIndices(User user) {
+	public Collection<String> getAvailablePrivateIndices(String userId) {
 
-		if (user.isLoggedIn()) {
-			File dir = getUserCollectionDir(user.getUserId());
-			Set<String> indices = new HashSet<String>();
-			if (dir != null) {
-				for (File f : dir.listFiles(readableDirFilter)) {
-					indices.add(f.getName());
-				}
+		File userDir = getUserCollectionDir(userId);
+		Set<String> indices = new HashSet<String>();
+		if (userDir != null) {
+			for (File f : userDir.listFiles(readableDirFilter)) {
+				indices.add(userId + ":" + f.getName());
 			}
-			return indices;
 		}
+		return indices;
+	}
 
+	/**
+	 * Return the list of public indices available for searching.
+	 * 
+	 * @return the list of index names
+	 */
+	public Collection<String> getAvailablePublicIndices() {
+		Set<String> indices = new HashSet<String>();
+		
 		// Scan collections for any new indices
 		for (File dir : collectionsDirs) {
-			addNewIndicesInCollection(dir);
+			for (File f : dir.listFiles(readableDirFilter)) {
+				if (!indexParam.containsKey(f.getName()) && Searcher.isIndex(f)) {
+					// New one; add it
+					indexParam.put(f.getName(), new IndexParam(f));
+				}
+			}
 		}
 
-		// Remove indices that are no longer available
+		// Gather list of public indices, and 
+		// remove indices that are no longer available
 		List<String> remove = new ArrayList<String>();
 		for (Map.Entry<String, IndexParam> e : indexParam.entrySet()) {
 			if (!e.getValue().getDir().canRead()) {
 				remove.add(e.getKey());
+			} else {
+				if (!e.getKey().contains(":"))
+					indices.add(e.getKey());
 			}
 		}
 		for (String name : remove) {
 			indexParam.remove(name);
 		}
 
-		return indexParam.keySet();
-	}
-
-	/**
-	 * Scan a collection dir and add any new indices to our cache.
-	 * 
-	 * @param collectionDir
-	 *            the collection directory
-	 */
-	private void addNewIndicesInCollection(File collectionDir) {
-		for (File f : collectionDir.listFiles(readableDirFilter)) {
-			if (!indexParam.containsKey(f.getName())) {
-				// New one; add it
-				indexParam.put(f.getName(), new IndexParam(f));
-			}
-		}
+		return indices;
 	}
 
 	public JobWithHits searchHits(User user, SearchParameters par)
@@ -1345,6 +1392,14 @@ public class SearchManager {
 			indexStatus.put(indexName, status);
 			return status;
 		}
+	}
+
+	public Collection<String> getAllAvailableIndices(String userId) {
+		Set<String> indices = new HashSet<String>();
+		if (userId != null && userId.length() > 0)
+			indices.addAll(getAvailablePrivateIndices(userId));
+		indices.addAll(getAvailablePublicIndices());
+		return indices;
 	}
 
 }

@@ -9,6 +9,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchManager;
+import nl.inl.blacklab.server.search.User;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
@@ -20,8 +21,8 @@ public class RequestHandlerDocInfo extends RequestHandler {
 	@SuppressWarnings("hiding")
 	private static final Logger logger = Logger.getLogger(RequestHandlerDocInfo.class);
 
-	public RequestHandlerDocInfo(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
-		super(servlet, request, indexName, urlResource, urlPathPart);
+	public RequestHandlerDocInfo(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
+		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
 
 	@Override

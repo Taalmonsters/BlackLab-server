@@ -6,13 +6,14 @@ import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.QueryException;
+import nl.inl.blacklab.server.search.User;
 
 /**
  * Display the contents of the cache.
  */
 public class RequestHandlerCreateIndex extends RequestHandler {
-	public RequestHandlerCreateIndex(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
-		super(servlet, request, indexName, urlResource, urlPathPart);
+	public RequestHandlerCreateIndex(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
+		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
 
 	@Override
@@ -20,7 +21,7 @@ public class RequestHandlerCreateIndex extends RequestHandler {
 		if (indexName != null && indexName.length() > 0) {
 			// Create index and return success
 			try {
-				searchMan.createIndex(indexName, user);
+				searchMan.createIndex(indexName);
 				
 				DataObjectMapElement response = DataObject.statusObject("SUCCESS", "Index created succesfully.");
 				//response.put("url", ServletUtil.getServletBaseUrl(request) + "/" + indexName);

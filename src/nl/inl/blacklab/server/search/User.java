@@ -1,5 +1,7 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.util.FileUtil;
+
 /** Represents either a unique (logged-in) user, or a unique session 
  *  (when not logged in). */
 public class User {
@@ -9,10 +11,36 @@ public class User {
 	/** The session id */
 	private String sessionId;
 	
-	public User(String userId, String sessionId) {
-		this.userId = userId;
-		if (userId != null && userId.length() == 0)
-			this.userId = null;
+	/**
+	 * Create a new logged-in user.
+	 * 
+	 * @param userId unique id identifying this user
+	 * @param sessionId the session id
+	 * @return the new user
+	 */
+	public static User loggedIn(String userId, String sessionId) {
+		return new User(userId, sessionId);
+	}
+	
+	/**
+	 * Create a new anonymous user.
+	 * 
+	 * @param sessionId the session id
+	 * @return the new user
+	 */
+	public static User anonymous(String sessionId) {
+		return new User(null, sessionId);
+	}
+	
+	private User(String userId, String sessionId) {
+		this.userId = null;
+		if (userId != null) {
+			// Strip any colons from userid because we use colon as a separator
+			// between userid and index name.
+			this.userId = userId.replaceAll(":", "");
+			if (this.userId.length() == 0)
+				this.userId = null;
+		}
 		this.sessionId = sessionId;
 	}
 
@@ -36,6 +64,10 @@ public class User {
 	
 	public String getUserId() {
 		return userId;
+	}
+
+	public String getUserDirName() {
+		return FileUtil.sanitizeFilename(userId);
 	}
 
 	public String getSessionId() {

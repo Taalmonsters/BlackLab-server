@@ -73,6 +73,10 @@ public abstract class RequestHandler {
 	public static DataObject handle(BlackLabServer servlet, HttpServletRequest request) {
 		boolean debugMode = servlet.getSearchManager().isDebugMode(request.getRemoteAddr());
 
+		// See if a user is logged in
+		SearchManager searchManager = servlet.getSearchManager();
+		User user = searchManager.determineCurrentUser(servlet, request);
+
 		// Parse the URL
 		String servletPath = request.getServletPath();
 		if (servletPath == null)
@@ -83,8 +87,25 @@ public abstract class RequestHandler {
 			servletPath = servletPath.substring(0, servletPath.length() - 1);
 		String[] parts = servletPath.split("/", 3);
 		String indexName = parts.length >= 1 ? parts[0] : "";
+		if (indexName.startsWith(":")) {
+			if (!user.isLoggedIn())
+				return DataObject.errorObject("NOT_AUTHORIZED", "Unauthorized operation. Log in to access your private indices.");
+			// Private index. Prefix with user id.
+			indexName = user.getUserId() + indexName;
+		}
 		String urlResource = parts.length >= 2 ? parts[1] : "";
 		String urlPathInfo = parts.length >= 3 ? parts[2] : "";
+		
+		// If we're doing something with a private index, it must be our own.
+		boolean isPrivateIndex = false;
+		if (indexName.contains(":")) {
+			isPrivateIndex = true;
+			String[] userAndIndexName = indexName.split(":");
+			if (!user.isLoggedIn())
+				return DataObject.errorObject("NOT_AUTHORIZED", "Unauthorized operation. Log in to access your private indices.");
+			if (!user.getUserId().equals(userAndIndexName[0]))
+				return DataObject.errorObject("NOT_AUTHORIZED", "Unauthorized operation. You cannot access another user's private indices.");
+		}
 		
 		// Choose the RequestHandler subclass
 		RequestHandler requestHandler;
@@ -95,38 +116,43 @@ public abstract class RequestHandler {
 			if (indexName.length() == 0 || urlResource.length() > 0 || urlPathInfo.length() > 0) {
 				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal DELETE request.");
 			}
-			requestHandler = new RequestHandlerDeleteIndex(servlet, request, indexName, null, null);
+			if (!isPrivateIndex)
+				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal DELETE request. You can only delete your own private indices.");
+			requestHandler = new RequestHandlerDeleteIndex(servlet, request, user, indexName, null, null);
 		} else if (method.equals("PUT")) {
 			if (indexName.length() <= 0)
-				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal POST request. Create new index with PUT to /blacklab-server/indexName");
-			requestHandler = new RequestHandlerCreateIndex(servlet, request, indexName, urlResource, urlPathInfo);
+				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal PUT request. Create new index with PUT to /blacklab-server/indexName");
+			if (!isPrivateIndex)
+				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal PUT request. You can only create indices in your private collection.");
+			requestHandler = new RequestHandlerCreateIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
 		} else if (method.equals("POST")) {
+			if (!isPrivateIndex)
+				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal POST request. Can only POST to private indices.");
 			if (indexName.length() == 0) {
 				// POST to /blacklab-server/ : you probably meant PUT to /blacklab-server/indexName
 				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal POST request. Create new index with PUT to /blacklab-server/indexName");
 			} else if (urlResource.equals("docs")) {
 				if (!SearchManager.isValidIndexName(indexName))
-					return DataObject.errorObject("ILLEGAL_INDEX_NAME", "Illegal index name (only word characters, underscore and dash allowed): " + indexName);
+					return DataObject.errorObject("ILLEGAL_INDEX_NAME", SearchManager.ILLEGAL_NAME_ERROR + indexName);
 				
 				// POST to /blacklab-server/indexName/docs/ : add data to index
-				requestHandler = new RequestHandlerAddToIndex(servlet, request, indexName, urlResource, urlPathInfo);
+				requestHandler = new RequestHandlerAddToIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
 			} else {
 				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal POST request. Note that retrieval can only be done using GET.");
 			}
 		} else if (method.equals("GET")) {
 			if (indexName.equals("cache-info") && debugMode) {
-				requestHandler = new RequestHandlerCacheInfo(servlet, request, indexName, urlResource, urlPathInfo);
+				requestHandler = new RequestHandlerCacheInfo(servlet, request, user, indexName, urlResource, urlPathInfo);
 			} else if (indexName.equals("help")) {
-				requestHandler = new RequestHandlerBlsHelp(servlet, request, indexName, urlResource, urlPathInfo);
+				requestHandler = new RequestHandlerBlsHelp(servlet, request, user, indexName, urlResource, urlPathInfo);
 			} else if (indexName.length() == 0) {
 				// No index or operation given; server info
-				requestHandler = new RequestHandlerServerInfo(servlet, request, indexName, urlResource, urlPathInfo);
+				requestHandler = new RequestHandlerServerInfo(servlet, request, user, indexName, urlResource, urlPathInfo);
 			} else {
 				// Choose based on urlResource
 				try {
 					String handlerName = urlResource;
 	
-					SearchManager searchManager = servlet.getSearchManager();
 					String status = searchManager.getIndexStatus(indexName);
 					if (!status.equals("available") && handlerName.length() > 0 && !handlerName.equals("debug") && !handlerName.equals("fields") && !handlerName.equals("status")) {
 						return DataObject.errorObject("INDEX_UNAVAILABLE", "The index '" + indexName + "' is not available right now. Status: " + status);
@@ -156,13 +182,13 @@ public abstract class RequestHandler {
 								handlerName += "-grouped"; // list of groups instead of contents
 						}
 					}
-	
+					
 					if (!availableHandlers.containsKey(handlerName))
 						return DataObject.errorObject("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
 					Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
-					Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, String.class, String.class, String.class);
+					Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, User.class, String.class, String.class, String.class);
 					//servlet.getSearchManager().getSearcher(indexName); // make sure it's open
-					requestHandler = ctor.newInstance(servlet, request, indexName, urlResource, urlPathInfo);
+					requestHandler = ctor.newInstance(servlet, request, user, indexName, urlResource, urlPathInfo);
 				} catch (NoSuchMethodException e) {
 					// (can only happen if the required constructor is not available in the RequestHandler subclass)
 					logger.error("Could not get constructor to create request handler", e);
@@ -234,7 +260,7 @@ public abstract class RequestHandler {
 	/** User id (if logged in) and/or session id */
 	User user;
 
-	RequestHandler(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathInfo) {
+	RequestHandler(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathInfo) {
 		this.servlet = servlet;
 		this.request = request;
 		searchMan = servlet.getSearchManager();
@@ -242,17 +268,8 @@ public abstract class RequestHandler {
 		this.indexName = indexName;
 		this.urlResource = urlResource;
 		this.urlPathInfo = urlPathInfo;
+		this.user = user;
 
-		String sessionId = request.getSession().getId();
-		String userId = null;  // TODO: determine user id
-		if (searchMan.mayOverrideUserId(request.getRemoteAddr()) && request.getParameter("userid") != null) {
-			userId = request.getParameter("userid");
-			logger.debug("userid overridden: " + userId);
-		}
-		if (userId != null && userId.length() == 0)
-			userId = null;
-		user = new User(userId, sessionId);
-		
 		logger.info(ServletUtil.shortenIpv6(request.getRemoteAddr()) + " " + user.uniqueIdShort() + " " + request.getMethod() + " " + ServletUtil.getPathAndQueryString(request));
 	}
 
@@ -406,7 +423,7 @@ public abstract class RequestHandler {
 	}
 
 	protected Searcher getSearcher() throws IndexOpenException {
-		return searchMan.getSearcher(indexName, user);
+		return searchMan.getSearcher(indexName);
 	}
 
 	/**

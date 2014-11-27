@@ -36,16 +36,6 @@ public class SearchParameters extends TreeMap<String, String> {
 		return "{ " + b.toString() + " }";
 	}
 
-	/*
-	@Override
-	public String get(Object key) {
-		String value = super.get(key);
-		if (value == null || value.length() == 0) {
-			value = searchManager.getParameterDefaultValue(key.toString());
-		}
-		return value;
-	}*/
-
 	public String getString(Object key) {
 		String value = super.get(key);
 		if (value == null || value.length() == 0) {

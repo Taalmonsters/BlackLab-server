@@ -5,14 +5,15 @@ import javax.servlet.http.HttpServletRequest;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.search.User;
 
 /**
  * Get debug info about the servlet and index.
  * Only available in debug mode (BlackLabServer.DEBUG_MODE == true)
  */
 public class RequestHandlerDebug extends RequestHandler {
-	public RequestHandlerDebug(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
-		super(servlet, request, indexName, urlResource, urlPathPart);
+	public RequestHandlerDebug(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
+		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
 
 	@Override

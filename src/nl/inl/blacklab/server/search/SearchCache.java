@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
@@ -99,6 +101,22 @@ public class SearchCache {
 		//logger.debug("Put in cache: " + searchParameters);
 		cachedSearches.put(searchParameters, search);
 	}
+	
+	/**
+	 * Remove all cache entries for the specified index.
+	 * 
+	 * @param indexName the index
+	 */
+	public void clearCacheForIndex(String indexName) {
+		// Iterate over the entries and remove the ones in the specified index
+		Iterator<Map.Entry<SearchParameters, Job>> it = cachedSearches.entrySet().iterator();
+		while (it.hasNext()) {
+			Entry<SearchParameters, Job> entry = it.next();
+			if (entry.getKey().getString("indexname").equals(indexName)) {
+				it.remove();
+			}
+		}
+	}
 
 	/**
 	 * Get rid of all the cached Searches.
@@ -132,7 +150,6 @@ public class SearchCache {
 
 		// Get rid of old searches
 		boolean lookAtCacheSizeAndSearchAccessTime = true;
-		boolean removed = false;
 		for (Job search: lastAccessOrder) {
 			if (!search.finished() && search.executionTimeMillis() / 1000 > MAX_SEARCH_TIME_SEC) {
 				// Search is taking too long. Cancel it.
@@ -144,7 +161,6 @@ public class SearchCache {
 				// TODO blacklist
 				cachedSearches.remove(search.getParameters());
 				cacheSizeBytes -= search.estimateSizeBytes();
-				removed = true;
 
 			} else {
 				boolean removeBecauseOfCacheSizeOrAge = false;
@@ -160,7 +176,6 @@ public class SearchCache {
 					//logger.debug("Remove from cache: " + search);
 					cachedSearches.remove(search.getParameters());
 					cacheSizeBytes -= search.estimateSizeBytes();
-					removed = true;
 					minSearchesToRemove--;
 				} else {
 					// Cache is no longer too big and these searches are not too old. Stop checking that,
@@ -169,13 +184,8 @@ public class SearchCache {
 				}
 			}
 		}
-		if (removed) {
-			// Hint that we want GC to run
-			// NOTE: this is not a good idea. Explicitly calling the GC like this can result
-			//  in a multi-second pause each time. Just let Java figure it out itself and probably
-			//  run sufficient incremental GC in the background.
-			//System.gc();
-		}
+		// NOTE: we used to hint the Java GC to run, but this caused severe
+		// slowdowns. It's better to rely on the incremental garbage collection.
 	}
 
 	private long calculateSizeBytes(Collection<Job> collection) {

@@ -29,6 +29,7 @@ import nl.inl.blacklab.server.search.JobDocsTotal;
 import nl.inl.blacklab.server.search.JobDocsWindow;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
+import nl.inl.blacklab.server.search.User;
 
 import org.apache.lucene.document.Document;
 
@@ -36,8 +37,8 @@ import org.apache.lucene.document.Document;
  * Request handler for the doc results.
  */
 public class RequestHandlerDocs extends RequestHandler {
-	public RequestHandlerDocs(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
-		super(servlet, request, indexName, urlResource, urlPathPart);
+	public RequestHandlerDocs(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
+		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
 
 	@Override

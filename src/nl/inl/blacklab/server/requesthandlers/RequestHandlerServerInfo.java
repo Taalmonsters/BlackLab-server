@@ -9,19 +9,20 @@ import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.search.User;
 
 /**
  * Get information about this BlackLab server.
  */
 public class RequestHandlerServerInfo extends RequestHandler {
 
-	public RequestHandlerServerInfo(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
-		super(servlet, request, indexName, urlResource, urlPathPart);
+	public RequestHandlerServerInfo(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
+		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
 
 	@Override
 	public DataObject handle() {
-		Collection<String> indices = searchMan.getAvailableIndices(user);
+		Collection<String> indices = searchMan.getAllAvailableIndices(user.getUserId());
 		DataObjectList doIndices = new DataObjectList("index");
 		//DataObjectMapAttribute doIndices = new DataObjectMapAttribute("index", "name");
 		for (String indexName: indices) {

@@ -16,6 +16,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchManager;
+import nl.inl.blacklab.server.search.User;
 
 import org.apache.lucene.search.Query;
 
@@ -24,8 +25,8 @@ import org.apache.lucene.search.Query;
  */
 public class RequestHandlerTermFreq extends RequestHandler {
 	
-	public RequestHandlerTermFreq(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
-		super(servlet, request, indexName, urlResource, urlPathPart);
+	public RequestHandlerTermFreq(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
+		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
 
 	@Override

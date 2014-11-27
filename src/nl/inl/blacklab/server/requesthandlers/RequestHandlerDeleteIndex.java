@@ -5,13 +5,14 @@ import javax.servlet.http.HttpServletRequest;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.search.QueryException;
+import nl.inl.blacklab.server.search.User;
 
 /**
  * Display the contents of the cache.
  */
 public class RequestHandlerDeleteIndex extends RequestHandler {
-	public RequestHandlerDeleteIndex(BlackLabServer servlet, HttpServletRequest request, String indexName, String urlResource, String urlPathPart) {
-		super(servlet, request, indexName, urlResource, urlPathPart);
+	public RequestHandlerDeleteIndex(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
+		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
 
 	@Override
@@ -19,7 +20,7 @@ public class RequestHandlerDeleteIndex extends RequestHandler {
 		if (indexName != null && indexName.length() > 0) {
 			// Delete index
 			try {
-				searchMan.deleteUserIndex(indexName, user);
+				searchMan.deleteUserIndex(indexName);
 				return DataObject.statusObject("SUCCESS", "Index deleted succesfully.");
 			} catch (QueryException e) {
 				throw e;
