@@ -241,6 +241,24 @@ public class ServletUtil {
 		response.setContentType(ServletUtil.getContentType(getOutputType(request, defaultFormat)));
 	}
 
+	public static String internalErrorMessage(int code) {
+		return "An internal error occurred. Please contact the administrator. Error code: " + code + ".";
+	}
+
+	public static String internalErrorMessage(Exception e, boolean debugMode, int code) {
+		if (debugMode) {
+			return internalErrorMessage(e.getClass().getName() + ": " + e.getMessage(), debugMode, code);
+		}
+		return ServletUtil.internalErrorMessage(code);
+	}
+
+	public static String internalErrorMessage(String message, boolean debugMode, int code) {
+		if (debugMode) {
+			return message + " (Internal error code " + code + ")";
+		}
+		return ServletUtil.internalErrorMessage(code);
+	}
+
 	/**
 	 * Returns the path info and query string (if any) of the request URL
 	 * 

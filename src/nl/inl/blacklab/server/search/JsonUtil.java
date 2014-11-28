@@ -1,7 +1,12 @@
 package nl.inl.blacklab.server.search;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+import nl.inl.util.json.JSONArray;
 import nl.inl.util.json.JSONObject;
 
 public class JsonUtil {
@@ -34,6 +39,54 @@ public class JsonUtil {
 		if (!obj.has(key))
 			return defVal;
 		return obj.getLong(key);
+	}
+
+	/**
+	 * Performs a deep conversion from JSONObject to
+	 * Java Map.
+	 * 
+	 * @param jsonObject the JSON array to convert
+	 * @return the Java equivalent
+	 */
+	public static Map<String, Object> mapFromJsonObject(JSONObject jsonObject) {
+		Map<String, Object> result = new HashMap<String, Object>();
+		for (Object oKey: jsonObject.keySet()) {
+			String key = oKey.toString();
+			result.put(key, fromJsonStruct(jsonObject.get(key)));
+		}
+		return result;
+	}
+
+	/**
+	 * Performs a deep conversion from JSONArray to
+	 * Java List.
+	 * 
+	 * @param jsonArray the JSON array to convert
+	 * @return the Java equivalent
+	 */
+	private static List<Object> listFromJsonArray(JSONArray jsonArray) {
+		List<Object> result = new ArrayList<Object>();
+		for (int i = 0; i < jsonArray.length(); i++) {
+			result.add(fromJsonStruct(jsonArray.get(i)));
+		}
+		return result;
+	}
+
+	/**
+	 * Performs a deep conversion from JSON object/array to
+	 * Java Map/List. Passes String unchanged.
+	 * 
+	 * @param jsonStruct the JSON structure to convert
+	 * @return the Java equivalent
+	 */
+	public static Object fromJsonStruct(Object jsonStruct) {
+		if (jsonStruct instanceof JSONObject)
+			return mapFromJsonObject((JSONObject) jsonStruct);
+		if (jsonStruct instanceof JSONArray)
+			return listFromJsonArray((JSONArray) jsonStruct);
+		if (jsonStruct instanceof String)
+			return (String)jsonStruct;
+		throw new RuntimeException("Cannot convert " + jsonStruct.getClass().getSimpleName() + " from JSON- to Java object");
 	}
 
 }

@@ -33,8 +33,8 @@ import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectString;
 import nl.inl.util.FileUtil;
-import nl.inl.util.MemoryUtil;
 import nl.inl.util.FileUtil.FileTask;
+import nl.inl.util.MemoryUtil;
 import nl.inl.util.json.JSONArray;
 import nl.inl.util.json.JSONObject;
 
@@ -188,7 +188,7 @@ public class SearchManager {
 	private Object authSystem;
 	
 	/** The method to invoke for determining the current user. */
-	private Method authSystemDetermineCurrentUser;
+	private Method authMethodDetermineCurrentUser;
 	
 	public SearchManager(JSONObject properties) {
 		logger.debug("SearchManager created");
@@ -353,22 +353,30 @@ public class SearchManager {
 					"Configuration error: no indices or collections available. Put blacklab-server.json on classpath (i.e. Tomcat shared or lib dir) with at least: { \"indices\": { \"myindex\": { \"dir\": \"/path/to/my/index\" } } } ");
 
 		// Init auth system
-		String className = "";
+		String authClass = "";
+		Map<String, Object> authParam;
 		if (properties.has("authSystem")) {
 			JSONObject propAuth = properties.getJSONObject("authSystem");
-			if (propAuth.has("class")) {
-				className = propAuth.getString("class");
+			authParam = JsonUtil.mapFromJsonObject(propAuth);
+			if (authParam.containsKey("class")) {
+				authClass = authParam.get("class").toString();
 			}
+		} else {
+			authParam = new HashMap<String, Object>();
 		}
-		if (className.length() > 0) {
+		if (authClass.length() > 0) {
 			try {
-				Class<?> cl = Class.forName(className);
-				authSystem = cl.getConstructor().newInstance();
-				authSystemDetermineCurrentUser = cl.getMethod("determineCurrentUser", HttpServlet.class, HttpServletRequest.class);
+				if (!authClass.contains(".")) {
+					// Allows us to abbreviate the built-in auth classes
+					authClass = "nl.inl.blacklab.server.auth." + authClass;
+				}
+				Class<?> cl = Class.forName(authClass);
+				authSystem = cl.getConstructor(Map.class).newInstance(authParam);
+				authMethodDetermineCurrentUser = cl.getMethod("determineCurrentUser", HttpServlet.class, HttpServletRequest.class);
 			} catch (Exception e) {
-				throw new RuntimeException("Error instantiating AuthSystem", e);
+				throw new RuntimeException("Error instantiating auth system: " + authClass, e);
 			}
-			logger.info("Auth system initialized: " + className);
+			logger.info("Auth system initialized: " + authClass);
 		} else {
 			logger.info("No auth system configured");
 		}
@@ -419,7 +427,7 @@ public class SearchManager {
 		
 		// Let auth system determine the current user.
 		try {
-			User user = (User)authSystemDetermineCurrentUser.invoke(authSystem, servlet, request);
+			User user = (User)authMethodDetermineCurrentUser.invoke(authSystem, servlet, request);
 			logger.debug("User = " + user);
 			return user;
 		} catch (Exception e) {
@@ -490,6 +498,10 @@ public class SearchManager {
 		}
 
 		return null;
+	}
+	
+	public File getIndexDir(String indexName) {
+		return getIndexParam(indexName).getDir();
 	}
 
 	/**
@@ -727,7 +739,7 @@ public class SearchManager {
 				throw new QueryException("CANNOT_DELETE_INDEX ", "Could not delete index. Is a symlink.");
 			}
 		} catch (IOException e1) {
-			throw new QueryException("INTERNAL_ERROR", "An internal error occurred. Please contact the administrator. Error code: 13.");
+			throw QueryException.internalError(13);
 		}
 
 		// Can we even delete the whole tree? If not, don't even try.

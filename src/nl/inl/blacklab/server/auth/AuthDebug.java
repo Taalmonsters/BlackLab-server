@@ -1,16 +1,25 @@
-package nl.inl.blacklab.server.search;
+package nl.inl.blacklab.server.auth;
+
+import java.util.Map;
 
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.server.BlackLabServer;
+import nl.inl.blacklab.server.search.SearchManager;
+import nl.inl.blacklab.server.search.User;
 
 /**
  * Authentication system used for debugging.
  * 
- * Debug IPs may fake logged-in user by passing userid parameter.
+ * Requests from debug IPs (specified in config file) may fake logged-in 
+ * user by passing "userid" parameter.
  */
-public class DebugAuthSystem {
+public class AuthDebug {
+	
+	public AuthDebug(Map<String, Object> parameters) {
+		// doesn't take any parameters
+	}
 	
 	public User determineCurrentUser(HttpServlet servlet,
 			HttpServletRequest request) {
