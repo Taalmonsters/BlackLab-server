@@ -25,7 +25,7 @@ public class RequestHandlerDeleteIndex extends RequestHandler {
 			} catch (QueryException e) {
 				throw e;
 			} catch (Exception e) {
-				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 12));
+				return DataObject.internalError(e, debugMode, 12);
 			}
 		}
 		

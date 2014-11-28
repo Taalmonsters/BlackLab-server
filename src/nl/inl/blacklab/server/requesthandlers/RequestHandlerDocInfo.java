@@ -39,7 +39,7 @@ public class RequestHandlerDocInfo extends RequestHandler {
 			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 		Document document = searcher.document(luceneDocId);
 		if (document == null)
-			throw new QueryException("INTERNAL_ERROR", "An internal error occurred. Please contact the administrator. Error code: 8.");
+			throw QueryException.internalError("Searcher.document() returned null", debugMode, 8);
 
 		// Document info
 		debug(logger, "REQ doc info: " + indexName + "-" + docId);

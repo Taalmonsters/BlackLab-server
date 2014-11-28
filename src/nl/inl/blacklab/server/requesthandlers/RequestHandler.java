@@ -192,25 +192,25 @@ public abstract class RequestHandler {
 				} catch (NoSuchMethodException e) {
 					// (can only happen if the required constructor is not available in the RequestHandler subclass)
 					logger.error("Could not get constructor to create request handler", e);
-					return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 2));
+					return DataObject.internalError(e, debugMode, 2);
 				} catch (IllegalArgumentException e) {
 					logger.error("Could not create request handler", e);
-					return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 3));
+					return DataObject.internalError(e, debugMode, 3);
 				} catch (InstantiationException e) {
 					logger.error("Could not create request handler", e);
-					return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 4));
+					return DataObject.internalError(e, debugMode, 4);
 				} catch (IllegalAccessException e) {
 					logger.error("Could not create request handler", e);
-					return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 5));
+					return DataObject.internalError(e, debugMode, 5);
 				} catch (InvocationTargetException e) {
 					logger.error("Could not create request handler", e);
-					return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 6));
+					return DataObject.internalError(e, debugMode, 6);
 				}/* catch (IndexOpenException e) {
 					return DataObject.errorObject("CANNOT_OPEN_INDEX", "Could not open index '" + indexName + "'. Please check the name.");
 				}*/
 			}
 		} else {
-			return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(new RuntimeException("RequestHandler.doGetPost called with wrong method: " + method), debugMode, 10));
+			return DataObject.internalError("RequestHandler.doGetPost called with wrong method: " + method, debugMode, 10);
 		}
 		if (debugMode)
 			requestHandler.setDebug(debugMode);
@@ -223,15 +223,8 @@ public abstract class RequestHandler {
 		} catch (QueryException e) {
 			return DataObject.errorObject(e.getErrorCode(), e.getMessage());
 		} catch (InterruptedException e) {
-			return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 7));
+			return DataObject.internalError(e, debugMode, 7);
 		}
-	}
-
-	public static String internalErrorMessage(Exception e, boolean debugMode, int code) {
-		if (debugMode) {
-			return e.getClass().getName() + ": " + e.getMessage() + " (Internal error code " + code + ")";
-		}
-		return "An internal error occurred. Please contact the administrator.  Error code: " + code + ".";
 	}
 
 	boolean debugMode;

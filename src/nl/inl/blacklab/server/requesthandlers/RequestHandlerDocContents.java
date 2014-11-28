@@ -39,7 +39,7 @@ public class RequestHandlerDocContents extends RequestHandler {
 			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 		Document document = searcher.document(luceneDocId); //searchMan.getDocumentFromPid(indexName, docId);
 		if (document == null)
-			throw new QueryException("INTERNAL_ERROR", "An internal error occurred. Please contact the administrator. Error code: 9.");
+			throw QueryException.internalError(9);
 		if (!searcher.getIndexStructure().contentViewable()) {
 			DataObject errObj = DataObject.errorObject("NOT_AUTHORIZED", "Unauthorized operation. Viewing the full contents of this document is not allowed.");
 			errObj.overrideType(type); // Application expects this MIME type, don't disappoint

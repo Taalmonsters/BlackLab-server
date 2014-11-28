@@ -29,7 +29,7 @@ public class RequestHandlerCreateIndex extends RequestHandler {
 			} catch (QueryException e) {
 				throw e;
 			} catch (Exception e) {
-				return DataObject.errorObject("INTERNAL_ERROR", internalErrorMessage(e, debugMode, 11));
+				return DataObject.internalError(e, debugMode, 11);
 			}
 		}
 		

@@ -96,7 +96,7 @@ public abstract class Job implements Comparable<Job> {
 		} else if (jobClass.equals("JobDocsGrouped")) {
 			search = new JobDocsGrouped(searchMan, user, par);
 		} else
-			throw new QueryException("INTERNAL_ERROR", "An internal error occurred. Please contact the administrator. Error code: 1.");
+			throw QueryException.internalError(1);
 
 		return search;
 	}

@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 
+import nl.inl.blacklab.server.ServletUtil;
+
 /**
  * Represents hierarchical data that can be serialized to XML or JSON.
  */
@@ -202,6 +204,18 @@ public abstract class DataObject {
 		DataObjectMapElement rv = new DataObjectMapElement();
 		rv.put("error", error);
 		return rv;
+	}
+	
+	public static DataObjectMapElement internalError(Exception e, boolean debugMode, int code) {
+		return errorObject("INTERNAL_ERROR", ServletUtil.internalErrorMessage(e, debugMode, code));
+	}
+
+	public static DataObjectMapElement internalError(String message, boolean debugMode, int code) {
+		return errorObject("INTERNAL_ERROR", ServletUtil.internalErrorMessage(message, debugMode, code));
+	}
+
+	public static DataObjectMapElement internalError(int code) {
+		return errorObject("INTERNAL_ERROR", ServletUtil.internalErrorMessage(code));
 	}
 
 	public static DataObject from(String value) {
