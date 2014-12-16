@@ -419,6 +419,19 @@ public abstract class RequestHandler {
 		return searchMan.getSearcher(indexName);
 	}
 
+	public static DataObjectMapElement getDocFields(IndexStructure struct) {
+		DataObjectMapElement docFields = new DataObjectMapElement();
+		if (struct.pidField() != null)
+			docFields.put("pidField", struct.pidField());
+		if (struct.titleField() != null)
+			docFields.put("titleField", struct.titleField());
+		if (struct.authorField() != null)
+			docFields.put("authorField", struct.authorField());
+		if (struct.dateField() != null)
+			docFields.put("dateField", struct.dateField());
+		return docFields;
+	}
+
 	/**
 	 * Get the pid for the specified document
 	 * 
@@ -433,7 +446,7 @@ public abstract class RequestHandler {
 	public static String getDocumentPid(Searcher searcher, int luceneDocId,
 			Document document) {
 		String pidField = searcher.getIndexStructure().pidField(); //getIndexParam(indexName, user).getPidField();
-		if (pidField.length() == 0)
+		if (pidField == null || pidField.length() == 0)
 			return "" + luceneDocId;
 		return document.get(pidField);
 	}

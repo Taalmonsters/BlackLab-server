@@ -60,7 +60,7 @@ public class DataObjectContextList extends DataObject {
 				int j = 0;
 				if (prettyPrint)
 					indent(out, depth);
-				out.append(StringUtil.escapeXmlChars(values.get(vIndex)));
+				out.append(StringUtil.escapeXmlChars(values.get(vIndex))); // punct
 				out.append("<w");
 				for (int k = 1; k < names.size() - 1; k++) {
 					String name = names.get(k);
@@ -69,7 +69,7 @@ public class DataObjectContextList extends DataObject {
 					j++;
 				}
 				out.append(">");
-				out.append(StringUtil.escapeXmlChars(values.get(vIndex + 1 + j)));
+				out.append(StringUtil.escapeXmlChars(values.get(vIndex + 1 + j))); // word
 				out.append("</w>");
 				if (prettyPrint)
 					out.append("\n");

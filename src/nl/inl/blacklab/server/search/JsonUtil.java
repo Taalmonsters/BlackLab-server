@@ -85,7 +85,7 @@ public class JsonUtil {
 		if (jsonStruct instanceof JSONArray)
 			return listFromJsonArray((JSONArray) jsonStruct);
 		if (jsonStruct instanceof String)
-			return (String)jsonStruct;
+			return jsonStruct;
 		throw new RuntimeException("Cannot convert " + jsonStruct.getClass().getSimpleName() + " from JSON- to Java object");
 	}
 

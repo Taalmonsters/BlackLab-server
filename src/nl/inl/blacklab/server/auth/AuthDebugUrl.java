@@ -15,9 +15,9 @@ import nl.inl.blacklab.server.search.User;
  * Requests from debug IPs (specified in config file) may fake logged-in 
  * user by passing "userid" parameter.
  */
-public class AuthDebug {
+public class AuthDebugUrl {
 	
-	public AuthDebug(Map<String, Object> parameters) {
+	public AuthDebugUrl(Map<String, Object> parameters) {
 		// doesn't take any parameters
 	}
 	

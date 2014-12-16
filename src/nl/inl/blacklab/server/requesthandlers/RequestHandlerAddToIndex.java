@@ -67,7 +67,7 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 			File filePath = servlet.getSearchManager().getIndexDir(indexName);
 			int filesDone = 0;
 			while (i.hasNext()) {
-				FileItem fi = (FileItem) i.next();
+				FileItem fi = i.next();
 				if (!fi.isFormField()) {
 					
 					if (filesDone != 0)

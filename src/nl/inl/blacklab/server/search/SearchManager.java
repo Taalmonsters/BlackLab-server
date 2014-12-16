@@ -606,7 +606,8 @@ public class SearchManager {
 			// of this (prints an error on startup), but it should still work
 			// for now. Inject
 			// the setting into the searcher.
-			searcher.getIndexStructure()._setPidField(configPid);
+			if (configPid.length() > 0)
+				searcher.getIndexStructure()._setPidField(configPid);
 		}
 		if (indexPid.length() == 0 && configPid.length() == 0) {
 			logger.warn("No pid given for index '" + indexName
@@ -673,11 +674,10 @@ public class SearchManager {
 		String[] parts = indexName.split(":");
 		String userId = parts[0];
 		String indexNameWithoutUsePrefix = parts[1];
-		int n = getAvailablePrivateIndices(userId).size();
-		if (n >= MAX_USER_INDICES)
+		if (!canCreateIndex(userId))
 			throw new QueryException("CANNOT_CREATE_INDEX ",
 					"Could not create index. You already have the maximum of "
-							+ n + " indices.");
+							+ MAX_USER_INDICES + " indices.");
 
 		File userDir = getUserCollectionDir(userId);
 		if (!userDir.canWrite())
@@ -687,6 +687,10 @@ public class SearchManager {
 		File indexDir = new File(userDir, indexNameWithoutUsePrefix);
 		Searcher searcher = Searcher.createIndex(indexDir);
 		searcher.close();
+	}
+
+	public boolean canCreateIndex(String userId) {
+		return getAvailablePrivateIndices(userId).size() < MAX_USER_INDICES;
 	}
 
 	/**
@@ -810,7 +814,7 @@ public class SearchManager {
 		String pidField = searcher.getIndexStructure().pidField(); // getIndexParam(indexName,
 																	// user).getPidField();
 		// Searcher searcher = getSearcher(indexName, user);
-		if (pidField.length() == 0) {
+		if (pidField == null || pidField.length() == 0) {
 			int luceneDocId;
 			try {
 				luceneDocId = Integer.parseInt(pid);

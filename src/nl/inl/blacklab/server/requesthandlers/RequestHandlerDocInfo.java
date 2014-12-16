@@ -47,6 +47,7 @@ public class RequestHandlerDocInfo extends RequestHandler {
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("docPid", docId);
 		response.put("docInfo", getDocumentInfo(searcher, document));
+		response.put("docFields", RequestHandler.getDocFields(searcher.getIndexStructure()));
 		return response;
 	}
 

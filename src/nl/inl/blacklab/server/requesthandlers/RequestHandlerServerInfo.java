@@ -24,16 +24,18 @@ public class RequestHandlerServerInfo extends RequestHandler {
 	public DataObject handle() {
 		Collection<String> indices = searchMan.getAllAvailableIndices(user.getUserId());
 		DataObjectList doIndices = new DataObjectList("index");
-		//DataObjectMapAttribute doIndices = new DataObjectMapAttribute("index", "name");
 		for (String indexName: indices) {
-			//DataObjectMapElement doIndex = new DataObjectMapElement();
-			//doIndex.put("pidField", searchMan.getIndexPidField(indexName));
 			doIndices.add(indexName); //, doIndex);
 		}
+		
+		DataObjectMapElement doUser = new DataObjectMapElement();
+		doUser.put("loggedIn", user.isLoggedIn());
+		doUser.put("canCreateIndex", user.isLoggedIn() ? searchMan.canCreateIndex(user.getUserId()) : false);
 
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("blacklabBuildTime", Searcher.getBlackLabBuildTime());
 		response.put("indices", doIndices);
+		response.put("user", doUser);
 		response.put("helpPageUrl", servlet.getServletContext().getContextPath() + "/help");
 		if (debugMode) {
 			response.put("cacheStatus", searchMan.getCacheStatusDataObject());

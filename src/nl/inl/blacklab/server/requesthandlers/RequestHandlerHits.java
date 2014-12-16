@@ -17,6 +17,7 @@ import nl.inl.blacklab.search.grouping.HitGroup;
 import nl.inl.blacklab.search.grouping.HitGroups;
 import nl.inl.blacklab.search.grouping.HitPropValue;
 import nl.inl.blacklab.search.grouping.HitProperty;
+import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectContextList;
@@ -148,11 +149,12 @@ public class RequestHandlerHits extends RequestHandler {
 
 		boolean includeTokenCount = searchParam.getBoolean("includetokencount");
 		int totalTokens = -1;
+		IndexStructure struct = searcher.getIndexStructure();
 		if (includeTokenCount) {
 			if (perDocResults == null)
 				perDocResults = window.getOriginalHits().perDocResults();
 			// Determine total number of tokens in result set
-			String fieldName = searcher.getIndexStructure().getMainContentsField().getName();
+			String fieldName = struct.getMainContentsField().getName();
 			DocProperty propTokens = new DocPropertyComplexFieldLength(fieldName);
 			totalTokens = perDocResults.intSum(propTokens);
 		}
@@ -169,33 +171,36 @@ public class RequestHandlerHits extends RequestHandler {
 			Document document = searcher.document(hit.doc);
 			String pid = getDocumentPid(searcher, hit.doc, document);
 
+			boolean useOrigContent = searchParam.getString("usecontent").equals("orig");
+			
+			// TODO: use RequestHandlerDocSnippet.getHitOrFragmentInfo()
+			
 			// Add basic hit info
 			hitMap.put("docPid", pid);
 			hitMap.put("start", hit.start);
 			hitMap.put("end", hit.end);
 
-			if (searchParam.getString("usecontent").equals("orig")) {
+			if (useOrigContent) {
 				// Add concordance from original XML
 				Concordance c = window.getConcordance(hit);
 				hitMap.put("left", new DataObjectPlain(c.left()));
 				hitMap.put("match", new DataObjectPlain(c.match()));
 				hitMap.put("right", new DataObjectPlain(c.right()));
-				hitList.add(hitMap);
 			} else {
 				// Add KWIC info
 				Kwic c = window.getKwic(hit);
 				hitMap.put("left", new DataObjectContextList(c.getProperties(), c.getLeft()));
 				hitMap.put("match", new DataObjectContextList(c.getProperties(), c.getMatch()));
 				hitMap.put("right", new DataObjectContextList(c.getProperties(), c.getRight()));
-				hitList.add(hitMap);
 			}
+			hitList.add(hitMap);
 
 			// Add document info if we didn't already
 			if (!docInfos.containsKey(hit.doc)) {
 				docInfos.put(pid, getDocumentInfo(searcher, searcher.document(hit.doc)));
 			}
 		}
-
+		
 		// The summary (done last because the count might be done by this time)
 		DataObjectMapElement summary = new DataObjectMapElement();
 		Hits hits = searchWindow != null ? hits = searchWindow.getWindow().getOriginalHits() : group.getHits();
@@ -218,6 +223,7 @@ public class RequestHandlerHits extends RequestHandler {
 		summary.put("windowHasNext", window.hasNext());
 		if (includeTokenCount)
 			summary.put("tokensInMatchingDocuments", totalTokens);
+		summary.put("docFields", RequestHandler.getDocFields(struct));
 
 		// Assemble all the parts
 		DataObjectMapElement response = new DataObjectMapElement();

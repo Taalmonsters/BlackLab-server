@@ -166,6 +166,9 @@ public class RequestHandlerDocs extends RequestHandler {
 			if (hits.sizeAtLeast(1)) {
 				doSnippetList = new DataObjectList("snippet");
 				for (Hit hit: hits) {
+					
+					// TODO: use RequestHandlerDocSnippet.getHitOrFragmentInfo()
+					
 					DataObjectMapElement hitMap = new DataObjectMapElement();
 					if (searchParam.getString("usecontent").equals("orig")) {
 						// Add concordance from original XML
@@ -231,6 +234,7 @@ public class RequestHandlerDocs extends RequestHandler {
 		summary.put("windowHasNext", window.hasNext());
 		if (includeTokenCount)
 			summary.put("tokensInMatchingDocuments", totalTokens);
+		summary.put("docFields", RequestHandler.getDocFields(searcher.getIndexStructure()));
 
 		// Assemble all the parts
 		DataObjectMapElement response = new DataObjectMapElement();

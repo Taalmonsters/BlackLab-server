@@ -72,28 +72,53 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 		Hits hits = new Hits(searcher, Arrays.asList(hit));
 		boolean origContent = searchParam.getString("usecontent").equals("orig");
 		hits.setConcordanceType(origContent ? ConcordanceType.CONTENT_STORE : ConcordanceType.FORWARD_INDEX);
-		DataObjectMapElement doSnippet = new DataObjectMapElement();
-		if (origContent) {
+		return getHitOrFragmentInfo(hits, hit, wordsAroundHit, origContent, !isHit, null);
+	}
+
+	/**
+	 * Get a DataObject representation of a hit 
+	 * (or just a document fragment with no hit in it)
+	 * 
+	 * @param hits the hits object the hit occurs in
+	 * @param hit the hit (or fragment)
+	 * @param wordsAroundHit number of words around the hit we want
+	 * @param useOrigContent if true, uses the content store; if false, the forward index
+	 * @param isFragment if false, separates hit into left/match/right; otherwise, just returns whole fragment
+	 * @param docPid if not null, include doc pid, hit start and end info
+	 * @return the DataObject representation of the hit or fragment
+	 */
+	public static DataObject getHitOrFragmentInfo(Hits hits, Hit hit, int wordsAroundHit,
+			boolean useOrigContent, boolean isFragment, String docPid) {
+		DataObjectMapElement fragInfo = new DataObjectMapElement();
+		
+		if (docPid != null) {
+			// Add basic hit info
+			fragInfo.put("docPid", docPid);
+			fragInfo.put("start", hit.start);
+			fragInfo.put("end", hit.end);
+		}
+		
+		if (useOrigContent) {
 			Concordance c = hits.getConcordance(hit, wordsAroundHit);
-			if (isHit) {
-				doSnippet.put("left", new DataObjectPlain(c.left()));
-				doSnippet.put("match", new DataObjectPlain(c.match()));
-				doSnippet.put("right", new DataObjectPlain(c.right()));
+			if (!isFragment) {
+				fragInfo.put("left", new DataObjectPlain(c.left()));
+				fragInfo.put("match", new DataObjectPlain(c.match()));
+				fragInfo.put("right", new DataObjectPlain(c.right()));
 			} else {
 				return new DataObjectPlain(c.match());
 			}
 		} else {
 			Kwic kwic = hits.getKwic(hit, wordsAroundHit);
-			if (isHit) {
-				doSnippet.put("left", new DataObjectContextList(kwic.getProperties(), kwic.getLeft()));
-				doSnippet.put("match", new DataObjectContextList(kwic.getProperties(), kwic.getMatch()));
-				doSnippet.put("right", new DataObjectContextList(kwic.getProperties(), kwic.getRight()));
+			if (!isFragment) {
+				fragInfo.put("left", new DataObjectContextList(kwic.getProperties(), kwic.getLeft()));
+				fragInfo.put("match", new DataObjectContextList(kwic.getProperties(), kwic.getMatch()));
+				fragInfo.put("right", new DataObjectContextList(kwic.getProperties(), kwic.getRight()));
 			} else {
 				return new DataObjectContextList(kwic.getProperties(), kwic.getTokens());
 			}
 		}
 
-		return doSnippet;
+		return fragInfo;
 	}
 
 }
