@@ -42,7 +42,8 @@ public class BlackLabServer extends HttpServlet {
 
 		super.init();
 
-		// Read JSON config file
+		// Read JSON config file, either from the servlet context directory's parent,
+		// from /etc/blacklab/ or from the classpath.
 		String configFileName = "blacklab-server.json";
 		logger.debug("Running from dir: " + getServletContext().getRealPath("."));
 		File configFile = new File(getServletContext().getRealPath("/../" + configFileName));
@@ -56,17 +57,27 @@ public class BlackLabServer extends HttpServlet {
 				throw new RuntimeException(e);
 			}
 		} else {
-			// Read from classpath
-			logger.debug(configFileName + " not found in webapps dir; searching classpath...");
-			is = getClass().getClassLoader().getResourceAsStream(configFileName);
-			if (is == null) {
-				logger.debug(configFileName + " not found on classpath either. Using internal defaults.");
-				configFileName = "blacklab-server-defaults.json"; // internal defaults file
+			File configFileInEtc = new File("/etc/blacklab", configFileName);
+			if (configFileInEtc.exists()) {
+				try {
+					logger.debug("Reading configuration file " + configFileInEtc);
+					is = new BufferedInputStream(new FileInputStream(configFileInEtc));
+				} catch (FileNotFoundException e) {
+					throw new RuntimeException(e);
+				}
+			} else {
+				// Read from classpath
+				logger.debug(configFileName + " not found in webapps dir; searching classpath...");
 				is = getClass().getClassLoader().getResourceAsStream(configFileName);
-				if (is == null)
-					throw new ServletException("Could not find " + configFileName + "!");
+				if (is == null) {
+					logger.debug(configFileName + " not found on classpath either. Using internal defaults.");
+					configFileName = "blacklab-server-defaults.json"; // internal defaults file
+					is = getClass().getClassLoader().getResourceAsStream(configFileName);
+					if (is == null)
+						throw new ServletException("Could not find " + configFileName + "!");
+				}
+				logger.debug("Reading configuration file from classpath: " + configFileName);
 			}
-			logger.debug("Reading configuration file from classpath: " + configFileName);
 		}
 		JSONObject config;
 		
