@@ -366,9 +366,10 @@ public abstract class RequestHandler {
 			if (value != null)
 				docInfo.put(metadataFieldName, value);
 		}
+		int subtractFromLength = struct.alwaysHasClosingToken() ? 1 : 0;
 		String tokenLengthField = struct.getMainContentsField().getTokenLengthField();
 		if (tokenLengthField != null)
-			docInfo.put("lengthInTokens", document.get(tokenLengthField));
+			docInfo.put("lengthInTokens", Integer.parseInt(document.get(tokenLengthField)) - subtractFromLength);
 		docInfo.put("mayView", struct.contentViewable());
 		return docInfo;
 	}
