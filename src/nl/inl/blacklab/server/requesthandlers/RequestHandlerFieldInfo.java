@@ -4,17 +4,17 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.exceptions.BadRequest;
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.indexstructure.ComplexFieldDesc;
 import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.search.indexstructure.MetadataFieldDesc;
 import nl.inl.blacklab.search.indexstructure.PropertyDesc;
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
-import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.User;
 import nl.inl.util.StringUtil;
 
@@ -28,13 +28,13 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() throws IndexOpenException, QueryException {
+	public Response handle() throws IndexOpenException, BlsException {
 
 		int i = urlPathInfo.indexOf('/');
 		String fieldName = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;
 		if (fieldName.length() == 0) {
 			// FIXME show list of fields?
-			throw new QueryException("NO_DOC_ID", "Specify document pid.");
+			throw new BadRequest("NO_DOC_ID", "Specify document pid.");
 		}
 
 		Searcher searcher = getSearcher();
@@ -89,7 +89,7 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 		// Remove any empty settings
 		response.removeEmptyMapValues();
 		
-		return response;
+		return new Response(response);
 	}
 
 }

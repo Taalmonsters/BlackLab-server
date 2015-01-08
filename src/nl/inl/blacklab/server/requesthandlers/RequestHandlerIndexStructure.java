@@ -9,7 +9,6 @@ import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.search.indexstructure.MetadataFieldDesc;
 import nl.inl.blacklab.search.indexstructure.PropertyDesc;
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
@@ -26,7 +25,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() throws IndexOpenException {
+	public Response handle() throws IndexOpenException {
 		Searcher searcher = getSearcher();
 		IndexStructure struct = searcher.getIndexStructure();
 
@@ -90,9 +89,10 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		
 		// Remove any empty settings
 		response.removeEmptyMapValues();
-		response.setCacheAllowed(false); // because status might change
 
-		return response;
+		Response r = new Response(response);
+		r.setCacheAllowed(false); // because status might change
+		return r;
 	}
 
 }

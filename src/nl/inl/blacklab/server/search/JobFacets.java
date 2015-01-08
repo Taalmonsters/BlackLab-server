@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocCounts;
 import nl.inl.blacklab.perdocument.DocProperty;
 import nl.inl.blacklab.perdocument.DocPropertyMultiple;
@@ -25,7 +26,7 @@ public class JobFacets extends Job {
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
+	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithDocs docsSearch = searchMan.searchDocs(user, parNoGroup);

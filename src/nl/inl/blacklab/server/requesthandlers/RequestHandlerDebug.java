@@ -3,7 +3,6 @@ package nl.inl.blacklab.server.requesthandlers;
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.User;
 
@@ -17,14 +16,14 @@ public class RequestHandlerDebug extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() {
+	public Response handle() {
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("indexName", indexName);
 		response.put("resource", urlResource);
 		response.put("rest", urlPathInfo);
 		response.put("queryString", request.getQueryString());
 		response.put("searchParam", servlet.getSearchParameters(request, indexName).toString());
-		return response;
+		return new Response(response);
 	}
 
 }

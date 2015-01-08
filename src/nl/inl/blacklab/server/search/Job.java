@@ -3,6 +3,8 @@ package nl.inl.blacklab.server.search;
 import java.util.HashSet;
 import java.util.Set;
 
+import nl.inl.blacklab.exceptions.BlsException;
+import nl.inl.blacklab.exceptions.InternalServerError;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.util.ExUtil;
@@ -51,10 +53,10 @@ public abstract class Job implements Comparable<Job> {
 	 * Wait for the specified job to finish
 	 * @param job the job to wait for
 	 * @throws InterruptedException
-	 * @throws QueryException
+	 * @throws BlsException
 	 * @throws IndexOpenException
 	 */
-	protected void waitForJobToFinish(Job job) throws InterruptedException, IndexOpenException, QueryException {
+	protected void waitForJobToFinish(Job job) throws InterruptedException, IndexOpenException, BlsException {
 		waitingFor.add(job);
 		job.waitUntilFinished();
 		waitingFor.remove(job);
@@ -69,9 +71,9 @@ public abstract class Job implements Comparable<Job> {
 	 * @param par search parameters
 	 * @return the new Search object
 	 * @throws IndexOpenException
-	 * @throws QueryException
+	 * @throws BlsException
 	 */
-	public static Job create(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException, QueryException {
+	public static Job create(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException, BlsException {
 		Job search = null;
 		String jobClass = par.getString("jobclass");
 		// TODO: use a map of String -> Class<? extends Job>
@@ -96,7 +98,7 @@ public abstract class Job implements Comparable<Job> {
 		} else if (jobClass.equals("JobDocsGrouped")) {
 			search = new JobDocsGrouped(searchMan, user, par);
 		} else
-			throw QueryException.internalError(1);
+			throw new InternalServerError(1);
 
 		return search;
 	}
@@ -177,11 +179,11 @@ public abstract class Job implements Comparable<Job> {
 	 *   value >= 0, waits for the specified amount of time or until the search is finished,
 	 *   then returns.
 	 *
-	 * @throws QueryException on parse error or other query-related error (e.g. too broad)
+	 * @throws BlsException on parse error or other query-related error (e.g. too broad)
 	 * @throws InterruptedException if the thread was interrupted
 	 * @throws IndexOpenException if the index couldn't be opened
 	 */
-	final public void perform(int waitTimeMs) throws QueryException, InterruptedException, IndexOpenException {
+	final public void perform(int waitTimeMs) throws BlsException, InterruptedException, IndexOpenException {
 		if (performCalled)
 			throw new RuntimeException("Already performing search!");
 
@@ -197,7 +199,7 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	@SuppressWarnings("unused")
-	protected void performSearch() throws QueryException, IndexOpenException, InterruptedException {
+	protected void performSearch() throws BlsException, IndexOpenException, InterruptedException {
 		// (to override)
 	}
 
@@ -236,18 +238,18 @@ public abstract class Job implements Comparable<Job> {
 	 * Re-throw the exception thrown by the search thread, if any.
 
 	 * @throws IndexOpenException
-	 * @throws QueryException
+	 * @throws BlsException
 	 * @throws InterruptedException
 	 */
-	public void rethrowException() throws IndexOpenException, QueryException, InterruptedException {
+	public void rethrowException() throws IndexOpenException, BlsException, InterruptedException {
 		Throwable exception = getThrownException();
 		if (exception == null)
 			return;
 		logger.debug("Re-throwing exception from search thread:\n" + exception.getClass().getName() + ": " + exception.getMessage());
 		if (exception instanceof IndexOpenException)
 			throw (IndexOpenException)exception;
-		else if (exception instanceof QueryException)
-			throw (QueryException)exception;
+		else if (exception instanceof BlsException)
+			throw (BlsException)exception;
 		else if (exception instanceof InterruptedException)
 			throw (InterruptedException)exception;
 		throw ExUtil.wrapRuntimeException(exception);
@@ -275,10 +277,10 @@ public abstract class Job implements Comparable<Job> {
 	 *
 	 * @param maxWaitMs maximum time to wait, or a negative number for no limit
 	 * @throws InterruptedException if the thread was interrupted
-	 * @throws QueryException
+	 * @throws BlsException
 	 * @throws IndexOpenException
 	 */
-	public void waitUntilFinished(int maxWaitMs) throws InterruptedException, IndexOpenException, QueryException {
+	public void waitUntilFinished(int maxWaitMs) throws InterruptedException, IndexOpenException, BlsException {
 		int defaultWaitStep = 100;
 		while (searchThread == null || (maxWaitMs != 0 && !searchThread.finished())) {
 			int w = maxWaitMs < 0 ? defaultWaitStep : Math.min(maxWaitMs, defaultWaitStep);
@@ -294,10 +296,10 @@ public abstract class Job implements Comparable<Job> {
 	 * Wait until this job is finished (or an Exception is thrown)
 	 *
 	 * @throws InterruptedException
-	 * @throws QueryException
+	 * @throws BlsException
 	 * @throws IndexOpenException
 	 */
-	public void waitUntilFinished() throws InterruptedException, IndexOpenException, QueryException {
+	public void waitUntilFinished() throws InterruptedException, IndexOpenException, BlsException {
 		waitUntilFinished(-1);
 	}
 

@@ -1,5 +1,6 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.grouping.HitProperty;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
@@ -14,7 +15,7 @@ public class JobHitsSorted extends JobWithHits {
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
+	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
 		// First, execute blocking hits search.
 		SearchParameters parNoSort = par.copyWithout("sort");
 		JobWithHits hitsSearch = searchMan.searchHits(user, parNoSort);

@@ -1,10 +1,10 @@
 package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
-import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.User;
 
 /**
@@ -16,20 +16,20 @@ public class RequestHandlerDeleteIndex extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() throws QueryException {
+	public Response handle() throws BlsException {
 		if (indexName != null && indexName.length() > 0) {
 			// Delete index
 			try {
 				searchMan.deleteUserIndex(indexName);
-				return DataObject.statusObject("SUCCESS", "Index deleted succesfully.");
-			} catch (QueryException e) {
+				return Response.status("SUCCESS", "Index deleted succesfully.", HttpServletResponse.SC_OK);
+			} catch (BlsException e) {
 				throw e;
 			} catch (Exception e) {
-				return DataObject.internalError(e, debugMode, 12);
+				return Response.internalError(e, debugMode, 12);
 			}
 		}
 		
-		return DataObject.errorObject("CANNOT_CREATE_INDEX", "Could not create index '" + indexName + "'. Specify a valid name.");
+		return Response.badRequest("CANNOT_CREATE_INDEX", "Could not create index '" + indexName + "'. Specify a valid name.");
 	}
 
 }

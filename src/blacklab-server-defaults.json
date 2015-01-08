@@ -4,21 +4,29 @@
 	// NOTE: this file is in JSON format, with end-of-line comments (//) allowed.
 
 
-	// A list of IPs that will run in debug mode.
-	// In debug mode, ...
-	// - the /cache-info resource show the contents of the job cache
-	//   (other debug information resources may be added in the future)
-	// - output is prettyprinted by default (can be overriden with the "prettyprint"
-	//   GET parameter)
-	"debugModeIps": [
-		//"127.0.0.1",      // IPv4 localhost
-		//"0:0:0:0:0:0:0:1" // IPv6 localhost
-	],
-
 	// The location and parameters for each index
 	// ---------------------------------------------------------------
 	// (missing indices will be skipped)
 	
+	// Index collections are multiple indices under a single directory.
+	// BLS will detect when an index is added and make it available to
+	// query. It will also detect if it is removed.
+	// NOTE: if multiple accessible collections contain indices with the 
+	// same name, one of them is picked at random (i.e. don't do this).  
+	"indexCollections": [
+	
+//      e.g.:
+//		"/data1/blacklab/public-indices/",
+//		"/data2/blacklab/public-indices/"
+
+	],
+
+	// Subdirectories of this directory will be used as user's personal
+	// index collections. So a subdirectory "jan" will contain indices 
+	// that belong to user jan. Indices in these collections are only
+	// available when that user is logged in.
+	"userCollectionsDir": "/data/blacklab/user-indices/",
+
 	// A list of single indices, where they can be found,
 	// and whether or not full document content may be retrieved
 	// by users. 
@@ -41,24 +49,16 @@
 //		}
 	},
 	
-	// Index collections are multiple indices under a single directory.
-	// BLS will detect when an index is added and make it available to
-	// query. It will also detect if it is removed.
-	// NOTE: if multiple accessible collections contain indices with the 
-	// same name, one of them is picked at random (i.e. don't do this).  
-	"indexCollections": [
-	
-//      e.g.:
-//		"/data1/blacklab/public-indices/",
-//		"/data2/blacklab/public-indices/"
-
+	// A list of IPs that will run in debug mode.
+	// In debug mode, ...
+	// - the /cache-info resource show the contents of the job cache
+	//   (other debug information resources may be added in the future)
+	// - output is prettyprinted by default (can be overriden with the "prettyprint"
+	//   GET parameter)
+	"debugModeIps": [
+		//"127.0.0.1",      // IPv4 localhost
+		//"0:0:0:0:0:0:0:1" // IPv6 localhost
 	],
-
-	// Subdirectories of this directory will be used as user's personal
-	// index collections. So a subdirectory "jan" will contain indices 
-	// that belong to user jan. Indices in these collections are only
-	// available when that user is logged in.
-	"userCollectionsDir": "/data/blacklab/user-indices/",
 
 	// Configuration that affects how requests are handled
 	// ---------------------------------------------------------------
@@ -90,6 +90,26 @@
 		// if they may not be allowed to.
 		// (this applies to the "wordsaroundhit" GET parameter of the /docs/ID/snippet resource)
 		"maxSnippetSize": 100,
+		
+		// The default maximum number of hits to retrieve
+		// (and use for sorting, grouping, etc.). -1 means no limit, but be
+		// careful, this will likely bring down your server.
+		"defaultMaxHitsToRetrieve": 1000000,
+		
+		// The default maximum number of hits to count.
+		// -1 means no limit, but be careful, this will likely bring 
+		// down your server.
+		"defaultMaxHitsToCount": 5000000,
+		
+		// The maximum allowed number of hits to retrieve.
+		// -1 means no limit, but be careful, this will likely bring 
+		// down your server.
+		"maxHitsToRetrieveAllowed": 2000000,
+		
+		// The maximum allowed number of hits to count.
+		// -1 means no limit, but be careful, this will likely bring 
+		// down your server.
+		"maxHitsToCountAllowed": 10000000,
 
 		// Clients from these IPs may choose their own user id and send it along in a GET parameter "userid".
 		// This setting exists for web applications that contact the webservice (partly) through the
@@ -106,6 +126,47 @@
 	// Settings related to tuning server load and client responsiveness
 	// ---------------------------------------------------------------
 	"performance": {
+	
+		// Settings to make sure running operations (fetching results, 
+		// sorting, grouping) behave. Note that a search job may consist
+		// of several of these operations.
+		"operations": {
+		
+			// An operation that takes really
+			// long should be interrupted. After how many seconds we should interrupt
+			// an operation? (default: 240 == 4 mins)
+			// (Note that a search job may consist of several operations, but long search
+			// jobs should be detected and aborted eventually as well - this is just an 
+			// extra safeguard for stopping out of control searches earlier)
+			"interruptAfterSec": 240
+			
+			// Threads that run for a while should sleep occasionally to give
+			// other threads a chance as well. If they didn't, they could end up
+			// hogging the CPU. We don't start this sleeping behaviour immediately,
+			// because threads that finish quickly don't pose much of a problem.
+			// After how many seconds should we sleep occasionally? (default: 5)
+			"startSleepingAfterSec": 5,
+
+			// The longer a search job is running, the longer we sleep. This
+			// determines how fast the part of the cycle the sleep takes will
+			// increase per second. The higher you set this, the worse long
+			// jobs will run, but the nicer they will play with other jobs.
+			// (default: 0.004 == 0.4% increase/s)
+			"sleepPartIncreaseSpeed": 0.004,
+		
+			// This determines the maximum part of the cycle we'll devote to
+			// sleep. The higher you set this, the worse (REALLY) long jobs 
+			// will run, but the nicer they will play with other jobs
+			// (default: 0.5 == 50%)
+			"maxSleepPart": 0.5,
+		
+			// When sleeping occasionally, we think in "cycles": a period of activity
+			// followed by a period of sleeping. Longer cycles are more efficient
+			// because of less thread switching.
+			// How many ms should 1 wake/sleep cycle take? (default: 1000)
+			"wakeSleepCycleMs": 1000,
+		
+		},
 
 		// Settings for job caching.
 		"cache": {

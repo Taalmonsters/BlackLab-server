@@ -1,5 +1,6 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.search.ConcordanceType;
 import nl.inl.blacklab.search.Hits;
 
@@ -16,7 +17,7 @@ public class JobDocs extends JobWithDocs {
 	}
 
 	@Override
-	public void performSearch() throws QueryException, IndexOpenException, InterruptedException {
+	public void performSearch() throws BlsException, IndexOpenException, InterruptedException {
 		// First, execute blocking hits search.
 		String patt = par.getString("patt");
 		if (patt != null && patt.length() > 0) {

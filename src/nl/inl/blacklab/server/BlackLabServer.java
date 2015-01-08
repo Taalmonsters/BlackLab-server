@@ -18,6 +18,7 @@ import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.requesthandlers.RequestHandler;
+import nl.inl.blacklab.server.requesthandlers.Response;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.SearchParameters;
 import nl.inl.util.Json;
@@ -137,7 +138,7 @@ public class BlackLabServer extends HttpServlet {
 
 	private void writeResponse(HttpServletRequest request,
 			HttpServletResponse responseObject,
-			DataObject response) {
+			Response response) {
 		
 		boolean debugMode = searchManager.isDebugMode(request.getRemoteAddr());
 		
@@ -147,7 +148,8 @@ public class BlackLabServer extends HttpServlet {
 			outputType = ServletUtil.getOutputType(request, searchManager.getDefaultOutputType());
 		}
 
-		// Write HTTP headers (content type and cache)
+		// Write HTTP headers (sattus code, encoding, content type and cache)
+		responseObject.setStatus(response.getHttpStatusCode());
 		responseObject.setCharacterEncoding("utf-8");
 		responseObject.setContentType(ServletUtil.getContentType(outputType));
 		int cacheTime = response.isCacheAllowed() ? searchManager.getClientCacheTimeSec() : 0;
@@ -159,16 +161,17 @@ public class BlackLabServer extends HttpServlet {
 			boolean prettyPrint = ServletUtil.getParameter(request, "prettyprint", debugMode);
 			String callbackFunction = ServletUtil.getParameter(request, "jsonp", "");
 			if (callbackFunction.length() > 0 && !callbackFunction.matches("[_a-zA-Z][_a-zA-Z0-9]+")) {
-				response = DataObject.errorObject("JSONP_ILLEGAL_CALLBACK", "Illegal JSONP callback function name. Must be a valid Javascript name.");
+				response = Response.badRequest("JSONP_ILLEGAL_CALLBACK", "Illegal JSONP callback function name. Must be a valid Javascript name.");
 				callbackFunction = "";
 			}
 			String rootEl = "blacklabResponse";
-			if (response instanceof DataObjectPlain && !((DataObjectPlain) response).shouldAddRootElement()) {
+			DataObject dataObject = response.getDataObject();
+			if (dataObject instanceof DataObjectPlain && !((DataObjectPlain) dataObject).shouldAddRootElement()) {
 				// Plain objects sometimes don't want root objects (e.g. because they're 
 				// full XML documents already)
 				rootEl = null;
 			}
-			response.serializeDocument(rootEl, out, outputType, prettyPrint, callbackFunction);
+			dataObject.serializeDocument(rootEl, out, outputType, prettyPrint, callbackFunction);
 			out.flush();
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException(e);

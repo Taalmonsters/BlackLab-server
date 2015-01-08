@@ -11,28 +11,6 @@ import nl.inl.blacklab.server.ServletUtil;
  */
 public abstract class DataObject {
 
-	/** If set, overrides the response type (XML/JSON) for this object. */
-	DataFormat overrideType = null;
-
-	/** If true, the client may cache this response. If false, it should never cache this. */
-	boolean cacheAllowed = true;
-
-	public boolean isCacheAllowed() {
-		return cacheAllowed;
-	}
-
-	public void setCacheAllowed(boolean allowCache) {
-		this.cacheAllowed = allowCache;
-	}
-
-	public DataFormat getOverrideType() {
-		return overrideType;
-	}
-
-	public void overrideType(DataFormat type) {
-		overrideType = type;
-	}
-
 	/**
 	 * Serialize the data to either XML or JSON
 	 * @param out where to serialize to
@@ -164,7 +142,7 @@ public abstract class DataObject {
 	 * @param checkAgainMs advice for how long to wait before asking again (ms) (if 0, don't include this)
 	 * @return the data object representing the error message
 	 */
-	public static DataObjectMapElement statusObject(String code, String msg, int checkAgainMs) {
+	public static DataObjectMapElement statusObjectWithCheckAgain(String code, String msg, int checkAgainMs) {
 		DataObjectMapElement status = new DataObjectMapElement();
 		status.put("code", new DataObjectString(code));
 		status.put("message", new DataObjectString(msg));
@@ -172,7 +150,6 @@ public abstract class DataObject {
 			status.put("checkAgainMs", checkAgainMs);
 		DataObjectMapElement rv = new DataObjectMapElement();
 		rv.put("status", status);
-		rv.setCacheAllowed(false); // status should never be cached
 		return rv;
 	}
 
@@ -187,7 +164,7 @@ public abstract class DataObject {
 	 * @return the data object representing the error message
 	 */
 	public static DataObjectMapElement statusObject(String code, String msg) {
-		return statusObject(code, msg, 0);
+		return statusObjectWithCheckAgain(code, msg, 0);
 	}
 
 	/**

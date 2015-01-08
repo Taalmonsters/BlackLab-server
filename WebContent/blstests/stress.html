@@ -60,13 +60,14 @@ function runTest() {
 				"queryNum": queryNum++  // avoid caching
 			},
 			"success": function (data) {
-				if (data['error'])
-					output("Error for query " + patt + ": " + data['error']['message']);
-				else
-					output("Success for query " + patt + ".");
+				output("Success for query " + patt + ".");
 			},
 			"error": function (jqXHR, textStatus, errorThrown) {
-				output("Error for query " + patt + ": " + textStatus + "; " + errorThrown);
+				var data = jqXHR.responseJSON;
+				if (data['error'])
+					output(jqXHR.status + "Error for query " + patt + ": " + data['error']['message']);
+				else
+					output("Error for query " + patt + ": " + textStatus + "; " + errorThrown);
 			},
 		});
 		if (Date.now() - testRunningSince < testDurationMs) {

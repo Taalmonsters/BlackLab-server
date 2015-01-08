@@ -9,6 +9,8 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.exceptions.BlsException;
+import nl.inl.blacklab.exceptions.InternalServerError;
 import nl.inl.blacklab.perdocument.DocCount;
 import nl.inl.blacklab.perdocument.DocCounts;
 import nl.inl.blacklab.perdocument.DocGroupProperty;
@@ -19,12 +21,10 @@ import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.ServletUtil;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
-import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.SearchParameters;
 import nl.inl.blacklab.server.search.SearchUtil;
@@ -70,7 +70,7 @@ public abstract class RequestHandler {
 	 * @param request the request object
 	 * @return the response data
 	 */
-	public static DataObject handle(BlackLabServer servlet, HttpServletRequest request) {
+	public static Response handle(BlackLabServer servlet, HttpServletRequest request) {
 		boolean debugMode = servlet.getSearchManager().isDebugMode(request.getRemoteAddr());
 
 		// See if a user is logged in
@@ -89,7 +89,7 @@ public abstract class RequestHandler {
 		String indexName = parts.length >= 1 ? parts[0] : "";
 		if (indexName.startsWith(":")) {
 			if (!user.isLoggedIn())
-				return DataObject.errorObject("NOT_AUTHORIZED", "Unauthorized operation. Log in to access your private indices.");
+				return Response.unauthorized("Log in to access your private indices.");
 			// Private index. Prefix with user id.
 			indexName = user.getUserId() + indexName;
 		}
@@ -102,9 +102,9 @@ public abstract class RequestHandler {
 			isPrivateIndex = true;
 			String[] userAndIndexName = indexName.split(":");
 			if (!user.isLoggedIn())
-				return DataObject.errorObject("NOT_AUTHORIZED", "Unauthorized operation. Log in to access your private indices.");
+				return Response.unauthorized("Log in to access your private indices.");
 			if (!user.getUserId().equals(userAndIndexName[0]))
-				return DataObject.errorObject("NOT_AUTHORIZED", "Unauthorized operation. You cannot access another user's private indices.");
+				return Response.unauthorized("You cannot access another user's private indices.");
 		}
 		
 		// Choose the RequestHandler subclass
@@ -114,31 +114,31 @@ public abstract class RequestHandler {
 		if (method.equals("DELETE")) {
 			// Index given and nothing else?
 			if (indexName.length() == 0 || urlResource.length() > 0 || urlPathInfo.length() > 0) {
-				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal DELETE request.");
+				return Response.methodNotAllowed("DELETE", null);
 			}
 			if (!isPrivateIndex)
-				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal DELETE request. You can only delete your own private indices.");
+				return Response.forbidden("You can only delete your own private indices.");
 			requestHandler = new RequestHandlerDeleteIndex(servlet, request, user, indexName, null, null);
 		} else if (method.equals("PUT")) {
-			if (indexName.length() <= 0)
-				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal PUT request. Create new index with PUT to /blacklab-server/indexName");
+			if (indexName.length() == 0 || urlResource.length() > 0 || urlPathInfo.length() > 0)
+				return Response.methodNotAllowed("PUT", "Create new index with PUT to /blacklab-server/indexName");
 			if (!isPrivateIndex)
-				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal PUT request. You can only create indices in your private collection.");
+				return Response.forbidden("You can only create indices in your private collection.");
 			requestHandler = new RequestHandlerCreateIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
 		} else if (method.equals("POST")) {
 			if (!isPrivateIndex)
-				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal POST request. Can only POST to private indices.");
+				return Response.forbidden("Can only POST to private indices.");
 			if (indexName.length() == 0) {
 				// POST to /blacklab-server/ : you probably meant PUT to /blacklab-server/indexName
-				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal POST request. Create new index with PUT to /blacklab-server/indexName");
+				return Response.methodNotAllowed("POST", "Create new index with PUT to /blacklab-server/indexName");
 			} else if (urlResource.equals("docs")) {
 				if (!SearchManager.isValidIndexName(indexName))
-					return DataObject.errorObject("ILLEGAL_INDEX_NAME", SearchManager.ILLEGAL_NAME_ERROR + indexName);
+					return Response.badRequest("ILLEGAL_INDEX_NAME", SearchManager.ILLEGAL_NAME_ERROR + indexName);
 				
 				// POST to /blacklab-server/indexName/docs/ : add data to index
 				requestHandler = new RequestHandlerAddToIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
 			} else {
-				return DataObject.errorObject("ILLEGAL_REQUEST", "Illegal POST request. Note that retrieval can only be done using GET.");
+				return Response.methodNotAllowed("POST", "Note that retrieval can only be done using GET.");
 			}
 		} else if (method.equals("GET")) {
 			if (indexName.equals("cache-info") && debugMode) {
@@ -155,7 +155,7 @@ public abstract class RequestHandler {
 	
 					String status = searchManager.getIndexStatus(indexName);
 					if (!status.equals("available") && handlerName.length() > 0 && !handlerName.equals("debug") && !handlerName.equals("fields") && !handlerName.equals("status")) {
-						return DataObject.errorObject("INDEX_UNAVAILABLE", "The index '" + indexName + "' is not available right now. Status: " + status);
+						return Response.unavailable(indexName, status);
 					}
 					
 					if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs") && !handlerName.equals("fields") && !handlerName.equals("termfreq") && !handlerName.equals("status")) {
@@ -184,7 +184,7 @@ public abstract class RequestHandler {
 					}
 					
 					if (!availableHandlers.containsKey(handlerName))
-						return DataObject.errorObject("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
+						return Response.badRequest("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
 					Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
 					Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, User.class, String.class, String.class, String.class);
 					//servlet.getSearchManager().getSearcher(indexName); // make sure it's open
@@ -192,25 +192,23 @@ public abstract class RequestHandler {
 				} catch (NoSuchMethodException e) {
 					// (can only happen if the required constructor is not available in the RequestHandler subclass)
 					logger.error("Could not get constructor to create request handler", e);
-					return DataObject.internalError(e, debugMode, 2);
+					return Response.internalError(e, debugMode, 2);
 				} catch (IllegalArgumentException e) {
 					logger.error("Could not create request handler", e);
-					return DataObject.internalError(e, debugMode, 3);
+					return Response.internalError(e, debugMode, 3);
 				} catch (InstantiationException e) {
 					logger.error("Could not create request handler", e);
-					return DataObject.internalError(e, debugMode, 4);
+					return Response.internalError(e, debugMode, 4);
 				} catch (IllegalAccessException e) {
 					logger.error("Could not create request handler", e);
-					return DataObject.internalError(e, debugMode, 5);
+					return Response.internalError(e, debugMode, 5);
 				} catch (InvocationTargetException e) {
 					logger.error("Could not create request handler", e);
-					return DataObject.internalError(e, debugMode, 6);
-				}/* catch (IndexOpenException e) {
-					return DataObject.errorObject("CANNOT_OPEN_INDEX", "Could not open index '" + indexName + "'. Please check the name.");
-				}*/
+					return Response.internalError(e, debugMode, 6);
+				}
 			}
 		} else {
-			return DataObject.internalError("RequestHandler.doGetPost called with wrong method: " + method, debugMode, 10);
+			return Response.internalError("RequestHandler.doGetPost called with wrong method: " + method, debugMode, 10);
 		}
 		if (debugMode)
 			requestHandler.setDebug(debugMode);
@@ -219,11 +217,14 @@ public abstract class RequestHandler {
 		try {
 			return requestHandler.handle();
 		} catch (IndexOpenException e) {
-			return DataObject.errorObject("CANNOT_OPEN_INDEX", debugMode ? e.getMessage() : "Could not open index '" + indexName + "'. Please check the name.");
-		} catch (QueryException e) {
-			return DataObject.errorObject(e.getErrorCode(), e.getMessage());
+			return Response.internalError(e, debugMode, 23);
+		} catch (InternalServerError e) {
+			String msg = ServletUtil.internalErrorMessage(e, debugMode, e.getInternalErrorCode());
+			return Response.error(e.getBlsErrorCode(), msg, e.getHttpStatusCode());
+		} catch (BlsException e) {
+			return Response.error(e.getBlsErrorCode(), e.getMessage(), e.getHttpStatusCode());
 		} catch (InterruptedException e) {
-			return DataObject.internalError(e, debugMode, 7);
+			return Response.internalError(e, debugMode, 7);
 		}
 	}
 
@@ -290,10 +291,10 @@ public abstract class RequestHandler {
 	 * Child classes should override this to handle the request.
 	 * @return the response object
 	 * @throws IndexOpenException if the index can't be opened
-	 * @throws QueryException if the query can't be executed
+	 * @throws BlsException if the query can't be executed
 	 * @throws InterruptedException if the thread was interrupted
 	 */
-	public abstract DataObject handle() throws IndexOpenException, QueryException, InterruptedException;
+	public abstract Response handle() throws IndexOpenException, BlsException, InterruptedException;
 
 	/**
 	 * Get a string parameter.

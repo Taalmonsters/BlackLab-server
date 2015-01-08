@@ -3,7 +3,6 @@ package nl.inl.blacklab.server.requesthandlers;
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.User;
 
@@ -16,12 +15,12 @@ public class RequestHandlerCacheInfo extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() {
+	public Response handle() {
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("cacheStatus", searchMan.getCacheStatusDataObject());
 		response.put("cacheContents", searchMan.getCacheContentsDataObject());
 
-		return response;
+		return new Response(response);
 	}
 
 }

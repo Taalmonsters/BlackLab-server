@@ -11,6 +11,7 @@ import java.util.TimeZone;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import nl.inl.blacklab.exceptions.InternalServerError;
 import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.util.ExUtil;
 
@@ -247,6 +248,8 @@ public class ServletUtil {
 
 	public static String internalErrorMessage(Exception e, boolean debugMode, int code) {
 		if (debugMode) {
+			if (e instanceof InternalServerError)
+				return internalErrorMessage(e.getMessage(), debugMode, code);
 			return internalErrorMessage(e.getClass().getName() + ": " + e.getMessage(), debugMode, code);
 		}
 		return ServletUtil.internalErrorMessage(code);

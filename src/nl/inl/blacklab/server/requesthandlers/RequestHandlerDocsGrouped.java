@@ -2,16 +2,15 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocGroup;
 import nl.inl.blacklab.perdocument.DocGroups;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.JobDocsGrouped;
-import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
 import nl.inl.blacklab.server.search.User;
 
@@ -24,18 +23,18 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
+	public Response handle() throws IndexOpenException, BlsException, InterruptedException {
 		// Get the window we're interested in
 		JobDocsGrouped search = searchMan.searchDocsGrouped(user, searchParam);
 		if (getBoolParameter("block")) {
-			search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+			search.waitUntilFinished(SearchCache.maxSearchTimeSec * 1000);
 			if (!search.finished())
-				return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+				return Response.searchTimedOut();
 		}
 
 		// If search is not done yet, indicate this to the user
 		if (!search.finished()) {
-			return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getCheckAgainAdviceMinimumMs());
+			return Response.busy(servlet);
 		}
 
 		// Search is done; construct the results object
@@ -88,7 +87,7 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 		response.put("summary", summary);
 		response.put("docGroups", doGroups);
 
-		return response;
+		return new Response(response);
 	}
 
 }

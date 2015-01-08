@@ -1,5 +1,7 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.exceptions.BadRequest;
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocGroupProperty;
 import nl.inl.blacklab.perdocument.DocGroups;
 import nl.inl.blacklab.perdocument.DocProperty;
@@ -20,7 +22,7 @@ public class JobDocsGrouped extends Job {
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
+	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithDocs docsSearch = searchMan.searchDocs(user, parNoGroup);
@@ -34,7 +36,7 @@ public class JobDocsGrouped extends Job {
 			groupBy = "";
 		groupProp = DocProperty.deserialize(groupBy);
 		if (groupProp == null)
-			throw new QueryException("UNKNOWN_GROUP_PROPERTY", "Unknown group property '" + groupBy + "'.");
+			throw new BadRequest("UNKNOWN_GROUP_PROPERTY", "Unknown group property '" + groupBy + "'.");
 		DocGroups theGroups = docResults.groupedBy(groupProp);
 
 		String sortBy = par.getString("sort");

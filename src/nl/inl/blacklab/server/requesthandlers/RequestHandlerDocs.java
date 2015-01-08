@@ -2,6 +2,7 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocGroup;
 import nl.inl.blacklab.perdocument.DocGroups;
 import nl.inl.blacklab.perdocument.DocProperty;
@@ -16,7 +17,6 @@ import nl.inl.blacklab.search.Kwic;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.grouping.HitPropValue;
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectContextList;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
@@ -27,7 +27,6 @@ import nl.inl.blacklab.server.search.Job;
 import nl.inl.blacklab.server.search.JobDocsGrouped;
 import nl.inl.blacklab.server.search.JobDocsTotal;
 import nl.inl.blacklab.server.search.JobDocsWindow;
-import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchCache;
 import nl.inl.blacklab.server.search.User;
 
@@ -42,7 +41,7 @@ public class RequestHandlerDocs extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() throws IndexOpenException, QueryException, InterruptedException {
+	public Response handle() throws IndexOpenException, BlsException, InterruptedException {
 		// Do we want to view a single group after grouping?
 		String groupBy = searchParam.getString("group");
 		if (groupBy == null)
@@ -64,14 +63,14 @@ public class RequestHandlerDocs extends RequestHandler {
 			// Yes. Group, then show hits from the specified group
 			search = searchGrouped = searchMan.searchDocsGrouped(user, searchParam);
 			if (block) {
-				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+				search.waitUntilFinished(SearchCache.maxSearchTimeSec * 1000);
 				if (!search.finished())
-					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+					return Response.searchTimedOut();
 			}
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
-				return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getCheckAgainAdviceMs(search));
+				return Response.busy(servlet);
 			}
 
 			// Search is done; construct the results object
@@ -80,11 +79,11 @@ public class RequestHandlerDocs extends RequestHandler {
 			HitPropValue viewGroupVal = null;
 			viewGroupVal = HitPropValue.deserialize(groups.getOriginalDocResults().getOriginalHits(), viewGroup);
 			if (viewGroupVal == null)
-				return DataObject.errorObject("ERROR_IN_GROUP_VALUE", "Parameter 'viewgroup' has an illegal value: " + viewGroup);
+				return Response.badRequest("ERROR_IN_GROUP_VALUE", "Parameter 'viewgroup' has an illegal value: " + viewGroup);
 
 			group = groups.getGroup(viewGroupVal);
 			if (group == null)
-				return DataObject.errorObject("GROUP_NOT_FOUND", "Group not found: " + viewGroup);
+				return Response.badRequest("GROUP_NOT_FOUND", "Group not found: " + viewGroup);
 
 			String sortBy = searchParam.getString("sort");
 			DocProperty sortProp = sortBy != null && sortBy.length() > 0 ? DocProperty.deserialize(sortBy) : null;
@@ -108,23 +107,23 @@ public class RequestHandlerDocs extends RequestHandler {
 
 			search = searchWindow = searchMan.searchDocsWindow(user, searchParam);
 			if (block) {
-				search.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+				search.waitUntilFinished(SearchCache.maxSearchTimeSec * 1000);
 				if (!search.finished())
-					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+					return Response.searchTimedOut();
 			}
 
 			// Also determine the total number of hits
 			// (usually nonblocking, unless "waitfortotal=yes" was passed)
 			total = searchMan.searchDocsTotal(user, searchParam);
 			if (searchParam.getBoolean("waitfortotal")) {
-				total.waitUntilFinished(SearchCache.MAX_SEARCH_TIME_SEC * 1000);
+				total.waitUntilFinished(SearchCache.maxSearchTimeSec * 1000);
 				if (!total.finished())
-					return DataObject.errorObject("SEARCH_TIMED_OUT", "Search took too long, cancelled.");
+					return Response.searchTimedOut();
 			}
 
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
-				return DataObject.statusObject("WORKING", "Searching, please wait...", servlet.getSearchManager().getCheckAgainAdviceMinimumMs());
+				return Response.busy(servlet);
 			}
 
 			window = searchWindow.getWindow();
@@ -215,13 +214,19 @@ public class RequestHandlerDocs extends RequestHandler {
 			summary.put("countTime", total.executionTimeMillis());
 		summary.put("stillCounting", !done);
 		if (searchGrouped == null && hits != null) {
-			summary.put("numberOfHits", hits.countSoFarHitsCounted());
+			int numberOfHitsCounted = hits.countSoFarHitsCounted();
+			if (total.threwException())
+				numberOfHitsCounted = -1;
+			summary.put("numberOfHits", numberOfHitsCounted);
 			summary.put("numberOfHitsRetrieved", hits.countSoFarHitsRetrieved());
 			summary.put("stoppedCountingHits", hits.maxHitsCounted());
 			summary.put("stoppedRetrievingHits", hits.maxHitsRetrieved());
 		}
 		if (hits != null || group != null) {
-			summary.put("numberOfDocs", hits == null ? group.getResults().size() : hits.countSoFarDocsCounted());
+			int numberOfDocsCounted = hits == null ? group.getResults().size() : hits.countSoFarDocsCounted();
+			if (total.threwException())
+				numberOfDocsCounted = -1;
+			summary.put("numberOfDocs", numberOfDocsCounted);
 			summary.put("numberOfDocsRetrieved", hits == null ? group.getResults().size() : hits.countSoFarDocsRetrieved());
 		} else {
 			// TODO: DocResults.countSoFarDocsCounted/Retrieved?
@@ -243,7 +248,7 @@ public class RequestHandlerDocs extends RequestHandler {
 		if (doFacets != null)
 			response.put("facets", doFacets);
 
-		return response;
+		return new Response(response);
 	}
 
 

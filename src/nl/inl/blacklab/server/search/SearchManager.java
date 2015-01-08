@@ -17,6 +17,13 @@ import java.util.Set;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.exceptions.BadRequest;
+import nl.inl.blacklab.exceptions.BlsException;
+import nl.inl.blacklab.exceptions.InternalServerError;
+import nl.inl.blacklab.exceptions.NotAuthorized;
+import nl.inl.blacklab.exceptions.NotFound;
+import nl.inl.blacklab.exceptions.ServiceUnavailable;
+import nl.inl.blacklab.exceptions.TooManyRequests;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.queryParser.contextql.ContextualQueryLanguageParser;
 import nl.inl.blacklab.queryParser.corpusql.CorpusQueryLanguageParser;
@@ -35,6 +42,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectString;
 import nl.inl.util.FileUtil;
 import nl.inl.util.FileUtil.FileTask;
 import nl.inl.util.MemoryUtil;
+import nl.inl.util.ThreadEtiquette;
 import nl.inl.util.json.JSONArray;
 import nl.inl.util.json.JSONObject;
 
@@ -227,7 +235,6 @@ public class SearchManager {
 			maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
 			maxSnippetSize = JsonUtil
 					.getIntProp(reqProp, "maxSnippetSize", 100);
-			maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
 			Hits.setDefaultMaxHitsToRetrieve(JsonUtil.getIntProp(reqProp,
 					"defaultMaxHitsToRetrieve",
 					Hits.getDefaultMaxHitsToRetrieve()));
@@ -266,6 +273,18 @@ public class SearchManager {
 
 			// Start with empty cache
 			cache = new SearchCache(cacheProp);
+			
+			// Make sure long operations yield their thread occasionally,
+			// and automatically abort really long operations.
+			ThreadEtiquette.setEnabled(true);
+			if (perfProp.has("operations")) {
+				JSONObject opProp = perfProp.getJSONObject("operations");
+				ThreadEtiquette.setStartSleepingAfterSec(JsonUtil.getIntProp(opProp, "startSleepingAfterSec", 5));
+				ThreadEtiquette.setWakeSleepCycleMs(JsonUtil.getIntProp(opProp, "wakeSleepCycleMs", 1000));
+				ThreadEtiquette.setSleepPartIncreaseSpeed(JsonUtil.getDoubleProp(opProp, "sleepPartIncreaseSpeed", 0.004));
+				ThreadEtiquette.setMaxSleepPart(JsonUtil.getDoubleProp(opProp, "maxSleepPart", 0.5));
+				ThreadEtiquette.setInterruptAfterSec(JsonUtil.getIntProp(opProp, "interruptAfterSec", 240));
+			}
 		}
 
 		// Find the indices
@@ -421,7 +440,7 @@ public class SearchManager {
 		// If no auth system is configured, all users are anonymous
 		if (authSystem == null) {
 			User user = User.anonymous(request.getSession().getId());
-			logger.debug("No auth system, user = " + user);
+			//logger.debug("No auth system, user = " + user);
 			return user;
 		}
 		
@@ -634,10 +653,10 @@ public class SearchManager {
 	 * @param indexName
 	 *            the index we want to check for
 	 * @return true iff the index exists
-	 * @throws QueryException
+	 * @throws BlsException
 	 */
 	public boolean indexExists(String indexName)
-			throws QueryException {
+			throws BlsException {
 		if (!isValidIndexName(indexName))
 			throw new RuntimeException(ILLEGAL_NAME_ERROR + indexName);
 		IndexParam par = getIndexParam(indexName);
@@ -656,33 +675,32 @@ public class SearchManager {
 	 * @param indexName
 	 *            the index name, including user prefix
 	 * 
-	 * @throws QueryException
+	 * @throws BlsException
 	 *             if we're not allowed to create the index for whatever reason
 	 * @throws IOException
 	 *             if creation failed unexpectedly
 	 */
-	public void createIndex(String indexName) throws QueryException,
+	public void createIndex(String indexName) throws BlsException,
 			IOException {
 		if (!indexName.contains(":"))
-			throw new QueryException("NOT_AUTHORIZED", "Unauthorized operation. Can only create private indices.");
+			throw new NotAuthorized("Can only create private indices.");
 		if (!isValidIndexName(indexName))
-			throw new QueryException("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR
+			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR
 					+ indexName);
 		if (indexExists(indexName))
-			throw new QueryException("INDEX_ALREADY_EXISTS",
+			throw new BadRequest("INDEX_ALREADY_EXISTS",
 					"Could not create index. Index already exists.");
 		String[] parts = indexName.split(":");
 		String userId = parts[0];
 		String indexNameWithoutUsePrefix = parts[1];
 		if (!canCreateIndex(userId))
-			throw new QueryException("CANNOT_CREATE_INDEX ",
+			throw new BadRequest("CANNOT_CREATE_INDEX ",
 					"Could not create index. You already have the maximum of "
 							+ MAX_USER_INDICES + " indices.");
 
 		File userDir = getUserCollectionDir(userId);
 		if (!userDir.canWrite())
-			throw new QueryException("CANNOT_CREATE_INDEX ",
-					"Could not create index. Cannot write in use dir.");
+			throw new InternalServerError("Could not create index. Cannot write in user dir.", 16);
 
 		File indexDir = new File(userDir, indexNameWithoutUsePrefix);
 		Searcher searcher = Searcher.createIndex(indexDir);
@@ -703,18 +721,18 @@ public class SearchManager {
 	 * @param indexName
 	 *            the index name
 	 * 
-	 * @throws QueryException
+	 * @throws BlsException
 	 *             if we're not allowed to delete the index
 	 */
 	public void deleteUserIndex(String indexName)
-			throws QueryException {
+			throws BlsException {
 		if (!indexName.contains(":"))
-			throw new QueryException("NOT_AUTHORIZED", "Unauthorized operation. Can only delete private indices.");
+			throw new NotAuthorized("Can only delete private indices.");
 		if (!isValidIndexName(indexName))
-			throw new QueryException("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR
+			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR
 					+ indexName);
 		if (!indexExists(indexName))
-			throw new QueryException("CANNOT_OPEN_INDEX",
+			throw new NotFound("CANNOT_OPEN_INDEX",
 					"Could not open index '" + indexName
 							+ "'. Please check the name.");
 		String[] parts = indexName.split(":");
@@ -723,27 +741,23 @@ public class SearchManager {
 		File userDir = getUserCollectionDir(userId);
 		File indexDir = new File(userDir, indexNameNoUserPrefix);
 		if (!indexDir.isDirectory())
-			throw new QueryException("CANNOT_DELETE_INDEX ",
-					"Could not delete index. Not an index.");
+			throw new InternalServerError("Could not delete index. Not an index.", 17);
 		if (!userDir.canWrite() || !indexDir.canWrite())
-			throw new QueryException("CANNOT_DELETE_INDEX ",
-					"Could not delete index. Check file permissions.");
+			throw new InternalServerError("Could not delete index. Check file permissions.", 18);
 		if (!indexDir.getParentFile().equals(userDir)) { // Yes, we're paranoid..
-			throw new QueryException("CANNOT_DELETE_INDEX ",
-					"Could not delete index. Not found in user dir.");
+			throw new InternalServerError("Could not delete index. Not found in user dir.", 19);
 		}
 		if (!Searcher.isIndex(indexDir)) { // ..but are we paranoid enough?
-			throw new QueryException("CANNOT_DELETE_INDEX ",
-					"Could not delete index. Not a BlackLab index.");
+			throw new InternalServerError("Could not delete index. Not a BlackLab index.", 20);
 		}
 
 		// Don't follow symlinks
 		try {
 			if (isSymlink(indexDir)) {
-				throw new QueryException("CANNOT_DELETE_INDEX ", "Could not delete index. Is a symlink.");
+				throw new InternalServerError("Could not delete index. Is a symlink.", 21);
 			}
 		} catch (IOException e1) {
-			throw QueryException.internalError(13);
+			throw new InternalServerError(13);
 		}
 
 		// Can we even delete the whole tree? If not, don't even try.
@@ -756,8 +770,7 @@ public class SearchManager {
 				}
 			});
 		} catch (Exception e) {
-			throw new QueryException("CANNOT_DELETE_INDEX ",
-					"Could not delete index. Can't delete all files/dirs.");
+			throw new InternalServerError("Could not delete index. Can't delete all files/dirs.", 22);
 		}
 
 		// Everything seems ok. Delete the index.
@@ -909,7 +922,7 @@ public class SearchManager {
 	}
 
 	public JobWithHits searchHits(User user, SearchParameters par)
-			throws IndexOpenException, QueryException, InterruptedException {
+			throws IndexOpenException, BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "docpid",
 				"maxretrieve", "maxcount");
@@ -928,7 +941,7 @@ public class SearchManager {
 	}
 
 	public JobWithDocs searchDocs(User user, SearchParameters par)
-			throws IndexOpenException, QueryException, InterruptedException {
+			throws IndexOpenException, BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "usecontent",
 				"maxretrieve", "maxcount");
@@ -947,7 +960,7 @@ public class SearchManager {
 	}
 
 	public JobHitsWindow searchHitsWindow(User user, SearchParameters par)
-			throws IndexOpenException, QueryException, InterruptedException {
+			throws IndexOpenException, BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
 				"wordsaroundhit", "usecontent", "maxretrieve", "maxcount");
@@ -956,7 +969,7 @@ public class SearchManager {
 	}
 
 	public JobDocsWindow searchDocsWindow(User user, SearchParameters par)
-			throws IndexOpenException, QueryException, InterruptedException {
+			throws IndexOpenException, BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
 				"wordsaroundhit", "usecontent", "maxretrieve", "maxcount");
@@ -965,7 +978,7 @@ public class SearchManager {
 	}
 
 	public JobHitsTotal searchHitsTotal(User user, SearchParameters par)
-			throws IndexOpenException, QueryException, InterruptedException {
+			throws IndexOpenException, BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobHitsTotal");
@@ -973,7 +986,7 @@ public class SearchManager {
 	}
 
 	public JobDocsTotal searchDocsTotal(User user, SearchParameters par)
-			throws IndexOpenException, QueryException, InterruptedException {
+			throws IndexOpenException, BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobDocsTotal");
@@ -981,7 +994,7 @@ public class SearchManager {
 	}
 
 	public JobHitsGrouped searchHitsGrouped(User user, SearchParameters par)
-			throws IndexOpenException, QueryException, InterruptedException {
+			throws IndexOpenException, BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "group", "sort",
 				"maxretrieve", "maxcount");
@@ -990,7 +1003,7 @@ public class SearchManager {
 	}
 
 	public JobDocsGrouped searchDocsGrouped(User user, SearchParameters par)
-			throws IndexOpenException, QueryException, InterruptedException {
+			throws IndexOpenException, BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "group", "sort",
 				"maxretrieve", "maxcount");
@@ -999,7 +1012,7 @@ public class SearchManager {
 	}
 
 	public JobFacets searchFacets(User user, SearchParameters par)
-			throws IndexOpenException, QueryException, InterruptedException {
+			throws IndexOpenException, BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("facets", "indexname",
 				"patt", "pattlang", "filter", "filterlang");
 		parBasic.put("jobclass", "JobFacets");
@@ -1018,7 +1031,7 @@ public class SearchManager {
 	 *            if true, wait until the search finishes; otherwise, return
 	 *            immediately
 	 * @return a Search object corresponding to these parameters
-	 * @throws QueryException
+	 * @throws BlsException
 	 *             if the query couldn't be executed
 	 * @throws IndexOpenException
 	 *             if the index couldn't be opened
@@ -1026,7 +1039,7 @@ public class SearchManager {
 	 *             if the search thread was interrupted
 	 */
 	private Job search(User user, SearchParameters searchParameters)
-			throws IndexOpenException, QueryException, InterruptedException {
+			throws IndexOpenException, BlsException, InterruptedException {
 		// Search the cache / running jobs for this search, create new if not
 		// found.
 		boolean performSearch = false;
@@ -1044,8 +1057,7 @@ public class SearchManager {
 					logger.warn("Can't start new search, not enough memory ("
 							+ freeMegs + "M < " + minFreeMemForSearchMegs
 							+ "M)");
-					throw new QueryException("SERVER_BUSY",
-							"The server is under heavy load right now. Please try again later.");
+					throw new ServiceUnavailable("The server is under heavy load right now. Please try again later.");
 				}
 				// logger.debug("Enough free memory: " + freeMegs + "M");
 
@@ -1069,9 +1081,7 @@ public class SearchManager {
 																		// list
 					logger.warn("Can't start new search, user already has "
 							+ numRunningJobs + " jobs running.");
-					throw new QueryException(
-							"TOO_MANY_JOBS",
-							"You already have too many running searches. Please wait for some previous searches to complete before starting new ones.");
+					throw new TooManyRequests("You already have too many running searches. Please wait for some previous searches to complete before starting new ones.");
 				}
 
 				// Create a new search object with these parameters and place it
@@ -1153,15 +1163,15 @@ public class SearchManager {
 	}
 
 	public TextPattern parsePatt(Searcher searcher, String pattern,
-			String language) throws QueryException {
+			String language) throws BlsException {
 		return parsePatt(searcher, pattern, language, true);
 	}
 
 	public TextPattern parsePatt(Searcher searcher, String pattern,
-			String language, boolean required) throws QueryException {
+			String language, boolean required) throws BlsException {
 		if (pattern == null || pattern.length() == 0) {
 			if (required)
-				throw new QueryException("NO_PATTERN_GIVEN",
+				throw new BadRequest("NO_PATTERN_GIVEN",
 						"Text search pattern required. Please specify 'patt' parameter.");
 			return null; // not required, ok
 		}
@@ -1170,10 +1180,10 @@ public class SearchManager {
 			try {
 				return CorpusQueryLanguageParser.parse(pattern);
 			} catch (ParseException e) {
-				throw new QueryException("PATT_SYNTAX_ERROR",
+				throw new BadRequest("PATT_SYNTAX_ERROR",
 						"Syntax error in CorpusQL pattern: " + e.getMessage());
 			} catch (TokenMgrError e) {
-				throw new QueryException("PATT_SYNTAX_ERROR",
+				throw new BadRequest("PATT_SYNTAX_ERROR",
 						"Syntax error in CorpusQL pattern: " + e.getMessage());
 			}
 		} else if (language.equals("contextql")) {
@@ -1182,10 +1192,10 @@ public class SearchManager {
 						pattern);
 				return q.getContentsQuery();
 			} catch (nl.inl.blacklab.queryParser.contextql.TokenMgrError e) {
-				throw new QueryException("PATT_SYNTAX_ERROR",
+				throw new BadRequest("PATT_SYNTAX_ERROR",
 						"Syntax error in ContextQL pattern: " + e.getMessage());
 			} catch (nl.inl.blacklab.queryParser.contextql.ParseException e) {
-				throw new QueryException("PATT_SYNTAX_ERROR",
+				throw new BadRequest("PATT_SYNTAX_ERROR",
 						"Syntax error in ContextQL pattern: " + e.getMessage());
 			}
 		} else if (language.equals("luceneql")) {
@@ -1196,29 +1206,29 @@ public class SearchManager {
 						Version.LUCENE_42, field, searcher.getAnalyzer());
 				return parser.parse(pattern);
 			} catch (nl.inl.blacklab.queryParser.lucene.ParseException e) {
-				throw new QueryException("PATT_SYNTAX_ERROR",
+				throw new BadRequest("PATT_SYNTAX_ERROR",
 						"Syntax error in LuceneQL pattern: " + e.getMessage());
 			} catch (nl.inl.blacklab.queryParser.lucene.TokenMgrError e) {
-				throw new QueryException("PATT_SYNTAX_ERROR",
+				throw new BadRequest("PATT_SYNTAX_ERROR",
 						"Syntax error in LuceneQL pattern: " + e.getMessage());
 			}
 		}
 
-		throw new QueryException("UNKNOWN_PATT_LANG",
+		throw new BadRequest("UNKNOWN_PATT_LANG",
 				"Unknown pattern language '" + language
 						+ "'. Supported: corpusql, contextql, luceneql.");
 	}
 
 	public static Query parseFilter(Searcher searcher, String filter,
-			String filterLang) throws QueryException {
+			String filterLang) throws BlsException {
 		return parseFilter(searcher, filter, filterLang, false);
 	}
 
 	public static Query parseFilter(Searcher searcher, String filter,
-			String filterLang, boolean required) throws QueryException {
+			String filterLang, boolean required) throws BlsException {
 		if (filter == null || filter.length() == 0) {
 			if (required)
-				throw new QueryException("NO_FILTER_GIVEN",
+				throw new BadRequest("NO_FILTER_GIVEN",
 						"Document filter required. Please specify 'filter' parameter.");
 			return null; // not required
 		}
@@ -1232,11 +1242,11 @@ public class SearchManager {
 				Query query = parser.parse(filter);
 				return query;
 			} catch (org.apache.lucene.queryparser.classic.ParseException e) {
-				throw new QueryException("FILTER_SYNTAX_ERROR",
+				throw new BadRequest("FILTER_SYNTAX_ERROR",
 						"Error parsing LuceneQL filter query: "
 								+ e.getMessage());
 			} catch (org.apache.lucene.queryparser.classic.TokenMgrError e) {
-				throw new QueryException("FILTER_SYNTAX_ERROR",
+				throw new BadRequest("FILTER_SYNTAX_ERROR",
 						"Error parsing LuceneQL filter query: "
 								+ e.getMessage());
 			}
@@ -1246,17 +1256,17 @@ public class SearchManager {
 						filter);
 				return q.getFilterQuery();
 			} catch (nl.inl.blacklab.queryParser.contextql.TokenMgrError e) {
-				throw new QueryException("FILTER_SYNTAX_ERROR",
+				throw new BadRequest("FILTER_SYNTAX_ERROR",
 						"Error parsing ContextQL filter query: "
 								+ e.getMessage());
 			} catch (nl.inl.blacklab.queryParser.contextql.ParseException e) {
-				throw new QueryException("FILTER_SYNTAX_ERROR",
+				throw new BadRequest("FILTER_SYNTAX_ERROR",
 						"Error parsing ContextQL filter query: "
 								+ e.getMessage());
 			}
 		}
 
-		throw new QueryException("UNKNOWN_FILTER_LANG",
+		throw new BadRequest("UNKNOWN_FILTER_LANG",
 				"Unknown filter language '" + filterLang
 						+ "'. Supported: luceneql, contextql.");
 	}

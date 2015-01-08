@@ -7,7 +7,6 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.User;
 
@@ -33,17 +32,15 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() {
+	public Response handle() {
 		String status = searchMan.getIndexStatus(indexName);
 		if (!status.equals("available"))
-			return DataObject.errorObject("INDEX_UNAVAILABLE", "The index '"
-					+ indexName + "' is not available right now. Status: "
-					+ status);
+			return Response.unavailable(indexName, status);
 
 		// Check that we have a file upload request
 		boolean isMultipart = ServletFileUpload.isMultipartContent(request);
 		if (!isMultipart) {
-			return DataObject.errorObject("NO_FILE", "Upload a file to add to the index.");
+			return Response.badRequest("NO_FILE", "Upload a file to add to the index.");
 		}
 		DiskFileItemFactory factory = new DiskFileItemFactory();
 		
@@ -71,7 +68,7 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 				if (!fi.isFormField()) {
 					
 					if (filesDone != 0)
-						return DataObject.internalError("Tried to upload more than one file.", debugMode, 14);
+						return Response.internalError("Tried to upload more than one file.", debugMode, 14);
 					
 					// Get the uploaded file parameters
 					String fieldName = fi.getFieldName();
@@ -97,9 +94,9 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 			System.out.println(ex);
 		}
 
-		DataObjectMapElement response = new DataObjectMapElement();
-		response.put("result", "nothing");
-		return response;
+		DataObjectMapElement responseData = new DataObjectMapElement();
+		responseData.put("result", "nothing");
+		return new Response(responseData);
 	}
 
 }

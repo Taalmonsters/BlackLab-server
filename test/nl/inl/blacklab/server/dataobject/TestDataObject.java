@@ -1,12 +1,5 @@
 package nl.inl.blacklab.server.dataobject;
 
-import nl.inl.blacklab.server.dataobject.DataFormat;
-import nl.inl.blacklab.server.dataobject.DataObject;
-import nl.inl.blacklab.server.dataobject.DataObjectList;
-import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
-import nl.inl.blacklab.server.dataobject.DataObjectNumber;
-import nl.inl.blacklab.server.dataobject.DataObjectString;
-
 import org.junit.Assert;
 import org.junit.Test;
 

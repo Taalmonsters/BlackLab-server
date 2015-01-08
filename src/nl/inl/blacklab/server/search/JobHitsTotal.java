@@ -1,5 +1,6 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 
@@ -15,7 +16,7 @@ public class JobHitsTotal extends Job {
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
+	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
 		// First, execute blocking hits search.
 		hitsSearch = searchMan.searchHits(user, par);
 		waitForJobToFinish(hitsSearch);
@@ -24,6 +25,9 @@ public class JobHitsTotal extends Job {
 		// and get the final total through the getHits() method yourself.
 		Hits hits = hitsSearch.getHits();
 		hits.size();
+		if (Thread.interrupted()) {
+			throw new InterruptedException("Interrupted while determining total number of hits");
+		}
 	}
 
 	/**

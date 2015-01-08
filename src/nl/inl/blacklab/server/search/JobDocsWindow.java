@@ -1,5 +1,6 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.perdocument.DocResultsWindow;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
@@ -22,7 +23,7 @@ public class JobDocsWindow extends Job {
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
+	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		JobWithDocs docsSearch = searchMan.searchDocs(user, par);
 		waitForJobToFinish(docsSearch);

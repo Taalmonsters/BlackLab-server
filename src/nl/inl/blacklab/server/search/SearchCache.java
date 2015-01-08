@@ -21,7 +21,12 @@ public class SearchCache {
 	private static final Logger logger = Logger.getLogger(SearchCache.class);
 
 	/** Max time searches are allowed to run (5 minutes) */
-	public final static int MAX_SEARCH_TIME_SEC = 5 * 60;
+	public static int maxSearchTimeSec = 5 * 60;
+
+	/** @param maxSearchTimeSec Max time searches are allowed to run (default: 300s == 5 minutes) */
+	public static void setMaxSearchTimeSec(int maxSearchTimeSec) {
+		SearchCache.maxSearchTimeSec = maxSearchTimeSec;
+	}
 
 	/** The cached search objects. */
 	private Map<SearchParameters, Job> cachedSearches;
@@ -151,7 +156,7 @@ public class SearchCache {
 		// Get rid of old searches
 		boolean lookAtCacheSizeAndSearchAccessTime = true;
 		for (Job search: lastAccessOrder) {
-			if (!search.finished() && search.executionTimeMillis() / 1000 > MAX_SEARCH_TIME_SEC) {
+			if (!search.finished() && search.executionTimeMillis() / 1000 > maxSearchTimeSec) {
 				// Search is taking too long. Cancel it.
 				logger.debug("Search is taking too long, cancelling: " + search);
 				search.cancelJob();

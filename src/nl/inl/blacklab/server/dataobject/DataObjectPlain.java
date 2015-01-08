@@ -18,7 +18,6 @@ public class DataObjectPlain extends DataObject {
 
 	public DataObjectPlain(String value, DataFormat type) {
 		this.value = value;
-		overrideType = type;
 	}
 
 	public DataObjectPlain(String value) {

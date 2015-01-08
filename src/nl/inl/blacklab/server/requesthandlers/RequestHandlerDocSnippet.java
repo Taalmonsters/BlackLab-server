@@ -4,6 +4,10 @@ import java.util.Arrays;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.exceptions.BadRequest;
+import nl.inl.blacklab.exceptions.BlsException;
+import nl.inl.blacklab.exceptions.InternalServerError;
+import nl.inl.blacklab.exceptions.NotFound;
 import nl.inl.blacklab.search.Concordance;
 import nl.inl.blacklab.search.ConcordanceType;
 import nl.inl.blacklab.search.Hit;
@@ -16,7 +20,6 @@ import nl.inl.blacklab.server.dataobject.DataObjectContextList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
 import nl.inl.blacklab.server.search.IndexOpenException;
-import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.User;
 
@@ -31,20 +34,19 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() throws IndexOpenException, QueryException {
+	public Response handle() throws IndexOpenException, BlsException {
 		int i = urlPathInfo.indexOf('/');
 		String docId = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;
 		if (docId.length() == 0)
-			throw new QueryException("NO_DOC_ID", "Specify document pid.");
+			throw new BadRequest("NO_DOC_ID", "Specify document pid.");
 
 		Searcher searcher = getSearcher();
 		int luceneDocId = SearchManager.getLuceneDocIdFromPid(searcher, docId);
 		if (luceneDocId < 0)
-			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
+			throw new NotFound("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 		Document document = searcher.document(luceneDocId);
 		if (document == null)
-			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
-
+			throw new InternalServerError("Couldn't fetch document with pid '" + docId + "'.", 24);
 		
 		Hit hit;
 		int wordsAroundHit;
@@ -63,16 +65,16 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 		int snippetStart = Math.max(0, start - wordsAroundHit);
 		int snippetEnd = end + wordsAroundHit;
 		if (snippetEnd - snippetStart > searchMan.getMaxSnippetSize()) {
-			throw new QueryException("SNIPPET_TOO_LARGE", "Snippet too large. Maximum size for a snippet is " + searchMan.getMaxSnippetSize() + " words.");
+			throw new BadRequest("SNIPPET_TOO_LARGE", "Snippet too large. Maximum size for a snippet is " + searchMan.getMaxSnippetSize() + " words.");
 		}
 		if (start < 0 || end < 0 || wordsAroundHit * 2 + end - start <= 0 || end < start || wordsAroundHit < 0) {
-			throw new QueryException("ILLEGAL_BOUNDARIES", "Illegal word boundaries specified. Please check parameters.");
+			throw new BadRequest("ILLEGAL_BOUNDARIES", "Illegal word boundaries specified. Please check parameters.");
 		}
 		hit = new Hit(luceneDocId, start, end);
 		Hits hits = new Hits(searcher, Arrays.asList(hit));
 		boolean origContent = searchParam.getString("usecontent").equals("orig");
 		hits.setConcordanceType(origContent ? ConcordanceType.CONTENT_STORE : ConcordanceType.FORWARD_INDEX);
-		return getHitOrFragmentInfo(hits, hit, wordsAroundHit, origContent, !isHit, null);
+		return new Response(getHitOrFragmentInfo(hits, hit, wordsAroundHit, origContent, !isHit, null));
 	}
 
 	/**

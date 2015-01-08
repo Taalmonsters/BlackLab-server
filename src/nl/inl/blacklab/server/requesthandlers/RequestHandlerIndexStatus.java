@@ -3,7 +3,6 @@ package nl.inl.blacklab.server.requesthandlers;
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.User;
 
@@ -17,7 +16,7 @@ public class RequestHandlerIndexStatus extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() {
+	public Response handle() {
 		//Searcher searcher = getSearcher();
 		//IndexStructure struct = searcher.getIndexStructure();
 
@@ -28,9 +27,10 @@ public class RequestHandlerIndexStatus extends RequestHandler {
 		
 		// Remove any empty settings
 		response.removeEmptyMapValues();
-		response.setCacheAllowed(false); // because status might change
 
-		return response;
+		Response r = new Response(response);
+		r.setCacheAllowed(false); // because status might change
+		return r;
 	}
 
 }

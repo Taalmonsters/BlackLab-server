@@ -1,5 +1,6 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 
@@ -15,7 +16,7 @@ public class JobDocsTotal extends Job {
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
+	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		docsSearch = searchMan.searchDocs(user, par);
 		waitForJobToFinish(docsSearch);
@@ -24,6 +25,9 @@ public class JobDocsTotal extends Job {
 		// and get the final total through the getDocResults() method yourself.
 		DocResults docResults = docsSearch.getDocResults();
 		docResults.size();
+		if (Thread.interrupted()) {
+			throw new InterruptedException("Interrupted while determining total number of docs");
+		}
 	}
 
 	/**

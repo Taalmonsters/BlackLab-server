@@ -41,6 +41,12 @@ public class JsonUtil {
 		return obj.getLong(key);
 	}
 
+	public static double getDoubleProp(JSONObject obj, String key, double defVal) {
+		if (!obj.has(key))
+			return defVal;
+		return obj.getDouble(key);
+	}
+
 	/**
 	 * Performs a deep conversion from JSONObject to
 	 * Java Map.

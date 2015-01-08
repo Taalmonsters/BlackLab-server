@@ -1,6 +1,10 @@
 package nl.inl.blacklab.server.search;
 
 
+import nl.inl.blacklab.exceptions.BadRequest;
+import nl.inl.blacklab.exceptions.BlsException;
+import nl.inl.blacklab.exceptions.InternalServerError;
+import nl.inl.blacklab.exceptions.NotFound;
 import nl.inl.blacklab.search.SingleDocIdFilter;
 import nl.inl.blacklab.search.TextPattern;
 
@@ -28,7 +32,7 @@ public class JobHits extends JobWithHits {
 	}
 
 	@Override
-	public void performSearch() throws QueryException, IndexOpenException {
+	public void performSearch() throws BlsException, IndexOpenException {
 		try {
 			textPattern = searchMan.parsePatt(searcher, par.getString("patt"), par.getString("pattlang"));
 			Query q;
@@ -37,7 +41,7 @@ public class JobHits extends JobWithHits {
 				// Only hits in 1 doc (for highlighting)
 				int luceneDocId = SearchManager.getLuceneDocIdFromPid(searcher, docId);
 				if (luceneDocId < 0)
-					throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
+					throw new NotFound("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 				filterQuery = new SingleDocIdFilter(luceneDocId);
 				debug(logger, "Filtering on single doc-id");
 			} else {
@@ -63,10 +67,10 @@ public class JobHits extends JobWithHits {
 			} catch (RuntimeException e) {
 				// TODO: catch a more specific exception!
 				e.printStackTrace();
-				throw new QueryException("SEARCH_ERROR", "Search error: " + e.getMessage());
+				throw new InternalServerError("Internal error", 15, e);
 			}
 		} catch (TooManyClauses e) {
-			throw new QueryException("QUERY_TOO_BROAD", "Query too broad, too many matching terms. Please be more specific.", e);
+			throw new BadRequest("QUERY_TOO_BROAD", "Query too broad, too many matching terms. Please be more specific.");
 		}
 	}
 

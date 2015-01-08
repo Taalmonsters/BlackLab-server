@@ -3,7 +3,6 @@ package nl.inl.blacklab.server.requesthandlers;
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.User;
 
@@ -17,7 +16,7 @@ public class RequestHandlerBlsHelp extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() {
+	public Response handle() {
 		DataObjectMapElement response = new DataObjectMapElement();
 		String urlPrefix = servlet.getServletContext().getContextPath() + "/";
 		String urlIndexPrefix = servlet.getServletContext().getContextPath() + "/myIndexName/";
@@ -33,7 +32,7 @@ public class RequestHandlerBlsHelp extends RequestHandler {
 		response.put("documentOriginalContents", urlIndexPrefix + "docs/MYDOCPID00001/contents");
 		response.put("documentSnippetAroundHit", urlIndexPrefix + "docs/MYDOCPID00001/snippet?hitstart=47&hitend=48&wordsaroundhit=8");
 
-		return response;
+		return new Response(response);
 	}
 
 

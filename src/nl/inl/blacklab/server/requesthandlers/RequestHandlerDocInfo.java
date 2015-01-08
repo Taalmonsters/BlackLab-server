@@ -2,12 +2,14 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.exceptions.BadRequest;
+import nl.inl.blacklab.exceptions.BlsException;
+import nl.inl.blacklab.exceptions.InternalServerError;
+import nl.inl.blacklab.exceptions.NotFound;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.search.IndexOpenException;
-import nl.inl.blacklab.server.search.QueryException;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.User;
 
@@ -26,20 +28,20 @@ public class RequestHandlerDocInfo extends RequestHandler {
 	}
 
 	@Override
-	public DataObject handle() throws IndexOpenException, QueryException {
+	public Response handle() throws IndexOpenException, BlsException {
 
 		int i = urlPathInfo.indexOf('/');
 		String docId = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;
 		if (docId.length() == 0)
-			throw new QueryException("NO_DOC_ID", "Specify document pid.");
+			throw new BadRequest("NO_DOC_ID", "Specify document pid.");
 
 		Searcher searcher = getSearcher();
 		int luceneDocId = SearchManager.getLuceneDocIdFromPid(searcher, docId);
 		if (luceneDocId < 0)
-			throw new QueryException("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
+			throw new NotFound("DOC_NOT_FOUND", "Document with pid '" + docId + "' not found.");
 		Document document = searcher.document(luceneDocId);
 		if (document == null)
-			throw QueryException.internalError("Searcher.document() returned null", debugMode, 8);
+			throw new InternalServerError("Couldn't fetch document with pid '" + docId + "'.", 25);
 
 		// Document info
 		debug(logger, "REQ doc info: " + indexName + "-" + docId);
@@ -48,7 +50,7 @@ public class RequestHandlerDocInfo extends RequestHandler {
 		response.put("docPid", docId);
 		response.put("docInfo", getDocumentInfo(searcher, document));
 		response.put("docFields", RequestHandler.getDocFields(searcher.getIndexStructure()));
-		return response;
+		return new Response(response);
 	}
 
 }

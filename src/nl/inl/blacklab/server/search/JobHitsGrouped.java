@@ -1,5 +1,7 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.exceptions.BadRequest;
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.grouping.GroupProperty;
 import nl.inl.blacklab.search.grouping.HitGroups;
@@ -20,7 +22,7 @@ public class JobHitsGrouped extends Job {
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
+	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
 		// First, execute blocking hits search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithHits hitsSearch = searchMan.searchHits(user, parNoGroup);
@@ -34,7 +36,7 @@ public class JobHitsGrouped extends Job {
 			groupBy = "";
 		groupProp = HitProperty.deserialize(hits, groupBy);
 		if (groupProp == null)
-			throw new QueryException("UNKNOWN_GROUP_PROPERTY", "Unknown group property '" + groupBy + "'.");
+			throw new BadRequest("UNKNOWN_GROUP_PROPERTY", "Unknown group property '" + groupBy + "'.");
 		HitGroups theGroups = hits.groupedBy(groupProp);
 
 		String sortBy = par.getString("sort");

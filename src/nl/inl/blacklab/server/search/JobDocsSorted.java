@@ -1,5 +1,6 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocProperty;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
@@ -14,7 +15,7 @@ public class JobDocsSorted extends JobWithDocs {
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, QueryException, InterruptedException  {
+	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		SearchParameters parNoSort = par.copyWithout("sort");
 		JobWithDocs search = searchMan.searchDocs(user, parNoSort);
