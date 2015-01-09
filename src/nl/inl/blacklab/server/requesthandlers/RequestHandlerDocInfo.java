@@ -9,7 +9,6 @@ import nl.inl.blacklab.exceptions.NotFound;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
-import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.User;
 
@@ -28,7 +27,7 @@ public class RequestHandlerDocInfo extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws IndexOpenException, BlsException {
+	public Response handle() throws BlsException {
 
 		int i = urlPathInfo.indexOf('/');
 		String docId = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;

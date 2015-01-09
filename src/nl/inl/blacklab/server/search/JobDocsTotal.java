@@ -11,12 +11,12 @@ public class JobDocsTotal extends Job {
 
 	private JobWithDocs docsSearch;
 
-	public JobDocsTotal(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobDocsTotal(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
+	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		docsSearch = searchMan.searchDocs(user, par);
 		waitForJobToFinish(docsSearch);

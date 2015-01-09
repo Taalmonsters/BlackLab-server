@@ -21,12 +21,12 @@ public class JobFacets extends Job {
 
 	private DocResults docResults;
 
-	public JobFacets(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobFacets(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
+	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithDocs docsSearch = searchMan.searchDocs(user, parNoGroup);

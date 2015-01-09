@@ -54,9 +54,8 @@ public abstract class Job implements Comparable<Job> {
 	 * @param job the job to wait for
 	 * @throws InterruptedException
 	 * @throws BlsException
-	 * @throws IndexOpenException
 	 */
-	protected void waitForJobToFinish(Job job) throws InterruptedException, IndexOpenException, BlsException {
+	protected void waitForJobToFinish(Job job) throws InterruptedException, BlsException {
 		waitingFor.add(job);
 		job.waitUntilFinished();
 		waitingFor.remove(job);
@@ -70,10 +69,9 @@ public abstract class Job implements Comparable<Job> {
 	 * @param user user creating the job
 	 * @param par search parameters
 	 * @return the new Search object
-	 * @throws IndexOpenException
 	 * @throws BlsException
 	 */
-	public static Job create(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException, BlsException {
+	public static Job create(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		Job search = null;
 		String jobClass = par.getString("jobclass");
 		// TODO: use a map of String -> Class<? extends Job>
@@ -130,7 +128,7 @@ public abstract class Job implements Comparable<Job> {
 	/** Who created this job? */
 	protected User user;
 
-	public Job(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public Job(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super();
 		this.searchMan = searchMan;
 		this.user = user;
@@ -181,9 +179,8 @@ public abstract class Job implements Comparable<Job> {
 	 *
 	 * @throws BlsException on parse error or other query-related error (e.g. too broad)
 	 * @throws InterruptedException if the thread was interrupted
-	 * @throws IndexOpenException if the index couldn't be opened
 	 */
-	final public void perform(int waitTimeMs) throws BlsException, InterruptedException, IndexOpenException {
+	final public void perform(int waitTimeMs) throws BlsException, InterruptedException {
 		if (performCalled)
 			throw new RuntimeException("Already performing search!");
 
@@ -199,7 +196,7 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	@SuppressWarnings("unused")
-	protected void performSearch() throws BlsException, IndexOpenException, InterruptedException {
+	protected void performSearch() throws BlsException, InterruptedException {
 		// (to override)
 	}
 
@@ -237,18 +234,15 @@ public abstract class Job implements Comparable<Job> {
 	/**
 	 * Re-throw the exception thrown by the search thread, if any.
 
-	 * @throws IndexOpenException
 	 * @throws BlsException
 	 * @throws InterruptedException
 	 */
-	public void rethrowException() throws IndexOpenException, BlsException, InterruptedException {
+	public void rethrowException() throws BlsException, InterruptedException {
 		Throwable exception = getThrownException();
 		if (exception == null)
 			return;
 		logger.debug("Re-throwing exception from search thread:\n" + exception.getClass().getName() + ": " + exception.getMessage());
-		if (exception instanceof IndexOpenException)
-			throw (IndexOpenException)exception;
-		else if (exception instanceof BlsException)
+		if (exception instanceof BlsException)
 			throw (BlsException)exception;
 		else if (exception instanceof InterruptedException)
 			throw (InterruptedException)exception;
@@ -278,9 +272,8 @@ public abstract class Job implements Comparable<Job> {
 	 * @param maxWaitMs maximum time to wait, or a negative number for no limit
 	 * @throws InterruptedException if the thread was interrupted
 	 * @throws BlsException
-	 * @throws IndexOpenException
 	 */
-	public void waitUntilFinished(int maxWaitMs) throws InterruptedException, IndexOpenException, BlsException {
+	public void waitUntilFinished(int maxWaitMs) throws InterruptedException, BlsException {
 		int defaultWaitStep = 100;
 		while (searchThread == null || (maxWaitMs != 0 && !searchThread.finished())) {
 			int w = maxWaitMs < 0 ? defaultWaitStep : Math.min(maxWaitMs, defaultWaitStep);
@@ -297,9 +290,8 @@ public abstract class Job implements Comparable<Job> {
 	 *
 	 * @throws InterruptedException
 	 * @throws BlsException
-	 * @throws IndexOpenException
 	 */
-	public void waitUntilFinished() throws InterruptedException, IndexOpenException, BlsException {
+	public void waitUntilFinished() throws InterruptedException, BlsException {
 		waitUntilFinished(-1);
 	}
 

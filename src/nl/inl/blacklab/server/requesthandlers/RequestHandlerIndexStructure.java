@@ -2,6 +2,7 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.index.complex.ComplexFieldUtil;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.indexstructure.ComplexFieldDesc;
@@ -11,7 +12,6 @@ import nl.inl.blacklab.search.indexstructure.PropertyDesc;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
-import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.User;
 import nl.inl.util.StringUtil;
 
@@ -25,7 +25,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws IndexOpenException {
+	public Response handle() throws BlsException {
 		Searcher searcher = getSearcher();
 		IndexStructure struct = searcher.getIndexStructure();
 

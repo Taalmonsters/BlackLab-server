@@ -14,7 +14,6 @@ import nl.inl.blacklab.search.indexstructure.PropertyDesc;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
-import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.User;
 import nl.inl.util.StringUtil;
 
@@ -28,7 +27,7 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws IndexOpenException, BlsException {
+	public Response handle() throws BlsException {
 
 		int i = urlPathInfo.indexOf('/');
 		String fieldName = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;

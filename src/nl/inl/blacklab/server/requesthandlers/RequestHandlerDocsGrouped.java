@@ -9,7 +9,6 @@ import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
-import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.JobDocsGrouped;
 import nl.inl.blacklab.server.search.SearchCache;
 import nl.inl.blacklab.server.search.User;
@@ -23,7 +22,7 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws IndexOpenException, BlsException, InterruptedException {
+	public Response handle() throws BlsException, InterruptedException {
 		// Get the window we're interested in
 		JobDocsGrouped search = searchMan.searchDocsGrouped(user, searchParam);
 		if (getBoolParameter("block")) {

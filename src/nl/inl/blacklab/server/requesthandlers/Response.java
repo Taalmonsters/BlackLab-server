@@ -6,7 +6,10 @@ import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
 
+import org.apache.log4j.Logger;
+
 public class Response {
+	static final Logger logger = Logger.getLogger(Response.class);
 
 	/**
 	 * Construct a busy response with "check again" advice.
@@ -51,17 +54,21 @@ public class Response {
 		return new Response(DataObject.errorObject(code, msg), httpCode);
 	}
 	
-	// Highest internal error code so far: 25
+	// Highest internal error code so far: 27
 
 	public static Response internalError(Exception e, boolean debugMode, int code) {
+		logger.debug("INTERNAL ERROR " + code + ":");
+		e.printStackTrace();
 		return new Response(DataObject.internalError(e, debugMode, code));
 	}
 
 	public static Response internalError(String message, boolean debugMode, int code) {
+		logger.debug("INTERNAL ERROR " + code + ": " + message);
 		return new Response(DataObject.internalError(message, debugMode, code));
 	}
 
 	public static Response internalError(int code) {
+		logger.debug("INTERNAL ERROR " + code + " (no message)");
 		return new Response(DataObject.internalError(code));
 	}
 	
@@ -88,6 +95,10 @@ public class Response {
 
 	public static Response unavailable(String indexName, String status) {
 		return error("INDEX_UNAVAILABLE", "The index '" + indexName + "' is not available right now. Status: " + status, HttpServletResponse.SC_CONFLICT);
+	}
+
+	public static Response indexNotFound(String indexName) {
+		return error("CANNOT_OPEN_INDEX", "Could not open index '" + indexName + "'. Please check the name.", HttpServletResponse.SC_NOT_FOUND);
 	}
 
 	/** HTTP response status code to use. */

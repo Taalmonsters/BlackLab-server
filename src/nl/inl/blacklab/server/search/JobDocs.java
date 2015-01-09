@@ -12,12 +12,12 @@ import org.apache.lucene.search.Query;
  */
 public class JobDocs extends JobWithDocs {
 
-	public JobDocs(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobDocs(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 
 	@Override
-	public void performSearch() throws BlsException, IndexOpenException, InterruptedException {
+	public void performSearch() throws BlsException, InterruptedException {
 		// First, execute blocking hits search.
 		String patt = par.getString("patt");
 		if (patt != null && patt.length() > 0) {

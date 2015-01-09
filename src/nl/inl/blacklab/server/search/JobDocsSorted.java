@@ -10,12 +10,12 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
  */
 public class JobDocsSorted extends JobWithDocs {
 
-	public JobDocsSorted(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobDocsSorted(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
+	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		SearchParameters parNoSort = par.copyWithout("sort");
 		JobWithDocs search = searchMan.searchDocs(user, parNoSort);

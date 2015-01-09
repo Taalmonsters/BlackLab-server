@@ -19,9 +19,9 @@ import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.exceptions.BadRequest;
 import nl.inl.blacklab.exceptions.BlsException;
+import nl.inl.blacklab.exceptions.IndexNotFound;
 import nl.inl.blacklab.exceptions.InternalServerError;
 import nl.inl.blacklab.exceptions.NotAuthorized;
-import nl.inl.blacklab.exceptions.NotFound;
 import nl.inl.blacklab.exceptions.ServiceUnavailable;
 import nl.inl.blacklab.exceptions.TooManyRequests;
 import nl.inl.blacklab.perdocument.DocResults;
@@ -128,6 +128,9 @@ public class SearchManager {
 
 	/** The Searcher objects, one for each of the indices we can search. */
 	private Map<String, Searcher> searchers = new HashMap<String, Searcher>();
+
+//	/** The IndexJob objects, one for each of the indices we're adding to. */
+//	private Map<String, IndexJob> indexJobs = new HashMap<String, IndexJob>();
 
 	/** Configured index collections directories */
 	private List<File> collectionsDirs;
@@ -573,15 +576,15 @@ public class SearchManager {
 	 * @param indexName
 	 *            the index we want to search
 	 * @return the Searcher object for that index
-	 * @throws IndexOpenException
+	 * @throws BlsException
 	 *             if not found or open error
 	 */
 	@SuppressWarnings("deprecation")
 	// for call to _setPidField() and _setContentViewable()
 	public synchronized Searcher getSearcher(String indexName)
-			throws IndexOpenException {
+			throws BlsException {
 		if (!isValidIndexName(indexName))
-			throw new RuntimeException(ILLEGAL_NAME_ERROR + indexName);
+			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR + indexName);
 
 		if (searchers.containsKey(indexName)) {
 			Searcher searcher = searchers.get(indexName);
@@ -593,7 +596,7 @@ public class SearchManager {
 		}
 		IndexParam par = getIndexParam(indexName);
 		if (par == null) {
-			throw new IndexOpenException("Index " + indexName + " not found");
+			throw new IndexNotFound(indexName);
 		}
 		File indexDir = par.getDir();
 		Searcher searcher;
@@ -601,9 +604,8 @@ public class SearchManager {
 			logger.debug("Opening index '" + indexName + "', dir = " + indexDir);
 			searcher = Searcher.open(indexDir);
 		} catch (Exception e) {
-			e.printStackTrace();
-			throw new IndexOpenException("Could not open index '" + indexName
-					+ "'", e);
+			throw new InternalServerError("Could not open index '" + indexName
+					+ "'", 27, e);
 		}
 		searchers.put(indexName, searcher);
 
@@ -658,7 +660,7 @@ public class SearchManager {
 	public boolean indexExists(String indexName)
 			throws BlsException {
 		if (!isValidIndexName(indexName))
-			throw new RuntimeException(ILLEGAL_NAME_ERROR + indexName);
+			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR + indexName);
 		IndexParam par = getIndexParam(indexName);
 		if (par == null) {
 			return false;
@@ -685,8 +687,7 @@ public class SearchManager {
 		if (!indexName.contains(":"))
 			throw new NotAuthorized("Can only create private indices.");
 		if (!isValidIndexName(indexName))
-			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR
-					+ indexName);
+			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR + indexName);
 		if (indexExists(indexName))
 			throw new BadRequest("INDEX_ALREADY_EXISTS",
 					"Could not create index. Index already exists.");
@@ -729,12 +730,9 @@ public class SearchManager {
 		if (!indexName.contains(":"))
 			throw new NotAuthorized("Can only delete private indices.");
 		if (!isValidIndexName(indexName))
-			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR
-					+ indexName);
+			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR + indexName);
 		if (!indexExists(indexName))
-			throw new NotFound("CANNOT_OPEN_INDEX",
-					"Could not open index '" + indexName
-							+ "'. Please check the name.");
+			throw new IndexNotFound(indexName);
 		String[] parts = indexName.split(":");
 		String userId = parts[0];
 		String indexNameNoUserPrefix = parts[1];
@@ -820,10 +818,9 @@ public class SearchManager {
 	 * @param pid
 	 *            the pid string (or Lucene doc id if we don't use a pid)
 	 * @return the document id, or -1 if it doesn't exist
-	 * @throws IndexOpenException
 	 */
 	public static int getLuceneDocIdFromPid(Searcher searcher, String pid)
-			throws IndexOpenException {
+			{
 		String pidField = searcher.getIndexStructure().pidField(); // getIndexParam(indexName,
 																	// user).getPidField();
 		// Searcher searcher = getSearcher(indexName, user);
@@ -922,7 +919,7 @@ public class SearchManager {
 	}
 
 	public JobWithHits searchHits(User user, SearchParameters par)
-			throws IndexOpenException, BlsException, InterruptedException {
+			throws BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "docpid",
 				"maxretrieve", "maxcount");
@@ -941,7 +938,7 @@ public class SearchManager {
 	}
 
 	public JobWithDocs searchDocs(User user, SearchParameters par)
-			throws IndexOpenException, BlsException, InterruptedException {
+			throws BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "usecontent",
 				"maxretrieve", "maxcount");
@@ -960,7 +957,7 @@ public class SearchManager {
 	}
 
 	public JobHitsWindow searchHitsWindow(User user, SearchParameters par)
-			throws IndexOpenException, BlsException, InterruptedException {
+			throws BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
 				"wordsaroundhit", "usecontent", "maxretrieve", "maxcount");
@@ -969,7 +966,7 @@ public class SearchManager {
 	}
 
 	public JobDocsWindow searchDocsWindow(User user, SearchParameters par)
-			throws IndexOpenException, BlsException, InterruptedException {
+			throws BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
 				"wordsaroundhit", "usecontent", "maxretrieve", "maxcount");
@@ -978,7 +975,7 @@ public class SearchManager {
 	}
 
 	public JobHitsTotal searchHitsTotal(User user, SearchParameters par)
-			throws IndexOpenException, BlsException, InterruptedException {
+			throws BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobHitsTotal");
@@ -986,7 +983,7 @@ public class SearchManager {
 	}
 
 	public JobDocsTotal searchDocsTotal(User user, SearchParameters par)
-			throws IndexOpenException, BlsException, InterruptedException {
+			throws BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobDocsTotal");
@@ -994,7 +991,7 @@ public class SearchManager {
 	}
 
 	public JobHitsGrouped searchHitsGrouped(User user, SearchParameters par)
-			throws IndexOpenException, BlsException, InterruptedException {
+			throws BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "group", "sort",
 				"maxretrieve", "maxcount");
@@ -1003,7 +1000,7 @@ public class SearchManager {
 	}
 
 	public JobDocsGrouped searchDocsGrouped(User user, SearchParameters par)
-			throws IndexOpenException, BlsException, InterruptedException {
+			throws BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "group", "sort",
 				"maxretrieve", "maxcount");
@@ -1012,7 +1009,7 @@ public class SearchManager {
 	}
 
 	public JobFacets searchFacets(User user, SearchParameters par)
-			throws IndexOpenException, BlsException, InterruptedException {
+			throws BlsException, InterruptedException {
 		SearchParameters parBasic = par.copyWithOnly("facets", "indexname",
 				"patt", "pattlang", "filter", "filterlang");
 		parBasic.put("jobclass", "JobFacets");
@@ -1033,13 +1030,11 @@ public class SearchManager {
 	 * @return a Search object corresponding to these parameters
 	 * @throws BlsException
 	 *             if the query couldn't be executed
-	 * @throws IndexOpenException
-	 *             if the index couldn't be opened
 	 * @throws InterruptedException
 	 *             if the search thread was interrupted
 	 */
 	private Job search(User user, SearchParameters searchParameters)
-			throws IndexOpenException, BlsException, InterruptedException {
+			throws BlsException, InterruptedException {
 		// Search the cache / running jobs for this search, create new if not
 		// found.
 		boolean performSearch = false;

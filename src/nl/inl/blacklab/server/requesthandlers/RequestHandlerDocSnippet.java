@@ -19,7 +19,6 @@ import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectContextList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
-import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.User;
 
@@ -34,7 +33,7 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws IndexOpenException, BlsException {
+	public Response handle() throws BlsException {
 		int i = urlPathInfo.indexOf('/');
 		String docId = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;
 		if (docId.length() == 0)

@@ -1,5 +1,6 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 
@@ -10,7 +11,7 @@ public class JobWithDocs extends Job {
 
 	DocResults docResults;
 
-	public JobWithDocs(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobWithDocs(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 

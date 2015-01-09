@@ -27,12 +27,12 @@ public class JobHits extends JobWithHits {
 	/** The parsed filter */
 	protected Filter filterQuery;
 
-	public JobHits(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobHits(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 
 	@Override
-	public void performSearch() throws BlsException, IndexOpenException {
+	public void performSearch() throws BlsException {
 		try {
 			textPattern = searchMan.parsePatt(searcher, par.getString("patt"), par.getString("pattlang"));
 			Query q;

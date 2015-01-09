@@ -26,7 +26,6 @@ import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
-import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.Job;
 import nl.inl.blacklab.server.search.JobHitsGrouped;
 import nl.inl.blacklab.server.search.JobHitsTotal;
@@ -45,7 +44,7 @@ public class RequestHandlerHits extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws IndexOpenException, BlsException, InterruptedException {
+	public Response handle() throws BlsException, InterruptedException {
 		// Do we want to view a single group after grouping?
 		String groupBy = searchParam.getString("group");
 		if (groupBy == null)

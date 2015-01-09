@@ -18,12 +18,12 @@ public class JobDocsWindow extends Job {
 
 	private int requestedWindowSize;
 
-	public JobDocsWindow(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobDocsWindow(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
+	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		JobWithDocs docsSearch = searchMan.searchDocs(user, par);
 		waitForJobToFinish(docsSearch);

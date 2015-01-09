@@ -11,7 +11,6 @@ import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
-import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.JobWithHits;
 import nl.inl.blacklab.server.search.SearchCache;
 import nl.inl.blacklab.server.search.SearchManager;
@@ -28,7 +27,7 @@ public class RequestHandlerDocContents extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws IndexOpenException, BlsException, InterruptedException {
+	public Response handle() throws BlsException, InterruptedException {
 		int i = urlPathInfo.indexOf('/');
 		String docId = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;
 		if (docId.length() == 0)

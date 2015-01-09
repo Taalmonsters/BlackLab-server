@@ -11,12 +11,12 @@ public class JobHitsTotal extends Job {
 
 	private JobWithHits hitsSearch;
 
-	public JobHitsTotal(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobHitsTotal(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
+	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking hits search.
 		hitsSearch = searchMan.searchHits(user, par);
 		waitForJobToFinish(hitsSearch);

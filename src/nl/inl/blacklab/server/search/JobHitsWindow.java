@@ -19,12 +19,12 @@ public class JobHitsWindow extends Job {
 
 	private int requestedWindowSize;
 
-	public JobHitsWindow(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobHitsWindow(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
+	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking hits search.
 		JobWithHits hitsSearch = searchMan.searchHits(user, par);
 		waitForJobToFinish(hitsSearch);

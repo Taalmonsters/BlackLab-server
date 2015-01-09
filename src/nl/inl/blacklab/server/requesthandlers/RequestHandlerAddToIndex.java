@@ -1,13 +1,19 @@
 package nl.inl.blacklab.server.requesthandlers;
 
 import java.io.File;
+import java.io.InputStream;
 import java.util.Iterator;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.exceptions.BlsException;
+import nl.inl.blacklab.exceptions.IndexNotFound;
+import nl.inl.blacklab.exceptions.NotAuthorized;
+import nl.inl.blacklab.indexers.DocIndexerTei;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.index.IndexJob;
 import nl.inl.blacklab.server.search.User;
 
 import org.apache.commons.fileupload.FileItem;
@@ -32,7 +38,12 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() {
+	public Response handle() throws BlsException {
+		if (!indexName.contains(":"))
+			throw new NotAuthorized("Can only add to private indices.");
+		if (!searchMan.indexExists(indexName))
+			throw new IndexNotFound(indexName);
+		
 		String status = searchMan.getIndexStatus(indexName);
 		if (!status.equals("available"))
 			return Response.unavailable(indexName, status);
@@ -61,37 +72,55 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 			// Process the uploaded file items
 			Iterator<FileItem> i = fileItems.iterator();
 
-			File filePath = servlet.getSearchManager().getIndexDir(indexName);
+			if (!searchMan.indexExists(indexName))
+				return Response.indexNotFound(indexName);
+			File indexDir = searchMan.getIndexDir(indexName);
 			int filesDone = 0;
 			while (i.hasNext()) {
 				FileItem fi = i.next();
 				if (!fi.isFormField()) {
 					
+					if (!fi.getFieldName().equals("data"))
+						return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. File should be uploaded using the 'data' field.");
+					
+					if (fi.getSize() > MAX_UPLOAD_SIZE)
+						return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. Too large.");
+					
 					if (filesDone != 0)
 						return Response.internalError("Tried to upload more than one file.", debugMode, 14);
 					
 					// Get the uploaded file parameters
-					String fieldName = fi.getFieldName();
 					String fileName = fi.getName();
-					String contentType = fi.getContentType();
-					boolean isInMemory = fi.isInMemory();
-					long sizeInBytes = fi.getSize();
-					System.out.println("fieldName = " + fieldName);
-					System.out.println("fileName = " + fileName);
+					//String contentType = fi.getContentType();
+					//boolean isInMemory = fi.isInMemory();
+					/*System.out.println("fileName = " + fileName);
 					System.out.println("contentType = " + contentType);
-					System.out.println("isInMemory = " + isInMemory);
-					System.out.println("sizeInBytes = " + sizeInBytes);
+					System.out.println("isInMemory = " + isInMemory);*/
 					
+					InputStream data = fi.getInputStream();
+
+					// TODO: do this in the background
+					// TODO: lock the index while indexing
+					// TODO: re-open Searcher after indexing
+					// TODO: keep track of progress
+					// TODO: error handling
+					IndexJob job = new IndexJob(indexDir, DocIndexerTei.class, data, fileName);
+					job.run();
+					
+					//searchMan.addIndexJob(indexName, new IndexJob(is, fileName));
+					
+					/*
 					// Write the file
 					fileName = new File(fileName).getName();  // strip path, if any
-					File file = new File(filePath, fileName);
+					File file = new File(indexDir, fileName);
 					fi.write(file);
+					*/
 					
 					filesDone++;
 				}
 			}
 		} catch (Exception ex) {
-			System.out.println(ex);
+			return Response.internalError(ex, debugMode, 26);
 		}
 
 		DataObjectMapElement responseData = new DataObjectMapElement();

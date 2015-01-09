@@ -13,7 +13,6 @@ import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
-import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.User;
 
@@ -29,7 +28,7 @@ public class RequestHandlerTermFreq extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws IndexOpenException, BlsException {
+	public Response handle() throws BlsException {
 		//TODO: use background job?
 
 		Searcher searcher = getSearcher();

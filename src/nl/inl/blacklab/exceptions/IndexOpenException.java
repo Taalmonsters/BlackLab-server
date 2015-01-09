@@ -1,4 +1,4 @@
-package nl.inl.blacklab.server.search;
+package nl.inl.blacklab.exceptions;
 
 import java.io.IOException;
 

@@ -24,7 +24,6 @@ import nl.inl.blacklab.server.ServletUtil;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
-import nl.inl.blacklab.server.search.IndexOpenException;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.SearchParameters;
 import nl.inl.blacklab.server.search.SearchUtil;
@@ -95,6 +94,7 @@ public abstract class RequestHandler {
 		}
 		String urlResource = parts.length >= 2 ? parts[1] : "";
 		String urlPathInfo = parts.length >= 3 ? parts[2] : "";
+		boolean resourceOrPathGiven = urlResource.length() > 0 || urlPathInfo.length() > 0;
 		
 		// If we're doing something with a private index, it must be our own.
 		boolean isPrivateIndex = false;
@@ -113,7 +113,7 @@ public abstract class RequestHandler {
 		String method = request.getMethod();
 		if (method.equals("DELETE")) {
 			// Index given and nothing else?
-			if (indexName.length() == 0 || urlResource.length() > 0 || urlPathInfo.length() > 0) {
+			if (indexName.length() == 0 || resourceOrPathGiven) {
 				return Response.methodNotAllowed("DELETE", null);
 			}
 			if (!isPrivateIndex)
@@ -125,90 +125,92 @@ public abstract class RequestHandler {
 			if (!isPrivateIndex)
 				return Response.forbidden("You can only create indices in your private collection.");
 			requestHandler = new RequestHandlerCreateIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
-		} else if (method.equals("POST")) {
-			if (!isPrivateIndex)
-				return Response.forbidden("Can only POST to private indices.");
-			if (indexName.length() == 0) {
-				// POST to /blacklab-server/ : you probably meant PUT to /blacklab-server/indexName
-				return Response.methodNotAllowed("POST", "Create new index with PUT to /blacklab-server/indexName");
-			} else if (urlResource.equals("docs")) {
-				if (!SearchManager.isValidIndexName(indexName))
-					return Response.badRequest("ILLEGAL_INDEX_NAME", SearchManager.ILLEGAL_NAME_ERROR + indexName);
-				
-				// POST to /blacklab-server/indexName/docs/ : add data to index
-				requestHandler = new RequestHandlerAddToIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
-			} else {
-				return Response.methodNotAllowed("POST", "Note that retrieval can only be done using GET.");
-			}
-		} else if (method.equals("GET")) {
-			if (indexName.equals("cache-info") && debugMode) {
-				requestHandler = new RequestHandlerCacheInfo(servlet, request, user, indexName, urlResource, urlPathInfo);
-			} else if (indexName.equals("help")) {
-				requestHandler = new RequestHandlerBlsHelp(servlet, request, user, indexName, urlResource, urlPathInfo);
-			} else if (indexName.length() == 0) {
-				// No index or operation given; server info
-				requestHandler = new RequestHandlerServerInfo(servlet, request, user, indexName, urlResource, urlPathInfo);
-			} else {
-				// Choose based on urlResource
-				try {
-					String handlerName = urlResource;
-	
-					String status = searchManager.getIndexStatus(indexName);
-					if (!status.equals("available") && handlerName.length() > 0 && !handlerName.equals("debug") && !handlerName.equals("fields") && !handlerName.equals("status")) {
-						return Response.unavailable(indexName, status);
-					}
-					
-					if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs") && !handlerName.equals("fields") && !handlerName.equals("termfreq") && !handlerName.equals("status")) {
-						handlerName = "debug";
-					}
-					// HACK to avoid having a different url resource for
-					// the lists of (hit|doc) groups: instantiate a different
-					// request handler class in this case.
-					else if (handlerName.equals("docs") && urlPathInfo.length() > 0) {
-						handlerName = "doc-info";
-						String p = urlPathInfo;
-						if (p.endsWith("/"))
-							p = p.substring(0, p.length() - 1);
-						if (urlPathInfo.endsWith("/contents")) {
-							handlerName = "doc-contents";
-						} else if (urlPathInfo.endsWith("/snippet")) {
-							handlerName = "doc-snippet";
-						}
-					}
-					else if (handlerName.equals("hits") || handlerName.equals("docs")) {
-						if (request.getParameter("group") != null) {
-							String viewgroup = request.getParameter("viewgroup");
-							if (viewgroup == null || viewgroup.length() == 0)
-								handlerName += "-grouped"; // list of groups instead of contents
-						}
-					}
-					
-					if (!availableHandlers.containsKey(handlerName))
-						return Response.badRequest("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
-					Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
-					Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, User.class, String.class, String.class, String.class);
-					//servlet.getSearchManager().getSearcher(indexName); // make sure it's open
-					requestHandler = ctor.newInstance(servlet, request, user, indexName, urlResource, urlPathInfo);
-				} catch (NoSuchMethodException e) {
-					// (can only happen if the required constructor is not available in the RequestHandler subclass)
-					logger.error("Could not get constructor to create request handler", e);
-					return Response.internalError(e, debugMode, 2);
-				} catch (IllegalArgumentException e) {
-					logger.error("Could not create request handler", e);
-					return Response.internalError(e, debugMode, 3);
-				} catch (InstantiationException e) {
-					logger.error("Could not create request handler", e);
-					return Response.internalError(e, debugMode, 4);
-				} catch (IllegalAccessException e) {
-					logger.error("Could not create request handler", e);
-					return Response.internalError(e, debugMode, 5);
-				} catch (InvocationTargetException e) {
-					logger.error("Could not create request handler", e);
-					return Response.internalError(e, debugMode, 6);
-				}
-			}
 		} else {
-			return Response.internalError("RequestHandler.doGetPost called with wrong method: " + method, debugMode, 10);
+			if (method.equals("POST")) {
+				if (!isPrivateIndex)
+					return Response.forbidden("Can only POST to private indices.");
+				if (indexName.length() == 0 && !resourceOrPathGiven) {
+					// POST to /blacklab-server/ : you probably meant PUT to /blacklab-server/indexName
+					return Response.methodNotAllowed("POST", "Create new index with PUT to /blacklab-server/indexName");
+				} else if (urlResource.equals("docs") && urlPathInfo.length() == 0) {
+					if (!SearchManager.isValidIndexName(indexName))
+						return Response.badRequest("ILLEGAL_INDEX_NAME", SearchManager.ILLEGAL_NAME_ERROR + indexName);
+					
+					// POST to /blacklab-server/indexName/docs/ : add data to index
+					requestHandler = new RequestHandlerAddToIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
+				} else {
+					return Response.methodNotAllowed("POST", "Note that retrieval can only be done using GET.");
+				}
+			} else if (method.equals("GET")) {
+				if (indexName.equals("cache-info") && !resourceOrPathGiven && debugMode) {
+					requestHandler = new RequestHandlerCacheInfo(servlet, request, user, indexName, urlResource, urlPathInfo);
+				} else if (indexName.equals("help")) {
+					requestHandler = new RequestHandlerBlsHelp(servlet, request, user, indexName, urlResource, urlPathInfo);
+				} else if (indexName.length() == 0) {
+					// No index or operation given; server info
+					requestHandler = new RequestHandlerServerInfo(servlet, request, user, indexName, urlResource, urlPathInfo);
+				} else {
+					// Choose based on urlResource
+					try {
+						String handlerName = urlResource;
+
+						String status = searchManager.getIndexStatus(indexName);
+						if (!status.equals("available") && handlerName.length() > 0 && !handlerName.equals("debug") && !handlerName.equals("fields") && !handlerName.equals("status")) {
+							return Response.unavailable(indexName, status);
+						}
+						
+						if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs") && !handlerName.equals("fields") && !handlerName.equals("termfreq") && !handlerName.equals("status")) {
+							handlerName = "debug";
+						}
+						// HACK to avoid having a different url resource for
+						// the lists of (hit|doc) groups: instantiate a different
+						// request handler class in this case.
+						else if (handlerName.equals("docs") && urlPathInfo.length() > 0) {
+							handlerName = "doc-info";
+							String p = urlPathInfo;
+							if (p.endsWith("/"))
+								p = p.substring(0, p.length() - 1);
+							if (urlPathInfo.endsWith("/contents")) {
+								handlerName = "doc-contents";
+							} else if (urlPathInfo.endsWith("/snippet")) {
+								handlerName = "doc-snippet";
+							}
+						}
+						else if (handlerName.equals("hits") || handlerName.equals("docs")) {
+							if (request.getParameter("group") != null) {
+								String viewgroup = request.getParameter("viewgroup");
+								if (viewgroup == null || viewgroup.length() == 0)
+									handlerName += "-grouped"; // list of groups instead of contents
+							}
+						}
+						
+						if (!availableHandlers.containsKey(handlerName))
+							return Response.badRequest("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
+						Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
+						Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, User.class, String.class, String.class, String.class);
+						//servlet.getSearchManager().getSearcher(indexName); // make sure it's open
+						requestHandler = ctor.newInstance(servlet, request, user, indexName, urlResource, urlPathInfo);
+					} catch (NoSuchMethodException e) {
+						// (can only happen if the required constructor is not available in the RequestHandler subclass)
+						logger.error("Could not get constructor to create request handler", e);
+						return Response.internalError(e, debugMode, 2);
+					} catch (IllegalArgumentException e) {
+						logger.error("Could not create request handler", e);
+						return Response.internalError(e, debugMode, 3);
+					} catch (InstantiationException e) {
+						logger.error("Could not create request handler", e);
+						return Response.internalError(e, debugMode, 4);
+					} catch (IllegalAccessException e) {
+						logger.error("Could not create request handler", e);
+						return Response.internalError(e, debugMode, 5);
+					} catch (InvocationTargetException e) {
+						logger.error("Could not create request handler", e);
+						return Response.internalError(e, debugMode, 6);
+					}
+				}
+			} else {
+				return Response.internalError("RequestHandler.doGetPost called with wrong method: " + method, debugMode, 10);
+			}
 		}
 		if (debugMode)
 			requestHandler.setDebug(debugMode);
@@ -216,8 +218,6 @@ public abstract class RequestHandler {
 		// Handle the request
 		try {
 			return requestHandler.handle();
-		} catch (IndexOpenException e) {
-			return Response.internalError(e, debugMode, 23);
 		} catch (InternalServerError e) {
 			String msg = ServletUtil.internalErrorMessage(e, debugMode, e.getInternalErrorCode());
 			return Response.error(e.getBlsErrorCode(), msg, e.getHttpStatusCode());
@@ -290,11 +290,10 @@ public abstract class RequestHandler {
 	/**
 	 * Child classes should override this to handle the request.
 	 * @return the response object
-	 * @throws IndexOpenException if the index can't be opened
 	 * @throws BlsException if the query can't be executed
 	 * @throws InterruptedException if the thread was interrupted
 	 */
-	public abstract Response handle() throws IndexOpenException, BlsException, InterruptedException;
+	public abstract Response handle() throws BlsException, InterruptedException;
 
 	/**
 	 * Get a string parameter.
@@ -417,7 +416,7 @@ public abstract class RequestHandler {
 		return doFacets;
 	}
 
-	protected Searcher getSearcher() throws IndexOpenException {
+	protected Searcher getSearcher() throws BlsException {
 		return searchMan.getSearcher(indexName);
 	}
 

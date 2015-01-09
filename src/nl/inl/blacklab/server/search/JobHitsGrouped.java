@@ -17,12 +17,12 @@ public class JobHitsGrouped extends Job {
 
 	private Hits hits;
 
-	public JobHitsGrouped(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobHitsGrouped(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 
 	@Override
-	public void performSearch() throws IndexOpenException, BlsException, InterruptedException  {
+	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking hits search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithHits hitsSearch = searchMan.searchHits(user, parNoGroup);

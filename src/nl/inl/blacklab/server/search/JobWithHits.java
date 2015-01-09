@@ -1,5 +1,6 @@
 package nl.inl.blacklab.server.search;
 
+import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 
@@ -11,7 +12,7 @@ public class JobWithHits extends Job {
 	/** The hits found */
 	protected Hits hits;
 
-	public JobWithHits(SearchManager searchMan, User user, SearchParameters par) throws IndexOpenException {
+	public JobWithHits(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
 
