@@ -211,7 +211,7 @@ public class RequestHandlerHits extends RequestHandler {
 			summary.put("countTime", total.executionTimeMillis());
 		summary.put("stillCounting", !done);
 		int totalHitsCounted = hits.countSoFarHitsCounted();
-		if (total.threwException()) {
+		if (total != null && total.threwException()) {
 			// indicate that something went wrong while counting;
 			// i.e. timeout
 			totalHitsCounted = -1;

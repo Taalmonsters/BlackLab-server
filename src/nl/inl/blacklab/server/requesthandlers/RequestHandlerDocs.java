@@ -215,7 +215,7 @@ public class RequestHandlerDocs extends RequestHandler {
 		summary.put("stillCounting", !done);
 		if (searchGrouped == null && hits != null) {
 			int numberOfHitsCounted = hits.countSoFarHitsCounted();
-			if (total.threwException())
+			if (total != null && total.threwException())
 				numberOfHitsCounted = -1;
 			summary.put("numberOfHits", numberOfHitsCounted);
 			summary.put("numberOfHitsRetrieved", hits.countSoFarHitsRetrieved());
@@ -224,7 +224,7 @@ public class RequestHandlerDocs extends RequestHandler {
 		}
 		if (hits != null || group != null) {
 			int numberOfDocsCounted = hits == null ? group.getResults().size() : hits.countSoFarDocsCounted();
-			if (total.threwException())
+			if (total != null && total.threwException())
 				numberOfDocsCounted = -1;
 			summary.put("numberOfDocs", numberOfDocsCounted);
 			summary.put("numberOfDocsRetrieved", hits == null ? group.getResults().size() : hits.countSoFarDocsRetrieved());
