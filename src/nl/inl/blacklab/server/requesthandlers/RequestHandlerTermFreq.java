@@ -4,7 +4,6 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
-import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.search.TermFrequency;
 import nl.inl.blacklab.search.TermFrequencyList;
@@ -13,6 +12,7 @@ import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.User;
 

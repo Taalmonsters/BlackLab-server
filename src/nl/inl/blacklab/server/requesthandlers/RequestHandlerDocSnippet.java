@@ -4,10 +4,6 @@ import java.util.Arrays;
 
 import javax.servlet.http.HttpServletRequest;
 
-import nl.inl.blacklab.exceptions.BadRequest;
-import nl.inl.blacklab.exceptions.BlsException;
-import nl.inl.blacklab.exceptions.InternalServerError;
-import nl.inl.blacklab.exceptions.NotFound;
 import nl.inl.blacklab.search.Concordance;
 import nl.inl.blacklab.search.ConcordanceType;
 import nl.inl.blacklab.search.Hit;
@@ -19,6 +15,10 @@ import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectContextList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
+import nl.inl.blacklab.server.exceptions.BadRequest;
+import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.InternalServerError;
+import nl.inl.blacklab.server.exceptions.NotFound;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.User;
 

@@ -7,16 +7,16 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
-import nl.inl.blacklab.exceptions.BlsException;
-import nl.inl.blacklab.exceptions.IndexNotFound;
-import nl.inl.blacklab.exceptions.NotAuthorized;
 import nl.inl.blacklab.indexers.DocIndexerTei;
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.IndexNotFound;
+import nl.inl.blacklab.server.exceptions.NotAuthorized;
 import nl.inl.blacklab.server.index.IndexJob;
 import nl.inl.blacklab.server.search.User;
 
 import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 
@@ -25,7 +25,7 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
  */
 public class RequestHandlerAddToIndex extends RequestHandler {
 	
-	private static final long MAX_UPLOAD_SIZE = 10000000;
+	private static final long MAX_UPLOAD_SIZE = 20000000;
 
 	private static final int MAX_MEM_UPLOAD_SIZE = 1000000;
 	
@@ -67,7 +67,12 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 
 		try {
 			// Parse the request to get file items.
-			List<FileItem> fileItems = upload.parseRequest(request);
+			List<FileItem> fileItems;
+			try {
+				fileItems = upload.parseRequest(request);
+			} catch (FileUploadException e) {
+				return Response.badRequest("ERROR_UPLOADING_FILE", e.getMessage());
+			}
 
 			// Process the uploaded file items
 			Iterator<FileItem> i = fileItems.iterator();
@@ -123,9 +128,11 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 			return Response.internalError(ex, debugMode, 26);
 		}
 
-		DataObjectMapElement responseData = new DataObjectMapElement();
-		responseData.put("result", "nothing");
-		return new Response(responseData);
+//		DataObjectMapElement responseData = new DataObjectMapElement();
+//		responseData.put("result", "nothing");
+//		Response r = new Response(responseData);
+//		r.setCacheAllowed(false);
+//		return r;
+		return Response.accepted();
 	}
-
 }

@@ -9,8 +9,6 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
-import nl.inl.blacklab.exceptions.BlsException;
-import nl.inl.blacklab.exceptions.InternalServerError;
 import nl.inl.blacklab.perdocument.DocCount;
 import nl.inl.blacklab.perdocument.DocCounts;
 import nl.inl.blacklab.perdocument.DocGroupProperty;
@@ -24,6 +22,8 @@ import nl.inl.blacklab.server.ServletUtil;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.InternalServerError;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.SearchParameters;
 import nl.inl.blacklab.server.search.SearchUtil;
@@ -98,9 +98,15 @@ public abstract class RequestHandler {
 		
 		// If we're doing something with a private index, it must be our own.
 		boolean isPrivateIndex = false;
+		logger.debug("Got indexName = \"" + indexName + "\" (len=" + indexName.length() + ")");
+		String shortName = indexName;
 		if (indexName.contains(":")) {
 			isPrivateIndex = true;
 			String[] userAndIndexName = indexName.split(":");
+			if (userAndIndexName.length > 1)
+				shortName = userAndIndexName[1];
+			else
+				return Response.illegalIndexName("");
 			if (!user.isLoggedIn())
 				return Response.unauthorized("Log in to access your private indices.");
 			if (!user.getUserId().equals(userAndIndexName[0]))
@@ -134,7 +140,7 @@ public abstract class RequestHandler {
 					return Response.methodNotAllowed("POST", "Create new index with PUT to /blacklab-server/indexName");
 				} else if (urlResource.equals("docs") && urlPathInfo.length() == 0) {
 					if (!SearchManager.isValidIndexName(indexName))
-						return Response.badRequest("ILLEGAL_INDEX_NAME", SearchManager.ILLEGAL_NAME_ERROR + indexName);
+						return Response.illegalIndexName(shortName);
 					
 					// POST to /blacklab-server/indexName/docs/ : add data to index
 					requestHandler = new RequestHandlerAddToIndex(servlet, request, user, indexName, urlResource, urlPathInfo);

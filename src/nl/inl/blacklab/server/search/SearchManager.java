@@ -7,6 +7,8 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -17,13 +19,6 @@ import java.util.Set;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 
-import nl.inl.blacklab.exceptions.BadRequest;
-import nl.inl.blacklab.exceptions.BlsException;
-import nl.inl.blacklab.exceptions.IndexNotFound;
-import nl.inl.blacklab.exceptions.InternalServerError;
-import nl.inl.blacklab.exceptions.NotAuthorized;
-import nl.inl.blacklab.exceptions.ServiceUnavailable;
-import nl.inl.blacklab.exceptions.TooManyRequests;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.queryParser.contextql.ContextualQueryLanguageParser;
 import nl.inl.blacklab.queryParser.corpusql.CorpusQueryLanguageParser;
@@ -39,6 +34,14 @@ import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectString;
+import nl.inl.blacklab.server.exceptions.BadRequest;
+import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.IllegalIndexName;
+import nl.inl.blacklab.server.exceptions.IndexNotFound;
+import nl.inl.blacklab.server.exceptions.InternalServerError;
+import nl.inl.blacklab.server.exceptions.NotAuthorized;
+import nl.inl.blacklab.server.exceptions.ServiceUnavailable;
+import nl.inl.blacklab.server.exceptions.TooManyRequests;
 import nl.inl.util.FileUtil;
 import nl.inl.util.FileUtil.FileTask;
 import nl.inl.util.MemoryUtil;
@@ -59,7 +62,7 @@ public class SearchManager {
 
 	private static final int MAX_USER_INDICES = 10;
 
-	public static final String ILLEGAL_NAME_ERROR = "Illegal index name (only letters, digits, underscores and dashes allowed): ";
+	public static final String ILLEGAL_NAME_ERROR = "is not a valid index name (only letters, digits, underscores and dashes allowed, and must start with a letter)";
 
 	/**
 	 * A file filter that returns readable directories only; used for scanning
@@ -567,7 +570,7 @@ public class SearchManager {
 			String[] parts = indexName.split(":");
 			indexName = parts[1];
 		}
-		return indexName.matches("[a-zA-Z0-9_\\-]+");
+		return indexName.matches("[a-zA-Z][a-zA-Z0-9_\\-]*");
 	}
 
 	/**
@@ -584,7 +587,7 @@ public class SearchManager {
 	public synchronized Searcher getSearcher(String indexName)
 			throws BlsException {
 		if (!isValidIndexName(indexName))
-			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR + indexName);
+			throw new IllegalIndexName(indexName);
 
 		if (searchers.containsKey(indexName)) {
 			Searcher searcher = searchers.get(indexName);
@@ -660,7 +663,7 @@ public class SearchManager {
 	public boolean indexExists(String indexName)
 			throws BlsException {
 		if (!isValidIndexName(indexName))
-			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR + indexName);
+			throw new IllegalIndexName(indexName);
 		IndexParam par = getIndexParam(indexName);
 		if (par == null) {
 			return false;
@@ -687,7 +690,7 @@ public class SearchManager {
 		if (!indexName.contains(":"))
 			throw new NotAuthorized("Can only create private indices.");
 		if (!isValidIndexName(indexName))
-			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR + indexName);
+			throw new IllegalIndexName(indexName);
 		if (indexExists(indexName))
 			throw new BadRequest("INDEX_ALREADY_EXISTS",
 					"Could not create index. Index already exists.");
@@ -730,7 +733,7 @@ public class SearchManager {
 		if (!indexName.contains(":"))
 			throw new NotAuthorized("Can only delete private indices.");
 		if (!isValidIndexName(indexName))
-			throw new BadRequest("ILLEGAL_INDEX_NAME", ILLEGAL_NAME_ERROR + indexName);
+			throw new IllegalIndexName(indexName);
 		if (!indexExists(indexName))
 			throw new IndexNotFound(indexName);
 		String[] parts = indexName.split(":");
@@ -1283,18 +1286,6 @@ public class SearchManager {
 		}
 	}
 
-	public SearchCache getCache() {
-		return cache;
-	}
-
-	// public boolean mayViewContents(User user, String indexName, Document
-	// document) {
-	// IndexParam p = indexParam.get(indexName);
-	// if (p == null)
-	// return false;
-	// return p.mayViewContents();
-	// }
-
 	public DataFormat getContentsFormat(String indexName) {
 		return DataFormat.XML; // could be made configurable
 	}
@@ -1415,12 +1406,24 @@ public class SearchManager {
 		}
 	}
 
-	public Collection<String> getAllAvailableIndices(String userId) {
-		Set<String> indices = new HashSet<String>();
+	public List<String> getAllAvailableIndices(String userId) {
+		List<String> indices = new ArrayList<String>();
 		if (userId != null && userId.length() > 0)
 			indices.addAll(getAvailablePrivateIndices(userId));
 		indices.addAll(getAvailablePublicIndices());
+		Collections.sort(indices, new Comparator<String>() {
+			@Override
+			public int compare(String o1, String o2) {
+				// Sort public before private
+				boolean o1priv = o1.contains(":");
+				boolean o2priv = o2.contains(":");
+				if (o1priv != o2priv)
+					return o1priv ? 1 : -1;
+				
+				// Sort rest case-insensitively
+	            return o1.toLowerCase().compareTo(o2.toLowerCase());
+			}
+	    });
 		return indices;
 	}
-
 }

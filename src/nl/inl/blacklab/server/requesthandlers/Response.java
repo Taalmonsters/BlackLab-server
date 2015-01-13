@@ -5,6 +5,7 @@ import javax.servlet.http.HttpServletResponse;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataFormat;
 import nl.inl.blacklab.server.dataobject.DataObject;
+import nl.inl.blacklab.server.search.SearchManager;
 
 import org.apache.log4j.Logger;
 
@@ -36,7 +37,9 @@ public class Response {
 	 * @return the data object representing the error message
 	 */
 	public static Response status(String code, String msg, int httpCode) {
-		return new Response(DataObject.statusObject(code, msg), httpCode);
+		Response r = new Response(DataObject.statusObject(code, msg), httpCode);
+		r.setCacheAllowed(false); // status should never be cached
+		return r;
 	}
 
 	/**
@@ -51,7 +54,9 @@ public class Response {
 	 * @return the data object representing the error message
 	 */
 	public static Response error(String code, String msg, int httpCode) {
-		return new Response(DataObject.errorObject(code, msg), httpCode);
+		Response r = new Response(DataObject.errorObject(code, msg), httpCode);
+		r.setCacheAllowed(false); // (error)status should never be cached
+		return r;
 	}
 	
 	// Highest internal error code so far: 27
@@ -59,19 +64,29 @@ public class Response {
 	public static Response internalError(Exception e, boolean debugMode, int code) {
 		logger.debug("INTERNAL ERROR " + code + ":");
 		e.printStackTrace();
-		return new Response(DataObject.internalError(e, debugMode, code));
+		Response r = new Response(DataObject.internalError(e, debugMode, code), HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		r.setCacheAllowed(false); // (error)status should never be cached
+		return r;
 	}
 
 	public static Response internalError(String message, boolean debugMode, int code) {
 		logger.debug("INTERNAL ERROR " + code + ": " + message);
-		return new Response(DataObject.internalError(message, debugMode, code));
+		Response r = new Response(DataObject.internalError(message, debugMode, code), HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		r.setCacheAllowed(false); // (error)status should never be cached
+		return r;
 	}
 
 	public static Response internalError(int code) {
 		logger.debug("INTERNAL ERROR " + code + " (no message)");
-		return new Response(DataObject.internalError(code));
+		Response r = new Response(DataObject.internalError(code), HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+		r.setCacheAllowed(false); // (error)status should never be cached
+		return r;
 	}
 	
+	public static Response accepted() {
+		return status("SUCCESS", "Documents uploaded succesfully; indexing started.", HttpServletResponse.SC_ACCEPTED);
+	}
+
 	public static Response searchTimedOut() {
 		return error("SEARCH_TIMED_OUT", "Search took too long, cancelled.", HttpServletResponse.SC_SERVICE_UNAVAILABLE);
 	}
@@ -99,6 +114,10 @@ public class Response {
 
 	public static Response indexNotFound(String indexName) {
 		return error("CANNOT_OPEN_INDEX", "Could not open index '" + indexName + "'. Please check the name.", HttpServletResponse.SC_NOT_FOUND);
+	}
+
+	public static Response illegalIndexName(String shortName) {
+		return badRequest("ILLEGAL_INDEX_NAME", "\"" + shortName + "\" " + SearchManager.ILLEGAL_NAME_ERROR);
 	}
 
 	/** HTTP response status code to use. */

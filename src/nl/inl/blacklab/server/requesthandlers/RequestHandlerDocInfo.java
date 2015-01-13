@@ -2,13 +2,13 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
-import nl.inl.blacklab.exceptions.BadRequest;
-import nl.inl.blacklab.exceptions.BlsException;
-import nl.inl.blacklab.exceptions.InternalServerError;
-import nl.inl.blacklab.exceptions.NotFound;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BadRequest;
+import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.InternalServerError;
+import nl.inl.blacklab.server.exceptions.NotFound;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.User;
 

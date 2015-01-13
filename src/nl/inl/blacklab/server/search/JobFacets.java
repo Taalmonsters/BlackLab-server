@@ -5,12 +5,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocCounts;
 import nl.inl.blacklab.perdocument.DocProperty;
 import nl.inl.blacklab.perdocument.DocPropertyMultiple;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BlsException;
 
 /**
  * Represents a hits search and sort operation.

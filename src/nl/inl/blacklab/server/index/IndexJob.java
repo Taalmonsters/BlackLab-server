@@ -31,7 +31,6 @@ public class IndexJob {
 	 * @param docIndexerClass DocIndexer class to use (=input type)
 	 * @param data (XML) input data
 	 * @param name (file) name for the input data
-	 * @param search the search to execute in the thread
 	 */
 	public IndexJob(File indexDir, Class<? extends DocIndexer> docIndexerClass, InputStream data, String name) {
 		this.indexDir = indexDir;

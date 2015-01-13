@@ -18,7 +18,6 @@ final public class IndexThread extends Thread implements UncaughtExceptionHandle
 	/**
 	 * Construct a new SearchThread
 	 * @param job the job to do
-	 * @param search the search to execute in the thread
 	 */
 	public IndexThread(IndexJob job) {
 		this.job = job;

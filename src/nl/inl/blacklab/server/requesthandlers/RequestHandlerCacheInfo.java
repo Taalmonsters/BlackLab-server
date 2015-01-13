@@ -20,7 +20,9 @@ public class RequestHandlerCacheInfo extends RequestHandler {
 		response.put("cacheStatus", searchMan.getCacheStatusDataObject());
 		response.put("cacheContents", searchMan.getCacheContentsDataObject());
 
-		return new Response(response);
+		Response r = new Response(response);
+		r.setCacheAllowed(false);
+		return r;
 	}
 
 }

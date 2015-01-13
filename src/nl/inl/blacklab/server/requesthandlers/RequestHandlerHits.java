@@ -2,7 +2,6 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
-import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocProperty;
 import nl.inl.blacklab.perdocument.DocPropertyComplexFieldLength;
 import nl.inl.blacklab.perdocument.DocResults;
@@ -26,6 +25,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
+import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.search.Job;
 import nl.inl.blacklab.server.search.JobHitsGrouped;
 import nl.inl.blacklab.server.search.JobHitsTotal;
@@ -102,6 +102,8 @@ public class RequestHandlerHits extends RequestHandler {
 			int number = searchParam.getInteger("number");
 			if (number < 0 || number > searchMan.getMaxPageSize())
 				number = searchMan.getDefaultPageSize();
+			if (!hitsSorted.sizeAtLeast(first))
+				return Response.badRequest("HIT_NUMBER_OUT_OF_RANGE", "Non-existent hit number specified.");
 			window = hitsSorted.window(first, number);
 
 		} else {

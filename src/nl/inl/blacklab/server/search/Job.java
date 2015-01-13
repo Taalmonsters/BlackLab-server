@@ -3,10 +3,10 @@ package nl.inl.blacklab.server.search;
 import java.util.HashSet;
 import java.util.Set;
 
-import nl.inl.blacklab.exceptions.BlsException;
-import nl.inl.blacklab.exceptions.InternalServerError;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.InternalServerError;
 import nl.inl.util.ExUtil;
 
 import org.apache.log4j.Logger;

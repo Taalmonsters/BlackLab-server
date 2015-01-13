@@ -1,4 +1,4 @@
-package nl.inl.blacklab.exceptions;
+package nl.inl.blacklab.server.exceptions;
 
 
 public class IndexNotFound extends NotFound {

@@ -1,4 +1,4 @@
-package nl.inl.blacklab.exceptions;
+package nl.inl.blacklab.server.exceptions;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -29,7 +29,8 @@ public class InternalServerError extends BlsException {
 		super(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", msg, cause);
 		this.internalErrorCode = internalErrorCode;
 		logger.debug("INTERNAL ERROR " + internalErrorCode + ":");
-		cause.printStackTrace();
+		if (cause != null)
+			cause.printStackTrace();
 	}
 
 }

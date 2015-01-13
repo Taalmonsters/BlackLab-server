@@ -11,8 +11,8 @@ import java.util.TimeZone;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import nl.inl.blacklab.exceptions.InternalServerError;
 import nl.inl.blacklab.server.dataobject.DataFormat;
+import nl.inl.blacklab.server.exceptions.InternalServerError;
 import nl.inl.util.ExUtil;
 
 import org.apache.log4j.Logger;

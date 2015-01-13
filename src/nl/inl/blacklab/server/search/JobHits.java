@@ -1,12 +1,12 @@
 package nl.inl.blacklab.server.search;
 
 
-import nl.inl.blacklab.exceptions.BadRequest;
-import nl.inl.blacklab.exceptions.BlsException;
-import nl.inl.blacklab.exceptions.InternalServerError;
-import nl.inl.blacklab.exceptions.NotFound;
 import nl.inl.blacklab.search.SingleDocIdFilter;
 import nl.inl.blacklab.search.TextPattern;
+import nl.inl.blacklab.server.exceptions.BadRequest;
+import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.InternalServerError;
+import nl.inl.blacklab.server.exceptions.NotFound;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.search.BooleanQuery.TooManyClauses;
@@ -35,6 +35,7 @@ public class JobHits extends JobWithHits {
 	public void performSearch() throws BlsException {
 		try {
 			textPattern = searchMan.parsePatt(searcher, par.getString("patt"), par.getString("pattlang"));
+			debug(logger, "Textpattern: " + textPattern);
 			Query q;
 			String docId = par.getString("docpid");
 			if (docId != null) {

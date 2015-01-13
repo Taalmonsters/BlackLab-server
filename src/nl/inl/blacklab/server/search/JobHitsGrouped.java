@@ -1,12 +1,12 @@
 package nl.inl.blacklab.server.search;
 
-import nl.inl.blacklab.exceptions.BadRequest;
-import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.grouping.GroupProperty;
 import nl.inl.blacklab.search.grouping.HitGroups;
 import nl.inl.blacklab.search.grouping.HitProperty;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BadRequest;
+import nl.inl.blacklab.server.exceptions.BlsException;
 
 /**
  * Represents a hits search and sort operation.

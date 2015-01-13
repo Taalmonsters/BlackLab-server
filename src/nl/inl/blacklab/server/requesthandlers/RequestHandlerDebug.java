@@ -23,7 +23,9 @@ public class RequestHandlerDebug extends RequestHandler {
 		response.put("rest", urlPathInfo);
 		response.put("queryString", request.getQueryString());
 		response.put("searchParam", servlet.getSearchParameters(request, indexName).toString());
-		return new Response(response);
+		Response r = new Response(response);
+		r.setCacheAllowed(false);
+		return r;
 	}
 
 }

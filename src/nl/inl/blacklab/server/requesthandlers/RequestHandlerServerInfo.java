@@ -40,7 +40,9 @@ public class RequestHandlerServerInfo extends RequestHandler {
 			response.put("cacheStatus", searchMan.getCacheStatusDataObject());
 		}
 
-		return new Response(response);
+		Response responseObj = new Response(response);
+		responseObj.setCacheAllowed(false); // You can create/delete indices, don't cache the list
+		return responseObj;
 	}
 
 

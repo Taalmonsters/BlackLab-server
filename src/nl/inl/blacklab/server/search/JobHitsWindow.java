@@ -1,10 +1,10 @@
 package nl.inl.blacklab.server.search;
 
-import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.search.ConcordanceType;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.HitsWindow;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BlsException;
 
 import org.apache.log4j.Logger;
 

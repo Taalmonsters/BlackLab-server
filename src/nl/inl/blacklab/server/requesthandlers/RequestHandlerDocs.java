@@ -2,7 +2,6 @@ package nl.inl.blacklab.server.requesthandlers;
 
 import javax.servlet.http.HttpServletRequest;
 
-import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocGroup;
 import nl.inl.blacklab.perdocument.DocGroups;
 import nl.inl.blacklab.perdocument.DocProperty;
@@ -22,6 +21,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectPlain;
+import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.search.Job;
 import nl.inl.blacklab.server.search.JobDocsGrouped;
 import nl.inl.blacklab.server.search.JobDocsTotal;

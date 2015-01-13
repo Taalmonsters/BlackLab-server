@@ -1,8 +1,8 @@
 package nl.inl.blacklab.server.search;
 
-import nl.inl.blacklab.exceptions.BlsException;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BlsException;
 
 /**
  * A search job that produces a Hits object
