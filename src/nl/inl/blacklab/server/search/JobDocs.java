@@ -23,9 +23,15 @@ public class JobDocs extends JobWithDocs {
 		if (patt != null && patt.length() > 0) {
 			SearchParameters parNoSort = par.copyWithout("sort");
 			JobWithHits hitsSearch = searchMan.searchHits(user, parNoSort);
-			waitForJobToFinish(hitsSearch);
-			// Now, get per document results
-			Hits hits = hitsSearch.getHits();
+			Hits hits;
+			try {
+				waitForJobToFinish(hitsSearch);
+				// Now, get per document results
+				hits = hitsSearch.getHits();
+			} finally {
+				hitsSearch.decrRef();
+				hitsSearch = null;
+			}
 			hits.setConcordanceType(par.getString("usecontent").equals("orig") ? ConcordanceType.CONTENT_STORE : ConcordanceType.FORWARD_INDEX);
 			docResults = hits.perDocResults();
 		} else {

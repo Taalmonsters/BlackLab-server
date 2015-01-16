@@ -13,13 +13,13 @@ final public class IndexThread extends Thread implements UncaughtExceptionHandle
 	/** If search execution failed, this is the exception that was thrown */
 	Throwable thrownException = null;
 
-	private IndexJob job;
+	private IndexTask job;
 
 	/**
 	 * Construct a new SearchThread
 	 * @param job the job to do
 	 */
-	public IndexThread(IndexJob job) {
+	public IndexThread(IndexTask job) {
 		this.job = job;
 		setUncaughtExceptionHandler(this);
 	}

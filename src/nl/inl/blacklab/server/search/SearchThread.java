@@ -11,10 +11,7 @@ final class SearchThread extends Thread implements UncaughtExceptionHandler {
 	protected static final Logger logger = Logger.getLogger(SearchThread.class);
 
 	/** The search to execute */
-	private final Job search;
-
-	/** If search execution failed, this is the exception that was thrown */
-	Throwable thrownException = null;
+	private Job search;
 
 	/**
 	 * Construct a new SearchThread
@@ -44,39 +41,18 @@ final class SearchThread extends Thread implements UncaughtExceptionHandler {
 			// which does the same thing, because apparently some exceptions can occur
 			// outside the run() method or aren't caught here for some other reason).
 			// Even then, some low-level ones (like OutOfMemoryException) seem to slip by.
-			thrownException = e;
+			if (search != null)
+				search.thrownException = e;
 		}
-	}
-
-	/**
-	 * Has the thread stopped running?
-	 * @return true iff the thread has terminated
-	 */
-	public boolean finished() {
-		State state = getState();
-		return state == State.TERMINATED;
-	}
-
-	/**
-	 * Did the thread throw an Exception?
-	 * @return true iff it threw an Exception
-	 */
-	public boolean threwException() {
-		return thrownException != null;
-	}
-
-	/**
-	 * Get the Exception that was thrown by the thread (if any)
-	 * @return the thrown Exception, or null if none was thrown
-	 */
-	public Throwable getThrownException() {
-		return thrownException;
+		search = null; // make sure Job gets garbage collected
 	}
 
 	@Override
 	public void uncaughtException(Thread t, Throwable e) {
 		logger.debug("Search thread threw an exception, saving it:\n" + e.getClass().getName() + ": " + e.getMessage());
-		thrownException = e;
+		if (search != null)
+			search.thrownException = e;
+		search = null; // make sure Job gets garbage collected
 	}
 
 }

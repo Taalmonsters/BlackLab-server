@@ -27,4 +27,10 @@ public class JobWithHits extends Job {
 		return d;
 	}
 
+	@Override
+	protected void cleanup() {
+		hits = null;
+		super.cleanup();
+	}
+
 }

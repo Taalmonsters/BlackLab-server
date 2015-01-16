@@ -13,53 +13,15 @@ import org.apache.log4j.Logger;
 
 public abstract class Job implements Comparable<Job> {
 	protected static final Logger logger = Logger.getLogger(Job.class);
+	
+	/** If true (as it should be for production use), we call cleanup() on jobs that 
+	 *  aren't referred to anymore in an effor to assist the Java garbage collector.
+	 *  EXPERIMENTAL
+	 */
+	final static boolean ENABLE_JOB_CLEANUP = false;
 
 	/** id for the next job started */
 	static long nextJobId = 0;
-
-	/** Unique job id */
-	long id = nextJobId++;
-
-	/** Number of clients waiting for the results of this job.
-	 * This is used to allow clients to cancel long searches: if this number reaches
-	 * 0 before the search is done, it may be cancelled. Jobs that use other Jobs will
-	 * also count as a client of that Job, and will tell that Job they're no longer interested
-	 * if they are cancelled themselves.
-	 */
-	int clientsWaiting = 0;
-
-	/**
-	 * The jobs we're waiting for, so we can notify them in case we get cancelled.
-	 */
-	Set<Job> waitingFor = new HashSet<Job>();
-
-	/**
-	 * Add a job we're waiting for.
-	 * @param j the job
-	 */
-	protected void addToWaitingFor(Job j) {
-		waitingFor.add(j);
-	}
-
-	/**
-	 * Add a job we're waiting for.
-	 * @param j the job
-	 */
-	protected void removeFromWaitingFor(Job j) {
-		waitingFor.remove(j);
-	}
-
-	/**
-	 * Wait for the specified job to finish
-	 * @param job the job to wait for
-	 * @throws InterruptedException
-	 * @throws BlsException
-	 */
-	protected void waitForJobToFinish(Job job) throws InterruptedException, BlsException {
-		waitingFor.add(job);
-		job.waitUntilFinished();
-		waitingFor.remove(job);
-	}
 
 	/**
 	 * Create a new Search (subclass) object to carry out the specified search,
@@ -97,8 +59,42 @@ public abstract class Job implements Comparable<Job> {
 			search = new JobDocsGrouped(searchMan, user, par);
 		} else
 			throw new InternalServerError(1);
-
+	
 		return search;
+	}
+
+	/** Unique job id */
+	long id = nextJobId++;
+	
+	/**
+	 * Number of references to this Job. If this reaches 0, and the thread
+	 * is not running, we can safely call cleanup().
+	 */
+	int refsToJob = 0;
+
+	/** Number of clients waiting for the results of this job.
+	 * This is used to allow clients to cancel long searches: if this number reaches
+	 * 0 before the search is done, it may be cancelled. Jobs that use other Jobs will
+	 * also count as a client of that Job, and will tell that Job they're no longer interested
+	 * if they are cancelled themselves.
+	 */
+	int clientsWaiting = 0;
+
+	/**
+	 * The jobs we're waiting for, so we can notify them in case we get cancelled.
+	 */
+	Set<Job> waitingFor = new HashSet<Job>();
+
+	/**
+	 * Wait for the specified job to finish
+	 * @param job the job to wait for
+	 * @throws InterruptedException
+	 * @throws BlsException
+	 */
+	protected void waitForJobToFinish(Job job) throws InterruptedException, BlsException {
+		waitingFor.add(job);
+		job.waitUntilFinished();
+		waitingFor.remove(job);
 	}
 
 	/** When this job was started (or -1 if not started yet) */
@@ -106,6 +102,9 @@ public abstract class Job implements Comparable<Job> {
 
 	/** When this job was finished (or -1 if not finished yet) */
 	protected long finishedAt;
+	
+	/** If the search thread threw an exception, it's stored here. */
+	protected Throwable thrownException;
 
 	/** The last time the results of this search were accessed (for caching) */
 	protected long lastAccessed;
@@ -115,6 +114,9 @@ public abstract class Job implements Comparable<Job> {
 
 	/** Has perform() been called or not? Don't call it twice! */
 	private boolean performCalled = false;
+
+	/** Has cancelJob() been called or not? Don't call it twice! */
+	private boolean cancelJobCalled = false;
 
 	/** Thread object carrying out the search, if performing the search. */
 	private SearchThread searchThread = null;
@@ -137,6 +139,7 @@ public abstract class Job implements Comparable<Job> {
 		resetLastAccessed();
 		startedAt = -1;
 		finishedAt = -1;
+		thrownException = null;
 	}
 
 	public Searcher getSearcher() {
@@ -207,9 +210,9 @@ public abstract class Job implements Comparable<Job> {
 	 * @return true iff the search operation is finished and the results are available
 	 */
 	public boolean finished() {
-		if (searchThread == null)
+		if (!performCalled)
 			return false;
-		return performCalled && searchThread.finished();
+		return performCalled && (finishedAt >= 0 || thrownException != null);
 	}
 
 	/**
@@ -218,9 +221,9 @@ public abstract class Job implements Comparable<Job> {
 	 * @return true iff the search operation threw an exception
 	 */
 	public boolean threwException() {
-		if (searchThread == null)
+		if (!performCalled)
 			return false;
-		return finished() && searchThread.threwException();
+		return finished() && thrownException != null;
 	}
 
 	/**
@@ -228,7 +231,7 @@ public abstract class Job implements Comparable<Job> {
 	 * @return the exception, or null if none was thrown
 	 */
 	public Throwable getThrownException() {
-		return threwException() ? searchThread.getThrownException() : null;
+		return threwException() ? thrownException : null;
 	}
 
 	/**
@@ -275,7 +278,7 @@ public abstract class Job implements Comparable<Job> {
 	 */
 	public void waitUntilFinished(int maxWaitMs) throws InterruptedException, BlsException {
 		int defaultWaitStep = 100;
-		while (searchThread == null || (maxWaitMs != 0 && !searchThread.finished())) {
+		while (!performCalled || (maxWaitMs != 0 && !finished())) {
 			int w = maxWaitMs < 0 ? defaultWaitStep : Math.min(maxWaitMs, defaultWaitStep);
 			Thread.sleep(w);
 			if (maxWaitMs >= 0)
@@ -324,9 +327,13 @@ public abstract class Job implements Comparable<Job> {
 	 * Try to cancel this job.
 	 */
 	public void cancelJob() {
-		if (searchThread == null)
+		if (!performCalled)
 			return; // can't cancel, hasn't been started yet (shouldn't happen)
+		if (cancelJobCalled)
+			return; // don't call this twice!
 		searchThread.interrupt();
+		searchThread = null; // ensure garbage collection
+		cancelJobCalled = true;
 
 		// Tell the jobs we were waiting for we're no longer interested
 		for (Job j: waitingFor) {
@@ -393,7 +400,7 @@ public abstract class Job implements Comparable<Job> {
 		stats.put("finishedAt", (finishedAt - searchMan.createdAt)/1000.0);
 		stats.put("lastAccessed", (lastAccessed - searchMan.createdAt)/1000.0);
 		stats.put("createdBy", shortUserId());
-		stats.put("threadFinished", searchThread == null ? false : searchThread.finished());
+		stats.put("threadFinished", finished());
 
 		DataObjectMapElement d = new DataObjectMapElement();
 		d.put("id", id);
@@ -401,6 +408,30 @@ public abstract class Job implements Comparable<Job> {
 		d.put("searchParam", par.toDataObject());
 		d.put("stats", stats);
 		return d;
+	}
+	
+	protected void cleanup() {
+		logger.debug("Job.cleanup() called");
+		if (waitingFor != null)
+			waitingFor.clear();
+		waitingFor = null;
+		thrownException = null;
+		searchThread = null;
+		refsToJob = -9999;
+	}
+	
+	public synchronized void incrRef() {
+		if (refsToJob == -9999)
+			throw new RuntimeException("Cannot add ref, job was already cleaned up!");
+		refsToJob++;
+	}
+
+	public synchronized void decrRef() {
+		refsToJob--;
+		if (refsToJob == 0) {
+			if (ENABLE_JOB_CLEANUP)
+				cleanup();
+		}
 	}
 
 }

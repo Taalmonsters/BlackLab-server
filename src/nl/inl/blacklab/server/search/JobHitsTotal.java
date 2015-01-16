@@ -9,7 +9,7 @@ import nl.inl.blacklab.server.exceptions.BlsException;
  */
 public class JobHitsTotal extends Job {
 
-	private JobWithHits hitsSearch;
+	private Hits hits = null;
 
 	public JobHitsTotal(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
@@ -18,12 +18,17 @@ public class JobHitsTotal extends Job {
 	@Override
 	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking hits search.
-		hitsSearch = searchMan.searchHits(user, par);
-		waitForJobToFinish(hitsSearch);
-
-		// Get the total number of hits (we ignore the value because you can monitor progress
-		// and get the final total through the getHits() method yourself.
-		Hits hits = hitsSearch.getHits();
+		JobWithHits hitsSearch = searchMan.searchHits(user, par);
+		try {
+			waitForJobToFinish(hitsSearch);
+	
+			// Get the total number of hits (we ignore the value because you can monitor progress
+			// and get the final total through the getHits() method yourself.
+			hits = hitsSearch.getHits();
+		} finally {
+			hitsSearch.decrRef();
+			hitsSearch = null;
+		}
 		hits.size();
 		if (Thread.interrupted()) {
 			throw new InterruptedException("Interrupted while determining total number of hits");
@@ -36,14 +41,20 @@ public class JobHitsTotal extends Job {
 	 * @return the Hits object, or null if not available yet.
 	 */
 	public Hits getHits() {
-		return hitsSearch != null ? hitsSearch.getHits() : null;
+		return hits;
 	}
 
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("hitsCounted", hitsSearch != null && hitsSearch.getHits() != null ? hitsSearch.getHits().countSoFarHitsCounted() : -1);
+		d.put("hitsCounted", hits != null ? hits.countSoFarHitsCounted() : -1);
 		return d;
+	}
+
+	@Override
+	protected void cleanup() {
+		hits = null;
+		super.cleanup();
 	}
 
 }

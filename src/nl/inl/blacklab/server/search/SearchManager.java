@@ -63,6 +63,14 @@ public class SearchManager {
 	private static final int MAX_USER_INDICES = 10;
 
 	public static final String ILLEGAL_NAME_ERROR = "is not a valid index name (only letters, digits, underscores and dashes allowed, and must start with a letter)";
+	
+	/**
+	 * If true (as it should be for production use), we try to make
+	 * sure threads yield the CPU regularly and we terminate threads that
+	 * take too long.
+	 * EXPERIMENTAL
+	 */
+	static final boolean ENABLE_THREAD_ETIQUETTE = false;
 
 	/**
 	 * A file filter that returns readable directories only; used for scanning
@@ -282,7 +290,7 @@ public class SearchManager {
 			
 			// Make sure long operations yield their thread occasionally,
 			// and automatically abort really long operations.
-			ThreadEtiquette.setEnabled(true);
+			ThreadEtiquette.setEnabled(ENABLE_THREAD_ETIQUETTE); //@PERF: switched off for test
 			if (perfProp.has("operations")) {
 				JSONObject opProp = perfProp.getJSONObject("operations");
 				ThreadEtiquette.setStartSleepingAfterSec(JsonUtil.getIntProp(opProp, "startSleepingAfterSec", 5));
@@ -442,7 +450,6 @@ public class SearchManager {
 	}
 
 	public User determineCurrentUser(HttpServlet servlet, HttpServletRequest request) {
-		
 		// If no auth system is configured, all users are anonymous
 		if (authSystem == null) {
 			User user = User.anonymous(request.getSession().getId());
@@ -453,7 +460,7 @@ public class SearchManager {
 		// Let auth system determine the current user.
 		try {
 			User user = (User)authMethodDetermineCurrentUser.invoke(authSystem, servlet, request);
-			logger.debug("User = " + user);
+			//logger.debug("User = " + user);
 			return user;
 		} catch (Exception e) {
 			throw new RuntimeException("Error determining current user", e);
@@ -493,6 +500,8 @@ public class SearchManager {
 	 * @return the index dir and mayViewContents setting
 	 */
 	private IndexParam getIndexParam(String indexName) {
+		//logger.debug("@PERF getIndexParam");
+		try {
 
 		// Already in the cache?
 		if (indexParam.containsKey(indexName)) {
@@ -523,6 +532,10 @@ public class SearchManager {
 		}
 
 		return null;
+		
+		} finally {
+			//logger.debug("@PERF getIndexParam EXIT");
+		}
 	}
 	
 	public File getIndexDir(String indexName) {
@@ -586,6 +599,9 @@ public class SearchManager {
 	// for call to _setPidField() and _setContentViewable()
 	public synchronized Searcher getSearcher(String indexName)
 			throws BlsException {
+		//logger.debug("@PERF getSearcher");
+		try {
+			
 		if (!isValidIndexName(indexName))
 			throw new IllegalIndexName(indexName);
 
@@ -650,6 +666,10 @@ public class SearchManager {
 		}
 
 		return searcher;
+		
+		} finally {
+			//logger.debug("@PERF getSearcher EXIT");
+		}
 	}
 
 	/**
@@ -824,6 +844,9 @@ public class SearchManager {
 	 */
 	public static int getLuceneDocIdFromPid(Searcher searcher, String pid)
 			{
+		//logger.debug("@PERF getLuceneDocIdFromPid");
+		try {
+		
 		String pidField = searcher.getIndexStructure().pidField(); // getIndexParam(indexName,
 																	// user).getPidField();
 		// Searcher searcher = getSearcher(indexName, user);
@@ -865,6 +888,10 @@ public class SearchManager {
 			}
 		}
 		return docResults.get(0).getDocId();
+		
+		} finally {
+			//logger.debug("@PERF getLuceneDocIdFromPid EXIT");
+		}
 	}
 
 	/**
@@ -1038,6 +1065,8 @@ public class SearchManager {
 	 */
 	private Job search(User user, SearchParameters searchParameters)
 			throws BlsException, InterruptedException {
+		//logger.debug("@PERF search");
+		try {
 		// Search the cache / running jobs for this search, create new if not
 		// found.
 		boolean performSearch = false;
@@ -1105,7 +1134,12 @@ public class SearchManager {
 			search.rethrowException();
 		}
 
+		search.incrRef();
 		return search;
+		
+		} finally {
+			//logger.debug("@PERF search EXIT");
+		}
 	}
 
 	public long getMinFreeMemForSearchMegs() {
@@ -1425,5 +1459,9 @@ public class SearchManager {
 			}
 	    });
 		return indices;
+	}
+
+	public void clearCache() {
+		cache.clearCache();
 	}
 }

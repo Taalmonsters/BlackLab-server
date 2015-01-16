@@ -60,4 +60,10 @@ public class JobHitsWindow extends Job {
 		return d;
 	}
 
+	@Override
+	protected void cleanup() {
+		window = null;
+		super.cleanup();
+	}
+
 }

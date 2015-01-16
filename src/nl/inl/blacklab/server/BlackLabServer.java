@@ -25,6 +25,7 @@ import nl.inl.util.Json;
 import nl.inl.util.LogUtil;
 import nl.inl.util.json.JSONObject;
 
+import org.apache.catalina.connector.ClientAbortException;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
@@ -91,10 +92,9 @@ public class BlackLabServer extends HttpServlet {
 		} catch (Exception e) {
 			throw new ServletException("Error reading JSON config file", e);
 		}
-
 		searchManager = new SearchManager(config);
-		
 		logger.info("BlackLab Server ready.");
+
 	}
 	
 	/**
@@ -175,6 +175,11 @@ public class BlackLabServer extends HttpServlet {
 			out.flush();
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException(e);
+		} catch (ClientAbortException e) {
+			// Client cancelled the request midway through.
+			// This is okay, don't raise the alarm.
+			logger.debug("(couldn't send response, client cancelled the request)");
+			return;
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}

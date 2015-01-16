@@ -11,9 +11,9 @@ import nl.inl.blacklab.index.Indexer;
 
 import org.apache.log4j.Logger;
 
-public class IndexJob {
+public class IndexTask {
 
-	private static final Logger logger = Logger.getLogger(IndexJob.class);
+	private static final Logger logger = Logger.getLogger(IndexTask.class);
 
 	/** The data we're indexing. We're responsible for closing the stream when
 	 *  we're done with it. */
@@ -32,7 +32,7 @@ public class IndexJob {
 	 * @param data (XML) input data
 	 * @param name (file) name for the input data
 	 */
-	public IndexJob(File indexDir, Class<? extends DocIndexer> docIndexerClass, InputStream data, String name) {
+	public IndexTask(File indexDir, Class<? extends DocIndexer> docIndexerClass, InputStream data, String name) {
 		this.indexDir = indexDir;
 		this.docIndexerClass = docIndexerClass;
 		this.data = data;

@@ -26,10 +26,15 @@ public class JobDocsGrouped extends Job {
 		// First, execute blocking docs search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithDocs docsSearch = searchMan.searchDocs(user, parNoGroup);
-		waitForJobToFinish(docsSearch);
-
-		// Now, group the docs.
-		docResults = docsSearch.getDocResults();
+		try {
+			waitForJobToFinish(docsSearch);
+	
+			// Now, group the docs.
+			docResults = docsSearch.getDocResults();
+		} finally {
+			docsSearch.decrRef();
+			docsSearch = null;
+		}
 		String groupBy = par.getString("group");
 		DocProperty groupProp = null;
 		if (groupBy == null)
@@ -68,5 +73,14 @@ public class JobDocsGrouped extends Job {
 		d.put("numberOfGroups", groups == null ? -1 : groups.numberOfGroups());
 		return d;
 	}
+
+	@Override
+	protected void cleanup() {
+		groups = null;
+		docResults = null;
+		super.cleanup();
+	}
+	
+	
 
 }

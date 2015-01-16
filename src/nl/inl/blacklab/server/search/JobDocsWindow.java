@@ -26,10 +26,16 @@ public class JobDocsWindow extends Job {
 	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		JobWithDocs docsSearch = searchMan.searchDocs(user, par);
-		waitForJobToFinish(docsSearch);
-
-		// Now, create a HitsWindow on these hits.
-		DocResults docResults = docsSearch.getDocResults();
+		DocResults docResults;
+		try {
+			waitForJobToFinish(docsSearch);
+	
+			// Now, create a HitsWindow on these hits.
+			docResults = docsSearch.getDocResults();
+		} finally {
+			docsSearch.decrRef();
+			docsSearch = null;
+		}
 		int first = par.getInteger("first");
 		requestedWindowSize = par.getInteger("number");
 		if (!docResults.sizeAtLeast(first + 1)) {
@@ -49,6 +55,12 @@ public class JobDocsWindow extends Job {
 		d.put("requestedWindowSize", requestedWindowSize);
 		d.put("actualWindowSize", window == null ? -1 : window.size());
 		return d;
+	}
+
+	@Override
+	protected void cleanup() {
+		window = null;
+		super.cleanup();
 	}
 
 }

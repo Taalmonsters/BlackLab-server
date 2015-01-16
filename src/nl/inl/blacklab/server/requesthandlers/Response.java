@@ -100,6 +100,10 @@ public class Response {
 		return error("ILLEGAL_REQUEST", "Illegal " + method + " request." + reason, HttpServletResponse.SC_METHOD_NOT_ALLOWED);
 	}
 
+	public static Response forbidden() {
+		return error("FORBIDDEN_REQUEST", "Forbidden operation.", HttpServletResponse.SC_FORBIDDEN);
+	}
+
 	public static Response forbidden(String reason) {
 		return error("FORBIDDEN_REQUEST", "Forbidden request. " + reason, HttpServletResponse.SC_FORBIDDEN);
 	}

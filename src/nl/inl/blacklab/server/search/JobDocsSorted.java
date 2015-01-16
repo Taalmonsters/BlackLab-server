@@ -19,10 +19,16 @@ public class JobDocsSorted extends JobWithDocs {
 		// First, execute blocking docs search.
 		SearchParameters parNoSort = par.copyWithout("sort");
 		JobWithDocs search = searchMan.searchDocs(user, parNoSort);
-		waitForJobToFinish(search);
-
-		// Now, sort the docs.
-		DocResults docsUnsorted = search.getDocResults();
+		DocResults docsUnsorted;
+		try {
+			waitForJobToFinish(search);
+	
+			// Now, sort the docs.
+			docsUnsorted = search.getDocResults();
+		} finally {
+			search.decrRef();
+			search = null;
+		}
 		String sortBy = par.getString("sort");
 		if (sortBy == null)
 			sortBy = "";

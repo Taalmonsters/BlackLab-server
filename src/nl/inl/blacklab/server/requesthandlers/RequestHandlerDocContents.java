@@ -53,13 +53,18 @@ public class RequestHandlerDocContents extends RequestHandler {
 			//@@@ TODO: filter on document!
 			searchParam.put("docpid", docId);
 			JobWithHits search = searchMan.searchHits(user, searchParam);
-			search.waitUntilFinished(SearchCache.maxSearchTimeSec);
-			if (!search.finished()) {
-				Response errObj = Response.searchTimedOut();
-				errObj.setOverrideType(type); // Application expects this MIME type, don't disappoint
-				return errObj;
+			try {
+				search.waitUntilFinished(SearchCache.maxSearchTimeSec);
+				if (!search.finished()) {
+					Response errObj = Response.searchTimedOut();
+					errObj.setOverrideType(type); // Application expects this MIME type, don't disappoint
+					return errObj;
+				}
+				hits = search.getHits();
+			} finally {
+				search.decrRef();
+				search = null;
 			}
-			hits = search.getHits();
 		}
 
 		String content;

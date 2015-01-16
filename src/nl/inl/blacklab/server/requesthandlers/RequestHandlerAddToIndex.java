@@ -12,7 +12,7 @@ import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.exceptions.IndexNotFound;
 import nl.inl.blacklab.server.exceptions.NotAuthorized;
-import nl.inl.blacklab.server.index.IndexJob;
+import nl.inl.blacklab.server.index.IndexTask;
 import nl.inl.blacklab.server.search.User;
 
 import org.apache.commons.fileupload.FileItem;
@@ -109,10 +109,10 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 					// TODO: re-open Searcher after indexing
 					// TODO: keep track of progress
 					// TODO: error handling
-					IndexJob job = new IndexJob(indexDir, DocIndexerTei.class, data, fileName);
-					job.run();
+					IndexTask task = new IndexTask(indexDir, DocIndexerTei.class, data, fileName);
+					task.run();
 					
-					//searchMan.addIndexJob(indexName, new IndexJob(is, fileName));
+					//searchMan.addIndexTask(indexName, new IndexTask(is, fileName));
 					
 					/*
 					// Write the file

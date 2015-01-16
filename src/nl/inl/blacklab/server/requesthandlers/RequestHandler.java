@@ -98,7 +98,7 @@ public abstract class RequestHandler {
 		
 		// If we're doing something with a private index, it must be our own.
 		boolean isPrivateIndex = false;
-		logger.debug("Got indexName = \"" + indexName + "\" (len=" + indexName.length() + ")");
+		//logger.debug("Got indexName = \"" + indexName + "\" (len=" + indexName.length() + ")");
 		String shortName = indexName;
 		if (indexName.contains(":")) {
 			isPrivateIndex = true;
@@ -133,19 +133,23 @@ public abstract class RequestHandler {
 			requestHandler = new RequestHandlerCreateIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
 		} else {
 			if (method.equals("POST")) {
-				if (!isPrivateIndex)
-					return Response.forbidden("Can only POST to private indices.");
-				if (indexName.length() == 0 && !resourceOrPathGiven) {
-					// POST to /blacklab-server/ : you probably meant PUT to /blacklab-server/indexName
-					return Response.methodNotAllowed("POST", "Create new index with PUT to /blacklab-server/indexName");
-				} else if (urlResource.equals("docs") && urlPathInfo.length() == 0) {
-					if (!SearchManager.isValidIndexName(indexName))
-						return Response.illegalIndexName(shortName);
-					
-					// POST to /blacklab-server/indexName/docs/ : add data to index
-					requestHandler = new RequestHandlerAddToIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
+				if (indexName.equals("cache-clear") && !resourceOrPathGiven && debugMode) {
+					requestHandler = new RequestHandlerClearCache(servlet, request, user, indexName, urlResource, urlPathInfo);
 				} else {
-					return Response.methodNotAllowed("POST", "Note that retrieval can only be done using GET.");
+					if (!isPrivateIndex)
+						return Response.forbidden("Can only POST to private indices.");
+					if (indexName.length() == 0 && !resourceOrPathGiven) {
+						// POST to /blacklab-server/ : you probably meant PUT to /blacklab-server/indexName
+						return Response.methodNotAllowed("POST", "Create new index with PUT to /blacklab-server/indexName");
+					} else if (urlResource.equals("docs") && urlPathInfo.length() == 0) {
+						if (!SearchManager.isValidIndexName(indexName))
+							return Response.illegalIndexName(shortName);
+						
+						// POST to /blacklab-server/indexName/docs/ : add data to index
+						requestHandler = new RequestHandlerAddToIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
+					} else {
+						return Response.methodNotAllowed("POST", "Note that retrieval can only be done using GET.");
+					}
 				}
 			} else if (method.equals("GET")) {
 				if (indexName.equals("cache-info") && !resourceOrPathGiven && debugMode) {

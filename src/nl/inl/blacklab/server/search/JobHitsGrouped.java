@@ -26,10 +26,15 @@ public class JobHitsGrouped extends Job {
 		// First, execute blocking hits search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithHits hitsSearch = searchMan.searchHits(user, parNoGroup);
-		waitForJobToFinish(hitsSearch);
-
-		// Now, group the hits.
-		hits = hitsSearch.getHits();
+		try {
+			waitForJobToFinish(hitsSearch);
+	
+			// Now, group the hits.
+			hits = hitsSearch.getHits();
+		} finally {
+			hitsSearch.decrRef();
+			hitsSearch = null;
+		}
 		String groupBy = par.getString("group");
 		HitProperty groupProp = null;
 		if (groupBy == null)
@@ -67,6 +72,13 @@ public class JobHitsGrouped extends Job {
 		d.put("hitsRetrieved", hits == null ? -1 : hits.countSoFarHitsRetrieved());
 		d.put("numberOfGroups", groups == null ? -1 : groups.numberOfGroups());
 		return d;
+	}
+
+	@Override
+	protected void cleanup() {
+		groups = null;
+		hits = null;
+		super.cleanup();
 	}
 
 }

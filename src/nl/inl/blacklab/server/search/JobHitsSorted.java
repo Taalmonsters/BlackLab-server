@@ -19,10 +19,16 @@ public class JobHitsSorted extends JobWithHits {
 		// First, execute blocking hits search.
 		SearchParameters parNoSort = par.copyWithout("sort");
 		JobWithHits hitsSearch = searchMan.searchHits(user, parNoSort);
-		waitForJobToFinish(hitsSearch);
-
-		// Now, sort the hits.
-		Hits hitsUnsorted = hitsSearch.getHits();
+		Hits hitsUnsorted;
+		try {
+			waitForJobToFinish(hitsSearch);
+	
+			// Now, sort the hits.
+			hitsUnsorted = hitsSearch.getHits();
+		} finally {
+			hitsSearch.decrRef();
+			hitsSearch = null;
+		}
 		String sortBy = par.getString("sort");
 		if (sortBy == null)
 			sortBy = "";

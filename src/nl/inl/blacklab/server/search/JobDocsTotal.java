@@ -9,7 +9,9 @@ import nl.inl.blacklab.server.exceptions.BlsException;
  */
 public class JobDocsTotal extends Job {
 
-	private JobWithDocs docsSearch;
+	//private JobWithDocs docsSearch;
+	
+	private DocResults docResults = null;
 
 	public JobDocsTotal(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
@@ -18,12 +20,17 @@ public class JobDocsTotal extends Job {
 	@Override
 	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking docs search.
-		docsSearch = searchMan.searchDocs(user, par);
-		waitForJobToFinish(docsSearch);
-
-		// Get the total number of docs (we ignore the return value because you can monitor progress
-		// and get the final total through the getDocResults() method yourself.
-		DocResults docResults = docsSearch.getDocResults();
+		JobWithDocs docsSearch = searchMan.searchDocs(user, par);
+		try {
+			waitForJobToFinish(docsSearch);
+	
+			// Get the total number of docs (we ignore the return value because you can monitor progress
+			// and get the final total through the getDocResults() method yourself.
+			docResults = docsSearch.getDocResults();
+		} finally {
+			docsSearch.decrRef();
+			docsSearch = null;
+		}
 		docResults.size();
 		if (Thread.interrupted()) {
 			throw new InterruptedException("Interrupted while determining total number of docs");
@@ -36,14 +43,20 @@ public class JobDocsTotal extends Job {
 	 * @return the DocResults object, or null if not available yet.
 	 */
 	public DocResults getDocResults() {
-		return docsSearch != null ? docsSearch.getDocResults() : null;
+		return docResults;
 	}
 
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
-		d.put("docsCounted", docsSearch != null && docsSearch.getDocResults().getOriginalHits() != null ? docsSearch.getDocResults().getOriginalHits().countSoFarDocsCounted() : -1);
+		d.put("docsCounted", docResults.getOriginalHits() != null ? docResults.getOriginalHits().countSoFarDocsCounted() : -1);
 		return d;
+	}
+
+	@Override
+	protected void cleanup() {
+		docResults = null;
+		super.cleanup();
 	}
 
 }

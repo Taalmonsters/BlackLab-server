@@ -30,10 +30,15 @@ public class JobFacets extends Job {
 		// First, execute blocking docs search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithDocs docsSearch = searchMan.searchDocs(user, parNoGroup);
-		waitForJobToFinish(docsSearch);
-
-		// Now, group the docs according to the requested facets.
-		docResults = docsSearch.getDocResults();
+		try {
+			waitForJobToFinish(docsSearch);
+	
+			// Now, group the docs according to the requested facets.
+			docResults = docsSearch.getDocResults();
+		} finally {
+			docsSearch.decrRef();
+			docsSearch = null;
+		}
 		String facets = par.getString("facets");
 		if (facets == null) {
 			// If no facets were specified, we shouldn't even be here.
@@ -73,6 +78,13 @@ public class JobFacets extends Job {
 		d.put("numberOfDocResults", docResults == null ? -1 : docResults.size());
 		d.put("numberOfFacets", counts == null ? -1 : counts.size());
 		return d;
+	}
+
+	@Override
+	protected void cleanup() {
+		counts = null;
+		docResults = null;
+		super.cleanup();
 	}
 
 }

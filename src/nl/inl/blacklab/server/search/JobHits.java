@@ -83,4 +83,11 @@ public class JobHits extends JobWithHits {
 		return filterQuery;
 	}
 
+	@Override
+	protected void cleanup() {
+		textPattern = null;
+		filterQuery = null;
+		super.cleanup();
+	}
+
 }

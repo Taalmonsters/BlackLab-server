@@ -26,4 +26,10 @@ public class JobWithDocs extends Job {
 		return d;
 	}
 
+	@Override
+	protected void cleanup() {
+		docResults = null;
+		super.cleanup();
+	}
+
 }
