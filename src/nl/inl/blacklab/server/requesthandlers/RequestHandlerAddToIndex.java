@@ -7,6 +7,8 @@ import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.index.IndexListener;
+import nl.inl.blacklab.index.IndexListenerReportConsole;
 import nl.inl.blacklab.indexers.DocIndexerTei;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.exceptions.BlsException;
@@ -16,6 +18,7 @@ import nl.inl.blacklab.server.index.IndexTask;
 import nl.inl.blacklab.server.search.User;
 
 import org.apache.commons.fileupload.FileItem;
+import org.apache.commons.fileupload.FileUploadBase;
 import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
@@ -25,11 +28,13 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
  */
 public class RequestHandlerAddToIndex extends RequestHandler {
 	
-	private static final long MAX_UPLOAD_SIZE = 20000000;
+	private static final long MAX_UPLOAD_SIZE = 25 * 1024 * 1024;
 
-	private static final int MAX_MEM_UPLOAD_SIZE = 1000000;
+	private static final int MAX_MEM_UPLOAD_SIZE = 5 * 1024 * 1024;
 	
 	private static final File TMP_DIR = new File(System.getProperty("java.io.tmpdir"));
+	
+	String indexError = null;
 
 	public RequestHandlerAddToIndex(BlackLabServer servlet,
 			HttpServletRequest request, User user, String indexName,
@@ -70,6 +75,8 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 			List<FileItem> fileItems;
 			try {
 				fileItems = upload.parseRequest(request);
+			} catch (FileUploadBase.SizeLimitExceededException e) {
+				return Response.badRequest("ERROR_UPLOADING_FILE", "File too large (maximum " + MAX_UPLOAD_SIZE / 1024 / 1024 + " MB)");
 			} catch (FileUploadException e) {
 				return Response.badRequest("ERROR_UPLOADING_FILE", e.getMessage());
 			}
@@ -103,15 +110,39 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 						// Get the uploaded file parameters
 						String fileName = fi.getName();
 						
-						InputStream data = fi.getInputStream();
-	
-						// TODO: do this in the background
-						// TODO: lock the index while indexing
-						// TODO: re-open Searcher after indexing
-						// TODO: keep track of progress
-						// TODO: error handling
-						IndexTask task = new IndexTask(indexDir, DocIndexerTei.class, data, fileName);
-						task.run();
+						File tmpFile = null;
+						IndexTask task;
+						IndexListener listener = new IndexListenerReportConsole() {
+							@Override
+							public boolean errorOccurred(String error,
+									String unitType, File unit, File subunit) {
+								indexError = error + " in " + unit + 
+										(subunit == null ? "" : " (" + subunit + ")");
+								super.errorOccurred(error, unitType, unit, subunit);
+								return false; // Don't continue indexing
+							}
+						};
+						try {
+							if (fileName.endsWith(".zip")) {
+								// We can only index zip from a file, not from a stream.
+								tmpFile = File.createTempFile("blsupload", ".tmp.zip");
+								fi.write(tmpFile);
+								task = new IndexTask(indexDir, DocIndexerTei.class, tmpFile, fileName, listener);
+							} else {
+								InputStream data = fi.getInputStream();
+								
+								// TODO: do this in the background
+								// TODO: lock the index while indexing
+								// TODO: re-open Searcher after indexing
+								// TODO: keep track of progress
+								// TODO: error handling
+								task = new IndexTask(indexDir, DocIndexerTei.class, data, fileName, listener);
+							}
+							task.run();
+						} finally {
+							if (tmpFile != null)
+								tmpFile.delete();
+						}
 						
 						//searchMan.addIndexTask(indexName, new IndexTask(is, fileName));
 						
