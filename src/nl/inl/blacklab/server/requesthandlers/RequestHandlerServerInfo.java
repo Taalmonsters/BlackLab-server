@@ -5,9 +5,11 @@ import java.util.Collection;
 import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.search.Searcher;
+import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.server.BlackLabServer;
-import nl.inl.blacklab.server.dataobject.DataObjectList;
+import nl.inl.blacklab.server.dataobject.DataObjectMapAttribute;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.search.User;
 
 /**
@@ -20,11 +22,20 @@ public class RequestHandlerServerInfo extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() {
+	public Response handle() throws BlsException {
 		Collection<String> indices = searchMan.getAllAvailableIndices(user.getUserId());
-		DataObjectList doIndices = new DataObjectList("index");
+		DataObjectMapAttribute doIndices = new DataObjectMapAttribute("index", "name");
+		//DataObjectList doIndices = new DataObjectList("index");
 		for (String indexName: indices) {
-			doIndices.add(indexName); //, doIndex);
+			DataObjectMapElement doIndex = new DataObjectMapElement();
+			Searcher searcher = searchMan.getSearcher(indexName);
+			IndexStructure struct = searcher.getIndexStructure();
+			doIndex.put("displayName", struct.getDisplayName());
+			doIndex.put("status", searchMan.getIndexStatus(indexName));
+			String documentFormat = struct.getDocumentFormat();
+			if (documentFormat != null && documentFormat.length() > 0)
+				doIndex.put("documentFormat", documentFormat);
+			doIndices.put(indexName, doIndex); //, doIndex);
 		}
 		
 		DataObjectMapElement doUser = new DataObjectMapElement();

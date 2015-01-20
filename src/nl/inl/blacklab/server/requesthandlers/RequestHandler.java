@@ -126,22 +126,20 @@ public abstract class RequestHandler {
 				return Response.forbidden("You can only delete your own private indices.");
 			requestHandler = new RequestHandlerDeleteIndex(servlet, request, user, indexName, null, null);
 		} else if (method.equals("PUT")) {
-			if (indexName.length() == 0 || urlResource.length() > 0 || urlPathInfo.length() > 0)
-				return Response.methodNotAllowed("PUT", "Create new index with PUT to /blacklab-server/indexName");
-			if (!isPrivateIndex)
-				return Response.forbidden("You can only create indices in your private collection.");
-			requestHandler = new RequestHandlerCreateIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
+			return Response.methodNotAllowed("PUT", "Create new index with POST to /blacklab-server");
 		} else {
 			if (method.equals("POST")) {
-				if (indexName.equals("cache-clear") && !resourceOrPathGiven && debugMode) {
+				if (indexName.length() == 0 && !resourceOrPathGiven) {
+					// POST to /blacklab-server/ : create private index
+					if (urlResource.length() > 0 || urlPathInfo.length() > 0)
+						return Response.methodNotAllowed("PUT", "Create new index with POST to /blacklab-server");
+					requestHandler = new RequestHandlerCreateIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
+				} else if (indexName.equals("cache-clear") && !resourceOrPathGiven && debugMode) {
 					requestHandler = new RequestHandlerClearCache(servlet, request, user, indexName, urlResource, urlPathInfo);
 				} else {
 					if (!isPrivateIndex)
 						return Response.forbidden("Can only POST to private indices.");
-					if (indexName.length() == 0 && !resourceOrPathGiven) {
-						// POST to /blacklab-server/ : you probably meant PUT to /blacklab-server/indexName
-						return Response.methodNotAllowed("POST", "Create new index with PUT to /blacklab-server/indexName");
-					} else if (urlResource.equals("docs") && urlPathInfo.length() == 0) {
+					if (urlResource.equals("docs") && urlPathInfo.length() == 0) {
 						if (!SearchManager.isValidIndexName(indexName))
 							return Response.illegalIndexName(shortName);
 						
@@ -200,6 +198,8 @@ public abstract class RequestHandler {
 						Constructor<? extends RequestHandler> ctor = handlerClass.getConstructor(BlackLabServer.class, HttpServletRequest.class, User.class, String.class, String.class, String.class);
 						//servlet.getSearchManager().getSearcher(indexName); // make sure it's open
 						requestHandler = ctor.newInstance(servlet, request, user, indexName, urlResource, urlPathInfo);
+					} catch (BlsException e) {
+						return Response.error(e.getBlsErrorCode(), e.getMessage(), e.getHttpStatusCode());
 					} catch (NoSuchMethodException e) {
 						// (can only happen if the required constructor is not available in the RequestHandler subclass)
 						logger.error("Could not get constructor to create request handler", e);

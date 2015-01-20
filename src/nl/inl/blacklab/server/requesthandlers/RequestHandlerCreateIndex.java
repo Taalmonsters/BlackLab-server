@@ -17,23 +17,23 @@ public class RequestHandlerCreateIndex extends RequestHandler {
 
 	@Override
 	public Response handle() throws BlsException {
-		if (indexName != null && indexName.length() > 0) {
-			// Create index and return success
-			try {
-				searchMan.createIndex(indexName);
-				
-				return Response.status("SUCCESS", "Index created succesfully.", HttpServletResponse.SC_CREATED);
-				//DataObjectMapElement response = DataObject.statusObject("SUCCESS", "Index created succesfully.");
-				//response.put("url", ServletUtil.getServletBaseUrl(request) + "/" + indexName);
-				//return new Response(response);
-			} catch (BlsException e) {
-				throw e;
-			} catch (Exception e) {
-				return Response.internalError(e, debugMode, 11);
-			}
+		// Create index and return success
+		try {
+			String newIndexName = request.getParameter("name");
+			if (newIndexName == null || newIndexName.length() == 0)
+				return Response.badRequest("ILLEGAL_INDEX_NAME", "You didn't specify the required name parameter.");
+			String displayName = request.getParameter("display");
+			String documentFormat = request.getParameter("format");
+			searchMan.createIndex(newIndexName, displayName, documentFormat);
+			
+			return Response.status("SUCCESS", "Index created succesfully.", HttpServletResponse.SC_CREATED);
+			//DataObjectMapElement response = DataObject.statusObject("SUCCESS", "Index created succesfully.");
+			//response.put("url", ServletUtil.getServletBaseUrl(request) + "/" + indexName);
+			//return new Response(response);
+		} catch (BlsException e) {
+			throw e;
+		} catch (Exception e) {
+			return Response.internalError(e, debugMode, 11);
 		}
-		
-		return Response.badRequest("CANNOT_CREATE_INDEX", "Could not create index '" + indexName + "'. Specify a valid name.");
 	}
-
 }

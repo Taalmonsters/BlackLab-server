@@ -59,7 +59,7 @@ public class Response {
 		return r;
 	}
 	
-	// Highest internal error code so far: 27
+	// Highest internal error code so far: 28
 
 	public static Response internalError(Exception e, boolean debugMode, int code) {
 		logger.debug("INTERNAL ERROR " + code + ":");

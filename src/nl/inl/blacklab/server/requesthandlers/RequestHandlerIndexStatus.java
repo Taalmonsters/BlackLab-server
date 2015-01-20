@@ -4,6 +4,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
+import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.search.User;
 
 /**
@@ -16,7 +17,7 @@ public class RequestHandlerIndexStatus extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() {
+	public Response handle() throws BlsException {
 		//Searcher searcher = getSearcher();
 		//IndexStructure struct = searcher.getIndexStructure();
 

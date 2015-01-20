@@ -45,7 +45,7 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 			throw new IndexNotFound(indexName);
 		
 		String status = searchMan.getIndexStatus(indexName);
-		if (!status.equals("available"))
+		if (!status.equals("available") && !status.equals("empty"))
 			return Response.unavailable(indexName, status);
 
 		// Check that we have a file upload request
@@ -81,48 +81,45 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 				return Response.indexNotFound(indexName);
 			File indexDir = searchMan.getIndexDir(indexName);
 			int filesDone = 0;
-			while (i.hasNext()) {
-				FileItem fi = i.next();
-				if (!fi.isFormField()) {
-					
-					if (!fi.getFieldName().equals("data"))
-						return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. File should be uploaded using the 'data' field.");
-					
-					if (fi.getSize() > MAX_UPLOAD_SIZE)
-						return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. Too large.");
-					
-					if (filesDone != 0)
-						return Response.internalError("Tried to upload more than one file.", debugMode, 14);
-					
-					// Get the uploaded file parameters
-					String fileName = fi.getName();
-					//String contentType = fi.getContentType();
-					//boolean isInMemory = fi.isInMemory();
-					/*System.out.println("fileName = " + fileName);
-					System.out.println("contentType = " + contentType);
-					System.out.println("isInMemory = " + isInMemory);*/
-					
-					InputStream data = fi.getInputStream();
-
-					// TODO: do this in the background
-					// TODO: lock the index while indexing
-					// TODO: re-open Searcher after indexing
-					// TODO: keep track of progress
-					// TODO: error handling
-					IndexTask task = new IndexTask(indexDir, DocIndexerTei.class, data, fileName);
-					task.run();
-					
-					//searchMan.addIndexTask(indexName, new IndexTask(is, fileName));
-					
-					/*
-					// Write the file
-					fileName = new File(fileName).getName();  // strip path, if any
-					File file = new File(indexDir, fileName);
-					fi.write(file);
-					*/
-					
-					filesDone++;
+			String newStatus = searchMan.setIndexStatus(indexName, "available|empty", "busy");
+			searchMan.closeSearcher(indexName);
+			if (!newStatus.equals("busy")) {
+				return Response.internalError("Could not set index status to busy (status was " + newStatus + ")", debugMode, 28);
+			}
+			try {
+				while (i.hasNext()) {
+					FileItem fi = i.next();
+					if (!fi.isFormField()) {
+						
+						if (!fi.getFieldName().equals("data"))
+							return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. File should be uploaded using the 'data' field.");
+						
+						if (fi.getSize() > MAX_UPLOAD_SIZE)
+							return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. Too large.");
+						
+						if (filesDone != 0)
+							return Response.internalError("Tried to upload more than one file.", debugMode, 14);
+						
+						// Get the uploaded file parameters
+						String fileName = fi.getName();
+						
+						InputStream data = fi.getInputStream();
+	
+						// TODO: do this in the background
+						// TODO: lock the index while indexing
+						// TODO: re-open Searcher after indexing
+						// TODO: keep track of progress
+						// TODO: error handling
+						IndexTask task = new IndexTask(indexDir, DocIndexerTei.class, data, fileName);
+						task.run();
+						
+						//searchMan.addIndexTask(indexName, new IndexTask(is, fileName));
+						
+						filesDone++;
+					}
 				}
+			} finally {
+				searchMan.setIndexStatus(indexName, null, "available");
 			}
 		} catch (Exception ex) {
 			return Response.internalError(ex, debugMode, 26);

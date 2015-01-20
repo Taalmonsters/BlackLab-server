@@ -586,6 +586,16 @@ public class SearchManager {
 		return indexName.matches("[a-zA-Z][a-zA-Z0-9_\\-]*");
 	}
 
+	public void closeSearcher(String indexName) throws BlsException {
+		if (!isValidIndexName(indexName))
+			throw new IllegalIndexName(indexName);
+		if (searchers.containsKey(indexName)) {
+			searchers.get(indexName).close();
+			searchers.remove(indexName);
+			cache.clearCacheForIndex(indexName);
+		}
+	}
+	
 	/**
 	 * Get the Searcher object for the specified index.
 	 * 
@@ -611,6 +621,7 @@ public class SearchManager {
 				return searcher;
 			// Index was (re)moved; remove Searcher from cache.
 			searchers.remove(indexName);
+			cache.clearCacheForIndex(indexName);
 			// Maybe we can find an index with this name elsewhere?
 		}
 		IndexParam par = getIndexParam(indexName);
@@ -699,13 +710,15 @@ public class SearchManager {
 	 * 
 	 * @param indexName
 	 *            the index name, including user prefix
+	 * @param displayName 
+	 * @param documentFormat 
 	 * 
 	 * @throws BlsException
 	 *             if we're not allowed to create the index for whatever reason
 	 * @throws IOException
 	 *             if creation failed unexpectedly
 	 */
-	public void createIndex(String indexName) throws BlsException,
+	public void createIndex(String indexName, String displayName, String documentFormat) throws BlsException,
 			IOException {
 		if (!indexName.contains(":"))
 			throw new NotAuthorized("Can only create private indices.");
@@ -727,7 +740,7 @@ public class SearchManager {
 			throw new InternalServerError("Could not create index. Cannot write in user dir.", 16);
 
 		File indexDir = new File(userDir, indexNameWithoutUsePrefix);
-		Searcher searcher = Searcher.createIndex(indexDir);
+		Searcher searcher = Searcher.createIndex(indexDir, displayName, documentFormat);
 		searcher.close();
 	}
 
@@ -1404,12 +1417,18 @@ public class SearchManager {
 	 * @param indexName
 	 *            the index
 	 * @return the current status
+	 * @throws BlsException 
 	 */
-	public String getIndexStatus(String indexName) {
+	public String getIndexStatus(String indexName) throws BlsException {
 		synchronized (indexStatus) {
 			String status = indexStatus.get(indexName);
-			if (status == null)
-				status = "available";
+			if (status == null) {
+				if (getSearcher(indexName).isEmpty()) {
+					status = "empty";
+				} else {
+					status = "available";
+				}
+			}
 			return status;
 		}
 	}
@@ -1424,16 +1443,18 @@ public class SearchManager {
 	 * @param indexName
 	 *            the index to set the status for
 	 * @param checkOldStatus
-	 *            only set the new status if this is the current status
+	 *            only set the new status if this pattern matches the current status;
+	 *            if null, ignore it.
 	 * @param status
 	 *            the new status
 	 * @return the resulting status of the index
+	 * @throws BlsException 
 	 */
 	public String setIndexStatus(String indexName, String checkOldStatus,
-			String status) {
+			String status) throws BlsException {
 		synchronized (indexStatus) {
 			String oldStatus = getIndexStatus(indexName);
-			if (!oldStatus.equals(checkOldStatus))
+			if (checkOldStatus != null && !oldStatus.matches(checkOldStatus))
 				return oldStatus;
 			indexStatus.put(indexName, status);
 			return status;
@@ -1464,4 +1485,5 @@ public class SearchManager {
 	public void clearCache() {
 		cache.clearCache();
 	}
+
 }
