@@ -32,7 +32,7 @@ public class IndexTask {
 
 	private IndexListener decoratedListener;
 	
-	boolean errorOccurred = false;
+	String indexError = null;
 
 	/**
 	 * Construct a new SearchThread
@@ -65,7 +65,7 @@ public class IndexTask {
 			@Override
 			public boolean errorOccurred(String error, String unitType,
 					File unit, File subunit) {
-				errorOccurred = true;
+				indexError = error;
 				return super.errorOccurred(error, unitType, unit, subunit);
 			}
 		};
@@ -76,6 +76,8 @@ public class IndexTask {
 		try {
 			indexer = new Indexer(indexDir, false, docIndexerClass);
 			indexer.setListener(decoratedListener);
+			indexer.setContinueAfterInputError(false);
+			indexer.setRethrowInputError(false);
 			try {
 				if (data == null && dataFile != null) {
 					// Used for zip files, possibly other types in the future.
@@ -97,13 +99,20 @@ public class IndexTask {
 			} catch (Exception e) {
 				logger.warn("An error occurred while indexing, rolling back changes: " + e.getMessage());
 				indexer.rollback();
+				indexer = null;
 				throw e;
 			} finally {
-				if (errorOccurred) {
-					indexer.rollback();
-					errorOccurred = false;
+				if (indexError != null) {
+					logger.warn("An error occurred while indexing, rolling back changes: " + indexError);
+					if (indexer != null)
+						indexer.rollback();
+					indexer = null;
+					indexError = null;
+				} else {
+					if (indexer != null)
+						indexer.close();
+					indexer = null;
 				}
-				indexer.close();
 			}
 		} finally {
 			if (data != null)

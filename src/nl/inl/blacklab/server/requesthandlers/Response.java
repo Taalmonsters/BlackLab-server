@@ -83,6 +83,10 @@ public class Response {
 		return r;
 	}
 	
+	public static Response success(String msg) {
+		return status("SUCCESS", msg, HttpServletResponse.SC_OK);
+	}
+
 	public static Response accepted() {
 		return status("SUCCESS", "Documents uploaded succesfully; indexing started.", HttpServletResponse.SC_ACCEPTED);
 	}

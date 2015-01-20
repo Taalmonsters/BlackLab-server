@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import nl.inl.blacklab.index.IndexListener;
 import nl.inl.blacklab.index.IndexListenerReportConsole;
@@ -156,11 +157,8 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 			return Response.internalError(ex, debugMode, 26);
 		}
 
-//		DataObjectMapElement responseData = new DataObjectMapElement();
-//		responseData.put("result", "nothing");
-//		Response r = new Response(responseData);
-//		r.setCacheAllowed(false);
-//		return r;
-		return Response.accepted();
+		if (indexError != null)
+			return Response.badRequest("INDEX_ERROR", "An error occurred during indexing. (error text: " + indexError + ")");
+		return Response.success("Data added succesfully."); //Response.accepted();
 	}
 }
