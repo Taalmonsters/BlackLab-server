@@ -378,6 +378,9 @@ public class SearchManager {
 				logger.error("Configured user collections dir not found or not readable: "
 						+ userCollectionsDir);
 				userCollectionsDir = null;
+			} else {
+				indicesFound = true; // even if it contains none now, it
+				                     // could in the future
 			}
 		}
 		
@@ -478,8 +481,13 @@ public class SearchManager {
 		if (userCollectionsDir == null)
 			return null;
 		File dir = new File(userCollectionsDir, FileUtil.sanitizeFilename(userId));
-		if (!dir.canRead())
+		if (!dir.exists())
+			dir.mkdir();
+		if (!dir.canRead()) {
+			logger.error("Cannot read collections dir for user: " + dir);
+			logger.error("(userCollectionsDir = " + userCollectionsDir);
 			return null;
+		}
 		return dir;
 	}
 
@@ -736,8 +744,8 @@ public class SearchManager {
 							+ MAX_USER_INDICES + " indices.");
 
 		File userDir = getUserCollectionDir(userId);
-		if (!userDir.canWrite())
-			throw new InternalServerError("Could not create index. Cannot write in user dir.", 16);
+		if (userDir == null || !userDir.canWrite())
+			throw new InternalServerError("Could not create index. Cannot write in user dir: " + userDir, 16);
 
 		File indexDir = new File(userDir, indexNameWithoutUsePrefix);
 		Searcher searcher = Searcher.createIndex(indexDir, displayName, documentFormat);

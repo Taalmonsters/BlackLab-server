@@ -24,6 +24,9 @@ public class RequestHandlerCreateIndex extends RequestHandler {
 				return Response.badRequest("ILLEGAL_INDEX_NAME", "You didn't specify the required name parameter.");
 			String displayName = request.getParameter("display");
 			String documentFormat = request.getParameter("format");
+
+			debug(logger, "REQ create index: " + newIndexName + ", " + displayName + ", " + documentFormat);
+			
 			searchMan.createIndex(newIndexName, displayName, documentFormat);
 			
 			return Response.status("SUCCESS", "Index created succesfully.", HttpServletResponse.SC_CREATED);

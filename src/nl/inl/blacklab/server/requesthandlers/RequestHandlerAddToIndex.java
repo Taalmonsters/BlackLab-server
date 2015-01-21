@@ -6,7 +6,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import nl.inl.blacklab.index.IndexListener;
 import nl.inl.blacklab.index.IndexListenerReportConsole;
@@ -45,6 +44,8 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 
 	@Override
 	public Response handle() throws BlsException {
+		debug(logger, "REQ add data: " + indexName);
+		
 		if (!indexName.contains(":"))
 			throw new NotAuthorized("Can only add to private indices.");
 		if (!searchMan.indexExists(indexName))

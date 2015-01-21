@@ -131,8 +131,6 @@ public abstract class RequestHandler {
 			if (method.equals("POST")) {
 				if (indexName.length() == 0 && !resourceOrPathGiven) {
 					// POST to /blacklab-server/ : create private index
-					if (urlResource.length() > 0 || urlPathInfo.length() > 0)
-						return Response.methodNotAllowed("PUT", "Create new index with POST to /blacklab-server");
 					requestHandler = new RequestHandlerCreateIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
 				} else if (indexName.equals("cache-clear") && !resourceOrPathGiven && debugMode) {
 					requestHandler = new RequestHandlerClearCache(servlet, request, user, indexName, urlResource, urlPathInfo);
