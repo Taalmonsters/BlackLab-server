@@ -35,7 +35,10 @@ public class RequestHandlerServerInfo extends RequestHandler {
 			String documentFormat = struct.getDocumentFormat();
 			if (documentFormat != null && documentFormat.length() > 0)
 				doIndex.put("documentFormat", documentFormat);
-			doIndices.put(indexName, doIndex); //, doIndex);
+			doIndex.put("timeModified", struct.getTimeModified());
+			if (struct.getTokenCount() > 0)
+				doIndex.put("tokenCount", struct.getTokenCount());
+			doIndices.put(indexName, doIndex);
 		}
 		
 		DataObjectMapElement doUser = new DataObjectMapElement();

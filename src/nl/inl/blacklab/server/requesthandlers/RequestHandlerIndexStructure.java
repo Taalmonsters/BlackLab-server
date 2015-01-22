@@ -87,6 +87,8 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		String documentFormat = struct.getDocumentFormat();
 		if (documentFormat != null && documentFormat.length() > 0)
 			response.put("documentFormat", documentFormat);
+		if (struct.getTokenCount() > 0)
+			response.put("tokenCount", struct.getTokenCount());
 		response.put("versionInfo", doVersionInfo);
 		response.put("fieldInfo", doFieldInfo);
 		
