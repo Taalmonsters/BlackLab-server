@@ -719,8 +719,7 @@ public class SearchManager {
 	 * @param indexName
 	 *            the index name, including user prefix
 	 * @param displayName 
-	 * @param documentFormat 
-	 * 
+	 * @param documentFormat the document format identifier (e.g. tei, folia, ..)
 	 * @throws BlsException
 	 *             if we're not allowed to create the index for whatever reason
 	 * @throws IOException

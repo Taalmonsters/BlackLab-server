@@ -10,7 +10,7 @@ import nl.inl.blacklab.index.DocIndexer;
 import nl.inl.blacklab.index.IndexListener;
 import nl.inl.blacklab.index.IndexListenerDecorator;
 import nl.inl.blacklab.index.Indexer;
-import nl.inl.blacklab.indexers.DocIndexerTei;
+import nl.inl.blacklab.tools.DocumentFormats;
 
 import org.apache.log4j.Logger;
 
@@ -26,8 +26,6 @@ public class IndexTask {
 
 	private File indexDir;
 
-	private Class<? extends DocIndexer> docIndexerClass;
-
 	private File dataFile;
 
 	private IndexListener decoratedListener;
@@ -37,24 +35,19 @@ public class IndexTask {
 	/**
 	 * Construct a new SearchThread
 	 * @param indexDir directory of index to add to
-	 * @param docIndexerClass DocIndexer class to use (=input type)
 	 * @param data (XML) input data
 	 * @param name (file) name for the input data
 	 * @param listener the index listener to use
 	 */
-	public IndexTask(File indexDir, Class<? extends DocIndexer> docIndexerClass, 
-			InputStream data, String name, IndexListener listener) {
+	public IndexTask(File indexDir, InputStream data, String name, IndexListener listener) {
 		this.indexDir = indexDir;
-		this.docIndexerClass = docIndexerClass;
 		this.data = data;
 		this.name = name;
 		setListener(listener);
 	}
 
-	public IndexTask(File indexDir, Class<DocIndexerTei> docIndexerClass,
-			File dataFile, String name, IndexListener listener) {
+	public IndexTask(File indexDir, File dataFile, String name, IndexListener listener) {
 		this.indexDir = indexDir;
-		this.docIndexerClass = docIndexerClass;
 		this.dataFile = dataFile;
 		this.name = name;
 		setListener(listener);
@@ -74,7 +67,16 @@ public class IndexTask {
 	public void run() throws Exception {
 		Indexer indexer = null;
 		try {
-			indexer = new Indexer(indexDir, false, docIndexerClass);
+			indexer = new Indexer(indexDir, false, null);
+			
+			// We created the Indexer with a null DocIndexer class.
+			// Now we figure out what the indices' own document format is,
+			// resolve it to a DocIndexer class and update the Indexer with it.
+			String docFormat = indexer.getSearcher().getIndexStructure().getDocumentFormat();
+			Class<? extends DocIndexer> docIndexerClass;
+			docIndexerClass = DocumentFormats.getIndexerClass(docFormat);
+			indexer.setDocIndexer(docIndexerClass);
+			
 			indexer.setListener(decoratedListener);
 			indexer.setContinueAfterInputError(false);
 			indexer.setRethrowInputError(false);

@@ -9,7 +9,6 @@ import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.index.IndexListener;
 import nl.inl.blacklab.index.IndexListenerReportConsole;
-import nl.inl.blacklab.indexers.DocIndexerTei;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.exceptions.IndexNotFound;
@@ -129,7 +128,7 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 								// We can only index zip from a file, not from a stream.
 								tmpFile = File.createTempFile("blsupload", ".tmp.zip");
 								fi.write(tmpFile);
-								task = new IndexTask(indexDir, DocIndexerTei.class, tmpFile, fileName, listener);
+								task = new IndexTask(indexDir, tmpFile, fileName, listener);
 							} else {
 								InputStream data = fi.getInputStream();
 								
@@ -138,7 +137,7 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 								// TODO: re-open Searcher after indexing
 								// TODO: keep track of progress
 								// TODO: error handling
-								task = new IndexTask(indexDir, DocIndexerTei.class, data, fileName, listener);
+								task = new IndexTask(indexDir, data, fileName, listener);
 							}
 							task.run();
 						} finally {
