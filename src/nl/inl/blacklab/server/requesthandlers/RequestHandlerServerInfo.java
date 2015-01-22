@@ -40,6 +40,8 @@ public class RequestHandlerServerInfo extends RequestHandler {
 		
 		DataObjectMapElement doUser = new DataObjectMapElement();
 		doUser.put("loggedIn", user.isLoggedIn());
+		if (user.isLoggedIn())
+			doUser.put("id", user.getUserId());
 		doUser.put("canCreateIndex", user.isLoggedIn() ? searchMan.canCreateIndex(user.getUserId()) : false);
 
 		DataObjectMapElement response = new DataObjectMapElement();

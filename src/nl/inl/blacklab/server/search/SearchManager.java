@@ -480,7 +480,7 @@ public class SearchManager {
 	private File getUserCollectionDir(String userId) {
 		if (userCollectionsDir == null)
 			return null;
-		File dir = new File(userCollectionsDir, FileUtil.sanitizeFilename(userId));
+		File dir = new File(userCollectionsDir, User.getUserDirNameFromId(userId));
 		if (!dir.exists())
 			dir.mkdir();
 		if (!dir.canRead()) {
