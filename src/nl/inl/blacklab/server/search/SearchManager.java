@@ -36,6 +36,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.dataobject.DataObjectString;
 import nl.inl.blacklab.server.exceptions.BadRequest;
 import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.ConfigurationException;
 import nl.inl.blacklab.server.exceptions.IllegalIndexName;
 import nl.inl.blacklab.server.exceptions.IndexNotFound;
 import nl.inl.blacklab.server.exceptions.InternalServerError;
@@ -47,6 +48,7 @@ import nl.inl.util.FileUtil.FileTask;
 import nl.inl.util.MemoryUtil;
 import nl.inl.util.ThreadEtiquette;
 import nl.inl.util.json.JSONArray;
+import nl.inl.util.json.JSONException;
 import nl.inl.util.json.JSONObject;
 
 import org.apache.log4j.Logger;
@@ -65,12 +67,12 @@ public class SearchManager {
 	public static final String ILLEGAL_NAME_ERROR = "is not a valid index name (only letters, digits, underscores and dashes allowed, and must start with a letter)";
 	
 	/**
-	 * If true (as it should be for production use), we try to make
-	 * sure threads yield the CPU regularly and we terminate threads that
-	 * take too long.
-	 * EXPERIMENTAL
+	 * If enabled, this makes sure the SearchCache will follow the behaviour
+	 * rules set in blacklab-server.json to lowprio/pause searches in certain
+	 * situations under certain loads.
+	 * (EXPERIMENTAL)
 	 */
-	static final boolean ENABLE_THREAD_ETIQUETTE = false;
+	static final boolean ENABLE_THREAD_ETIQUETTE = true;
 
 	/**
 	 * A file filter that returns readable directories only; used for scanning
@@ -212,209 +214,211 @@ public class SearchManager {
 	/** The method to invoke for determining the current user. */
 	private Method authMethodDetermineCurrentUser;
 	
-	public SearchManager(JSONObject properties) {
+	public SearchManager(JSONObject properties) throws ConfigurationException {
 		logger.debug("SearchManager created");
 
-		// this.properties = properties;
-		if (properties.has("debugModeIps")) {
-			JSONArray jsonDebugModeIps = properties
-					.getJSONArray("debugModeIps");
-			debugModeIps = new HashSet<String>();
-			for (int i = 0; i < jsonDebugModeIps.length(); i++) {
-				debugModeIps.add(jsonDebugModeIps.getString(i));
-			}
-		}
-
-		// Request properties
-		if (properties.has("requests")) {
-			JSONObject reqProp = properties.getJSONObject("requests");
-			defaultOutputType = DataFormat.XML; // XML if nothing specified
-												// (because
-												// of browser's default Accept
-												// header)
-			if (reqProp.has("defaultOutputType"))
-				defaultOutputType = ServletUtil.getOutputTypeFromString(
-						reqProp.getString("defaultOutputType"), DataFormat.XML);
-			defaultPageSize = JsonUtil.getIntProp(reqProp, "defaultPageSize",
-					20);
-			maxPageSize = JsonUtil.getIntProp(reqProp, "maxPageSize", 1000);
-			defaultPatternLanguage = JsonUtil.getProperty(reqProp,
-					"defaultPatternLanguage", "corpusql");
-			defaultFilterLanguage = JsonUtil.getProperty(reqProp,
-					"defaultFilterLanguage", "luceneql");
-			defaultBlockingMode = JsonUtil.getBooleanProp(reqProp,
-					"defaultBlockingMode", true);
-			defaultContextSize = JsonUtil.getIntProp(reqProp,
-					"defaultContextSize", 5);
-			maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
-			maxSnippetSize = JsonUtil
-					.getIntProp(reqProp, "maxSnippetSize", 100);
-			Hits.setDefaultMaxHitsToRetrieve(JsonUtil.getIntProp(reqProp,
-					"defaultMaxHitsToRetrieve",
-					Hits.getDefaultMaxHitsToRetrieve()));
-			Hits.setDefaultMaxHitsToCount(JsonUtil.getIntProp(reqProp,
-					"defaultMaxHitsToCount", Hits.getDefaultMaxHitsToCount()));
-			maxHitsToRetrieveAllowed = JsonUtil.getIntProp(reqProp,
-					"maxHitsToRetrieveAllowed", 10000000);
-			maxHitsToCountAllowed = JsonUtil.getIntProp(reqProp,
-					"maxHitsToCountAllowed", -1);
-			JSONArray jsonOverrideUserIdIps = reqProp
-					.getJSONArray("overrideUserIdIps");
-			overrideUserIdIps = new HashSet<String>();
-			for (int i = 0; i < jsonOverrideUserIdIps.length(); i++) {
-				overrideUserIdIps.add(jsonOverrideUserIdIps.getString(i));
-			}
-		}
-
-		// Performance properties
-		if (properties.has("performance")) {
-			JSONObject perfProp = properties.getJSONObject("performance");
-			minFreeMemForSearchMegs = JsonUtil.getIntProp(perfProp,
-					"minFreeMemForSearchMegs", 50);
-			maxRunningJobsPerUser = JsonUtil.getIntProp(perfProp,
-					"maxRunningJobsPerUser", 20);
-			checkAgainAdviceMinimumMs = JsonUtil.getIntProp(perfProp,
-					"checkAgainAdviceMinimumMs", 200);
-			checkAgainAdviceDivider = JsonUtil.getIntProp(perfProp,
-					"checkAgainAdviceDivider", 5);
-			waitTimeInNonblockingModeMs = JsonUtil.getIntProp(perfProp,
-					"waitTimeInNonblockingModeMs", 100);
-			clientCacheTimeSec = JsonUtil.getIntProp(perfProp,
-					"clientCacheTimeSec", 3600);
-
-			// Cache properties
-			JSONObject cacheProp = perfProp.getJSONObject("cache");
-
-			// Start with empty cache
-			cache = new SearchCache(cacheProp);
-			
-			// Make sure long operations yield their thread occasionally,
-			// and automatically abort really long operations.
-			ThreadEtiquette.setEnabled(ENABLE_THREAD_ETIQUETTE); //@PERF: switched off for test
-			if (perfProp.has("operations")) {
-				JSONObject opProp = perfProp.getJSONObject("operations");
-				ThreadEtiquette.setStartSleepingAfterSec(JsonUtil.getIntProp(opProp, "startSleepingAfterSec", 5));
-				ThreadEtiquette.setWakeSleepCycleMs(JsonUtil.getIntProp(opProp, "wakeSleepCycleMs", 1000));
-				ThreadEtiquette.setSleepPartIncreaseSpeed(JsonUtil.getDoubleProp(opProp, "sleepPartIncreaseSpeed", 0.004));
-				ThreadEtiquette.setMaxSleepPart(JsonUtil.getDoubleProp(opProp, "maxSleepPart", 0.5));
-				ThreadEtiquette.setInterruptAfterSec(JsonUtil.getIntProp(opProp, "interruptAfterSec", 240));
-			}
-		}
-
-		// Find the indices
-		indexParam = new HashMap<String, IndexParam>();
-		indexStatus = new HashMap<String, String>();
-		boolean indicesFound = false;
-		if (properties.has("indices")) {
-			JSONObject indicesMap = properties.getJSONObject("indices");
-			Iterator<?> it = indicesMap.keys();
-			while (it.hasNext()) {
-				String indexName = (String) it.next();
-				JSONObject indexConfig = indicesMap.getJSONObject(indexName);
-
-				File dir = JsonUtil.getFileProp(indexConfig, "dir", null);
-				if (dir == null || !dir.canRead()) {
-					logger.error("Index directory for index '" + indexName
-							+ "' does not exist or cannot be read: " + dir);
-					continue;
+		try {
+			// this.properties = properties;
+			if (properties.has("debugModeIps")) {
+				JSONArray jsonDebugModeIps = properties
+						.getJSONArray("debugModeIps");
+				debugModeIps = new HashSet<String>();
+				for (int i = 0; i < jsonDebugModeIps.length(); i++) {
+					debugModeIps.add(jsonDebugModeIps.getString(i));
 				}
-				if (!Searcher.isIndex(dir)) {
-					logger.warn("Directory " + dir + " does not contain a BlackLab index.");
-					continue;
-				}
+			}
 
-				String pid = JsonUtil.getProperty(indexConfig, "pid", "");
-				if (pid.length() != 0) {
-					// Should be specified in index metadata now, not in
-					// blacklab-server.json.
-					logger.error("blacklab-server.json specifies 'pid' property for index '"
-							+ indexName
-							+ "'; this setting should not be in blacklab-server.json but in the blacklab index metadata!");
+			// Request properties
+			if (properties.has("requests")) {
+				JSONObject reqProp = properties.getJSONObject("requests");
+				defaultOutputType = DataFormat.XML; // XML if nothing specified
+													// (because
+													// of browser's default Accept
+													// header)
+				if (reqProp.has("defaultOutputType"))
+					defaultOutputType = ServletUtil.getOutputTypeFromString(
+							reqProp.getString("defaultOutputType"), DataFormat.XML);
+				defaultPageSize = JsonUtil.getIntProp(reqProp, "defaultPageSize",
+						20);
+				maxPageSize = JsonUtil.getIntProp(reqProp, "maxPageSize", 1000);
+				defaultPatternLanguage = JsonUtil.getProperty(reqProp,
+						"defaultPatternLanguage", "corpusql");
+				defaultFilterLanguage = JsonUtil.getProperty(reqProp,
+						"defaultFilterLanguage", "luceneql");
+				defaultBlockingMode = JsonUtil.getBooleanProp(reqProp,
+						"defaultBlockingMode", true);
+				defaultContextSize = JsonUtil.getIntProp(reqProp,
+						"defaultContextSize", 5);
+				maxContextSize = JsonUtil.getIntProp(reqProp, "maxContextSize", 20);
+				maxSnippetSize = JsonUtil
+						.getIntProp(reqProp, "maxSnippetSize", 100);
+				Hits.setDefaultMaxHitsToRetrieve(JsonUtil.getIntProp(reqProp,
+						"defaultMaxHitsToRetrieve",
+						Hits.getDefaultMaxHitsToRetrieve()));
+				Hits.setDefaultMaxHitsToCount(JsonUtil.getIntProp(reqProp,
+						"defaultMaxHitsToCount", Hits.getDefaultMaxHitsToCount()));
+				maxHitsToRetrieveAllowed = JsonUtil.getIntProp(reqProp,
+						"maxHitsToRetrieveAllowed", 10000000);
+				maxHitsToCountAllowed = JsonUtil.getIntProp(reqProp,
+						"maxHitsToCountAllowed", -1);
+				JSONArray jsonOverrideUserIdIps = reqProp
+						.getJSONArray("overrideUserIdIps");
+				overrideUserIdIps = new HashSet<String>();
+				for (int i = 0; i < jsonOverrideUserIdIps.length(); i++) {
+					overrideUserIdIps.add(jsonOverrideUserIdIps.getString(i));
 				}
+			}
 
-				// Does the settings file indicate whether or not contents may
-				// be viewed?
-				boolean mayViewContentsSet = indexConfig.has("mayViewContent");
-				if (mayViewContentsSet) {
-					// Yes; store the setting.
-					boolean mayViewContent = indexConfig
-							.getBoolean("mayViewContent");
-					indexParam.put(indexName, new IndexParam(dir, pid,
-							mayViewContent));
+			// Performance properties
+			if (properties.has("performance")) {
+				JSONObject perfProp = properties.getJSONObject("performance");
+				minFreeMemForSearchMegs = JsonUtil.getIntProp(perfProp,
+						"minFreeMemForSearchMegs", 50);
+				maxRunningJobsPerUser = JsonUtil.getIntProp(perfProp,
+						"maxRunningJobsPerUser", 20);
+				checkAgainAdviceMinimumMs = JsonUtil.getIntProp(perfProp,
+						"checkAgainAdviceMinimumMs", 200);
+				checkAgainAdviceDivider = JsonUtil.getIntProp(perfProp,
+						"checkAgainAdviceDivider", 5);
+				waitTimeInNonblockingModeMs = JsonUtil.getIntProp(perfProp,
+						"waitTimeInNonblockingModeMs", 100);
+				clientCacheTimeSec = JsonUtil.getIntProp(perfProp,
+						"clientCacheTimeSec", 3600);
+
+				// Cache properties
+				JSONObject cacheProp = perfProp.getJSONObject("cache");
+
+				// Start with empty cache
+				cache = new SearchCache(cacheProp);
+				
+				// Make sure long operations yield their thread occasionally,
+				// and automatically abort really long operations.
+				ThreadEtiquette.setEnabled(ENABLE_THREAD_ETIQUETTE);
+				
+				if (perfProp.has("serverLoadStates")) {
+					JSONArray jsonStates = perfProp.getJSONArray("serverLoadStates");
+					cache.setServerLoadStates(jsonStates);
+				}
+			}
+
+			// Find the indices
+			indexParam = new HashMap<String, IndexParam>();
+			indexStatus = new HashMap<String, String>();
+			boolean indicesFound = false;
+			if (properties.has("indices")) {
+				JSONObject indicesMap = properties.getJSONObject("indices");
+				Iterator<?> it = indicesMap.keys();
+				while (it.hasNext()) {
+					String indexName = (String) it.next();
+					JSONObject indexConfig = indicesMap.getJSONObject(indexName);
+
+					File dir = JsonUtil.getFileProp(indexConfig, "dir", null);
+					if (dir == null || !dir.canRead()) {
+						logger.error("Index directory for index '" + indexName
+								+ "' does not exist or cannot be read: " + dir);
+						continue;
+					}
+					if (!Searcher.isIndex(dir)) {
+						logger.warn("Directory " + dir + " does not contain a BlackLab index.");
+						continue;
+					}
+
+					String pid = JsonUtil.getProperty(indexConfig, "pid", "");
+					if (pid.length() != 0) {
+						// Should be specified in index metadata now, not in
+						// blacklab-server.json.
+						logger.error("blacklab-server.json specifies 'pid' property for index '"
+								+ indexName
+								+ "'; this setting should not be in blacklab-server.json but in the blacklab index metadata!");
+					}
+
+					// Does the settings file indicate whether or not contents may
+					// be viewed?
+					boolean mayViewContentsSet = indexConfig.has("mayViewContent");
+					if (mayViewContentsSet) {
+						// Yes; store the setting.
+						boolean mayViewContent = indexConfig
+								.getBoolean("mayViewContent");
+						indexParam.put(indexName, new IndexParam(dir, pid,
+								mayViewContent));
+					} else {
+						// No; record that we don't know (i.e. use the index
+						// metadata setting).
+						indexParam.put(indexName, new IndexParam(dir, pid));
+					}
+
+					indicesFound = true;
+				}
+			}
+
+			// Collections
+			collectionsDirs = new ArrayList<File>();
+			if (properties.has("indexCollections")) {
+				JSONArray indexCollectionsList = properties
+						.getJSONArray("indexCollections");
+				for (int i = 0; i < indexCollectionsList.length(); i++) {
+					String strIndexCollection = indexCollectionsList.getString(i);
+					File indexCollection = new File(strIndexCollection);
+					if (indexCollection.canRead()) {
+						indicesFound = true; // even if it contains none now, it
+												// could in the future
+						collectionsDirs.add(indexCollection);
+					} else {
+						logger.warn("Configured collection not found or not readable: "
+								+ indexCollection);
+					}
+				}
+			}
+
+			// User collections dir
+			if (properties.has("userCollectionsDir")) {
+				userCollectionsDir = new File(
+						properties.getString("userCollectionsDir"));
+				if (!userCollectionsDir.canRead()) {
+					logger.error("Configured user collections dir not found or not readable: "
+							+ userCollectionsDir);
+					userCollectionsDir = null;
 				} else {
-					// No; record that we don't know (i.e. use the index
-					// metadata setting).
-					indexParam.put(indexName, new IndexParam(dir, pid));
-				}
-
-				indicesFound = true;
-			}
-		}
-
-		// Collections
-		collectionsDirs = new ArrayList<File>();
-		if (properties.has("indexCollections")) {
-			JSONArray indexCollectionsList = properties
-					.getJSONArray("indexCollections");
-			for (int i = 0; i < indexCollectionsList.length(); i++) {
-				String strIndexCollection = indexCollectionsList.getString(i);
-				File indexCollection = new File(strIndexCollection);
-				if (indexCollection.canRead()) {
 					indicesFound = true; // even if it contains none now, it
-											// could in the future
-					collectionsDirs.add(indexCollection);
-				} else {
-					logger.warn("Configured collection not found or not readable: "
-							+ indexCollection);
+					                     // could in the future
 				}
 			}
-		}
+			
+			if (!indicesFound)
+				throw new ConfigurationException(
+						"Configuration error: no indices or collections available. Put blacklab-server.json on classpath (i.e. Tomcat shared or lib dir) with at least: { \"indices\": { \"myindex\": { \"dir\": \"/path/to/my/index\" } } } ");
 
-		// User collections dir
-		if (properties.has("userCollectionsDir")) {
-			userCollectionsDir = new File(
-					properties.getString("userCollectionsDir"));
-			if (!userCollectionsDir.canRead()) {
-				logger.error("Configured user collections dir not found or not readable: "
-						+ userCollectionsDir);
-				userCollectionsDir = null;
+			// Init auth system
+			String authClass = "";
+			Map<String, Object> authParam;
+			if (properties.has("authSystem")) {
+				JSONObject propAuth = properties.getJSONObject("authSystem");
+				authParam = JsonUtil.mapFromJsonObject(propAuth);
+				if (authParam.containsKey("class")) {
+					authClass = authParam.get("class").toString();
+				}
 			} else {
-				indicesFound = true; // even if it contains none now, it
-				                     // could in the future
+				authParam = new HashMap<String, Object>();
 			}
-		}
-		
-		if (!indicesFound)
-			throw new RuntimeException(
-					"Configuration error: no indices or collections available. Put blacklab-server.json on classpath (i.e. Tomcat shared or lib dir) with at least: { \"indices\": { \"myindex\": { \"dir\": \"/path/to/my/index\" } } } ");
-
-		// Init auth system
-		String authClass = "";
-		Map<String, Object> authParam;
-		if (properties.has("authSystem")) {
-			JSONObject propAuth = properties.getJSONObject("authSystem");
-			authParam = JsonUtil.mapFromJsonObject(propAuth);
-			if (authParam.containsKey("class")) {
-				authClass = authParam.get("class").toString();
-			}
-		} else {
-			authParam = new HashMap<String, Object>();
-		}
-		if (authClass.length() > 0) {
-			try {
-				if (!authClass.contains(".")) {
-					// Allows us to abbreviate the built-in auth classes
-					authClass = "nl.inl.blacklab.server.auth." + authClass;
+			if (authClass.length() > 0) {
+				try {
+					if (!authClass.contains(".")) {
+						// Allows us to abbreviate the built-in auth classes
+						authClass = "nl.inl.blacklab.server.auth." + authClass;
+					}
+					Class<?> cl = Class.forName(authClass);
+					authSystem = cl.getConstructor(Map.class).newInstance(authParam);
+					authMethodDetermineCurrentUser = cl.getMethod("determineCurrentUser", HttpServlet.class, HttpServletRequest.class);
+				} catch (Exception e) {
+					throw new RuntimeException("Error instantiating auth system: " + authClass, e);
 				}
-				Class<?> cl = Class.forName(authClass);
-				authSystem = cl.getConstructor(Map.class).newInstance(authParam);
-				authMethodDetermineCurrentUser = cl.getMethod("determineCurrentUser", HttpServlet.class, HttpServletRequest.class);
-			} catch (Exception e) {
-				throw new RuntimeException("Error instantiating auth system: " + authClass, e);
+				logger.info("Auth system initialized: " + authClass);
+			} else {
+				logger.info("No auth system configured");
 			}
-			logger.info("Auth system initialized: " + authClass);
-		} else {
-			logger.info("No auth system configured");
+		} catch (JSONException e) {
+			e.printStackTrace();
+			throw new ConfigurationException("Invalid JSON in blacklab-server.json; please validate: " + e.getMessage());
 		}
 		
 		// Keep a list of searchparameters.

@@ -85,13 +85,13 @@ public class BlackLabServer extends HttpServlet {
 		try {
 			try {
 				config = Json.read(is);
+				searchManager = new SearchManager(config);
 			} finally {
 				is.close();
 			}
 		} catch (Exception e) {
-			throw new ServletException("Error reading JSON config file", e);
+			throw new ServletException("Error reading JSON config file: " + e.getMessage(), e);
 		}
-		searchManager = new SearchManager(config);
 		logger.info("BlackLab Server ready.");
 
 	}

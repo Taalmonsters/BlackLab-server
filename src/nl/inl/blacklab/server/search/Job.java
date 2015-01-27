@@ -81,7 +81,8 @@ public abstract class Job implements Comparable<Job> {
 	int clientsWaiting = 0;
 
 	/**
-	 * The jobs we're waiting for, so we can notify them in case we get cancelled.
+	 * The jobs we're waiting for, so we can notify them in case we get cancelled,
+	 * and our "load scheduler" knows we're not currently using the CPU.
 	 */
 	Set<Job> waitingFor = new HashSet<Job>();
 
@@ -107,7 +108,10 @@ public abstract class Job implements Comparable<Job> {
 	protected Throwable thrownException;
 
 	/** The last time the results of this search were accessed (for caching) */
-	protected long lastAccessed;
+	private long lastAccessed;
+
+	/** If we're paused, this is the time when we were paused */
+	private long pausedAt;
 
 	/** The index searcher */
 	protected Searcher searcher;
@@ -129,6 +133,12 @@ public abstract class Job implements Comparable<Job> {
 
 	/** Who created this job? */
 	protected User user;
+
+	/** Is this job running in low priority? */
+	protected boolean lowPrio = false;
+
+	/** Is this job paused? */
+	protected boolean paused = false;
 
 	public Job(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super();
@@ -432,6 +442,67 @@ public abstract class Job implements Comparable<Job> {
 			if (ENABLE_JOB_CLEANUP)
 				cleanup();
 		}
+	}
+
+	public long lastAccessed() {
+		return lastAccessed;
+	}
+
+	public long lastAccessedAgo() {
+		return System.currentTimeMillis() - lastAccessed;
+	}
+
+	/**
+	 * How long has this job been paused for?
+	 * @return number of ms since the job was paused
+	 */
+	public long pausedFor() {
+		return System.currentTimeMillis() - pausedAt;
+	}
+	
+	/**
+	 * Is this job waiting for another job or jobs, and
+	 * therefore not using the CPU?
+	 * @return true if it's waiting, false if not
+	 */
+	public boolean isWaitingForOtherJob() {
+		return waitingFor.size() > 0;
+	}
+
+	/**
+	 * Set whether or not this job should execute in low priority.
+	 * 
+	 * @param b true if we want this to be low priority
+	 */
+	public void setLowPrio(boolean b) {
+		if (lowPrio != b) {
+			lowPrio = b;
+			setPriorityInternal();
+		}
+	}
+
+	/**
+	 * Set the operation to be normal priority, low priority or paused.
+	 * 
+	 * Depends on the lowPrio and paused variables.
+	 */
+	protected void setPriorityInternal() {
+		// Subclasses can override this to set the priority of the operation
+	}
+
+	public boolean isLowPrio() {
+		return lowPrio;
+	}
+
+	public void setPaused(boolean b) {
+		if (paused != b) {
+			paused = b;
+			setPriorityInternal();
+		}
+	}
+
+	public boolean isPaused() {
+		return paused;
 	}
 
 }
