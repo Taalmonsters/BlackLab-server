@@ -3,11 +3,14 @@ package nl.inl.blacklab.server.search;
 import java.util.HashSet;
 import java.util.Set;
 
+import nl.inl.blacklab.perdocument.DocResults;
+import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.exceptions.InternalServerError;
 import nl.inl.util.ExUtil;
+import nl.inl.util.ThreadPriority;
 
 import org.apache.log4j.Logger;
 
@@ -135,10 +138,7 @@ public abstract class Job implements Comparable<Job> {
 	protected User user;
 
 	/** Is this job running in low priority? */
-	protected boolean lowPrio = false;
-
-	/** Is this job paused? */
-	protected boolean paused = false;
+	protected ThreadPriority.Level level = ThreadPriority.Level.NORMAL;
 
 	public Job(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super();
@@ -470,15 +470,24 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	/**
-	 * Set whether or not this job should execute in low priority.
+	 * Set the thread priority level.
 	 * 
-	 * @param b true if we want this to be low priority
+	 * @param level the desired priority level.
 	 */
-	public void setLowPrio(boolean b) {
-		if (lowPrio != b) {
-			lowPrio = b;
+	public void setPriorityLevel(ThreadPriority.Level level) {
+		if (this.level != level) {
+			this.level = level;
 			setPriorityInternal();
 		}
+	}
+
+	/**
+	 * Get the thread priority level.
+	 * 
+	 * @return the current priority level.
+	 */
+	public ThreadPriority.Level getPriorityLevel() {
+		return level;
 	}
 
 	/**
@@ -490,19 +499,26 @@ public abstract class Job implements Comparable<Job> {
 		// Subclasses can override this to set the priority of the operation
 	}
 
-	public boolean isLowPrio() {
-		return lowPrio;
-	}
-
-	public void setPaused(boolean b) {
-		if (paused != b) {
-			paused = b;
-			setPriorityInternal();
+	/**
+	 * Set the priority/paused status of a Hits object.
+	 * 
+	 * @param h the Hits object
+	 */
+	protected void setHitsPriority(Hits h) {
+		if (h != null) {
+			h.setPriorityLevel(level);
 		}
 	}
 
-	public boolean isPaused() {
-		return paused;
+	/**
+	 * Set the priority/paused status of a DocResults object.
+	 * 
+	 * @param docResults the DocResults object
+	 */
+	protected void setDocsPriority(DocResults docResults) {
+		if (docResults != null) {
+			docResults.setPriorityLevel(level);
+		}
 	}
-
+	
 }

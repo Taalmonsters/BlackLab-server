@@ -10,6 +10,8 @@ import nl.inl.blacklab.server.exceptions.BlsException;
  */
 public class JobDocsSorted extends JobWithDocs {
 
+	private DocResults sourceResults;
+
 	public JobDocsSorted(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super(searchMan, user, par);
 	}
@@ -19,12 +21,11 @@ public class JobDocsSorted extends JobWithDocs {
 		// First, execute blocking docs search.
 		SearchParameters parNoSort = par.copyWithout("sort");
 		JobWithDocs search = searchMan.searchDocs(user, parNoSort);
-		DocResults docsUnsorted;
 		try {
 			waitForJobToFinish(search);
 	
 			// Now, sort the docs.
-			docsUnsorted = search.getDocResults();
+			sourceResults = search.getDocResults();
 		} finally {
 			search.decrRef();
 			search = null;
@@ -49,9 +50,15 @@ public class JobDocsSorted extends JobWithDocs {
 			// if that particular sort cannot be performed on that type of search.
 			// We don't want the client to have to validate this, so we simply
 			// ignore sort requests we can't carry out.
-			docsUnsorted.sort(sortProp, reverse); // TODO: add .sortedBy() same as in Hits
+			sourceResults.sort(sortProp, reverse); // TODO: add .sortedBy() same as in Hits
 		}
-		docResults = docsUnsorted; // client can use results
+		docResults = sourceResults; // client can use results
+	}
+
+	@Override
+	protected void setPriorityInternal() {
+		if (sourceResults != null)
+			setDocsPriority(sourceResults);
 	}
 
 	@Override

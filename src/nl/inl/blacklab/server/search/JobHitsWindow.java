@@ -15,7 +15,7 @@ public class JobHitsWindow extends Job {
 	@SuppressWarnings("hiding")
 	protected static final Logger logger = Logger.getLogger(JobHitsWindow.class);
 
-	private HitsWindow window;
+	private HitsWindow hitsWindow;
 
 	private int requestedWindowSize;
 
@@ -37,32 +37,37 @@ public class JobHitsWindow extends Job {
 			debug(logger, "Parameter first (" + first + ") out of range; setting to 0");
 			first = 0;
 		}
-		window = hits.window(first, requestedWindowSize);
+		hitsWindow = hits.window(first, requestedWindowSize);
 		int contextSize = par.getInteger("wordsaroundhit");
 		int maxContextSize = searchMan.getMaxContextSize();
 		if (contextSize > maxContextSize) {
 			debug(logger, "Clamping context size to " + maxContextSize + " (" + contextSize + " requested)");
 			contextSize = maxContextSize;
 		}
-		window.setContextSize(contextSize);
-		window.setConcordanceType(par.getString("usecontent").equals("orig") ? ConcordanceType.CONTENT_STORE : ConcordanceType.FORWARD_INDEX);
+		hitsWindow.setContextSize(contextSize);
+		hitsWindow.setConcordanceType(par.getString("usecontent").equals("orig") ? ConcordanceType.CONTENT_STORE : ConcordanceType.FORWARD_INDEX);
 	}
 
 	public HitsWindow getWindow() {
-		return window;
+		return hitsWindow;
+	}
+
+	@Override
+	protected void setPriorityInternal() {
+		setHitsPriority(hitsWindow);
 	}
 
 	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
 		d.put("requestedWindowSize", requestedWindowSize);
-		d.put("actualWindowSize", window == null ? -1 : window.size());
+		d.put("actualWindowSize", hitsWindow == null ? -1 : hitsWindow.size());
 		return d;
 	}
 
 	@Override
 	protected void cleanup() {
-		window = null;
+		hitsWindow = null;
 		super.cleanup();
 	}
 

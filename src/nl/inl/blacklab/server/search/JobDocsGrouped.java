@@ -58,6 +58,12 @@ public class JobDocsGrouped extends Job {
 		groups = theGroups; // we're done, caller can use the groups now
 	}
 
+	@Override
+	protected void setPriorityInternal() {
+		if (docResults != null)
+			setDocsPriority(docResults);
+	}
+
 	public DocGroups getGroups() {
 		return groups;
 	}

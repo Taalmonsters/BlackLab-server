@@ -28,6 +28,11 @@ public class JobWithHits extends Job {
 	}
 
 	@Override
+	protected void setPriorityInternal() {
+		setHitsPriority(hits);
+	}
+
+	@Override
 	protected void cleanup() {
 		hits = null;
 		super.cleanup();

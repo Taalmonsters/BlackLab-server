@@ -37,6 +37,12 @@ public class JobDocsTotal extends Job {
 		}
 	}
 
+	@Override
+	protected void setPriorityInternal() {
+		if (docResults != null)
+			setDocsPriority(docResults);
+	}
+
 	/**
 	 * Returns the DocResults object when available.
 	 *

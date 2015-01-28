@@ -64,6 +64,12 @@ public class JobFacets extends Job {
 		counts = theCounts; // we're done, caller can use the groups now
 	}
 
+	@Override
+	protected void setPriorityInternal() {
+		if (docResults != null)
+			setDocsPriority(docResults);
+	}
+
 	public Map<String, DocCounts> getCounts() {
 		return counts;
 	}

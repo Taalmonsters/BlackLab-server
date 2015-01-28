@@ -46,7 +46,7 @@ import nl.inl.blacklab.server.exceptions.TooManyRequests;
 import nl.inl.util.FileUtil;
 import nl.inl.util.FileUtil.FileTask;
 import nl.inl.util.MemoryUtil;
-import nl.inl.util.ThreadEtiquette;
+import nl.inl.util.ThreadPriority;
 import nl.inl.util.json.JSONArray;
 import nl.inl.util.json.JSONException;
 import nl.inl.util.json.JSONObject;
@@ -291,11 +291,13 @@ public class SearchManager {
 				// Start with empty cache
 				cache = new SearchCache(cacheProp);
 				
-				// Make sure long operations yield their thread occasionally,
-				// and automatically abort really long operations.
-				ThreadEtiquette.setEnabled(ENABLE_THREAD_ETIQUETTE);
-				
 				if (perfProp.has("serverLoadStates")) {
+					// Load manager stuff (experimental)
+					
+					// Make sure long operations yield their thread occasionally,
+					// and automatically abort really long operations.
+					ThreadPriority.setEnabled(ENABLE_THREAD_ETIQUETTE);
+					
 					JSONArray jsonStates = perfProp.getJSONArray("serverLoadStates");
 					cache.setServerLoadStates(jsonStates);
 				}
@@ -1138,6 +1140,9 @@ public class SearchManager {
 				// Create a new search object with these parameters and place it
 				// in the cache
 				search = Job.create(this, user, searchParameters);
+				if (search == null) {
+					logger.error("search == null, unpossiblez!!!");
+				}
 				cache.put(search);
 
 				// Update running jobs

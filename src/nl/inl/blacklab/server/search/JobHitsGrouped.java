@@ -67,6 +67,11 @@ public class JobHitsGrouped extends Job {
 	}
 
 	@Override
+	protected void setPriorityInternal() {
+		setHitsPriority(hits);
+	}
+
+	@Override
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement d = super.toDataObject();
 		d.put("hitsRetrieved", hits == null ? -1 : hits.countSoFarHitsRetrieved());

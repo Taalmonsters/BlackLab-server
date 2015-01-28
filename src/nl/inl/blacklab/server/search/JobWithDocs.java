@@ -27,6 +27,11 @@ public class JobWithDocs extends Job {
 	}
 
 	@Override
+	protected void setPriorityInternal() {
+		setDocsPriority(docResults);
+	}
+
+	@Override
 	protected void cleanup() {
 		docResults = null;
 		super.cleanup();

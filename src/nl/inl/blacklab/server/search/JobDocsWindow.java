@@ -14,6 +14,8 @@ public class JobDocsWindow extends Job {
 	@SuppressWarnings("hiding")
 	protected static final Logger logger = Logger.getLogger(JobDocsWindow.class);
 
+	private DocResults sourceResults;
+
 	private DocResultsWindow window;
 
 	private int requestedWindowSize;
@@ -26,23 +28,28 @@ public class JobDocsWindow extends Job {
 	public void performSearch() throws BlsException, InterruptedException  {
 		// First, execute blocking docs search.
 		JobWithDocs docsSearch = searchMan.searchDocs(user, par);
-		DocResults docResults;
 		try {
 			waitForJobToFinish(docsSearch);
 	
 			// Now, create a HitsWindow on these hits.
-			docResults = docsSearch.getDocResults();
+			sourceResults = docsSearch.getDocResults();
 		} finally {
 			docsSearch.decrRef();
 			docsSearch = null;
 		}
 		int first = par.getInteger("first");
 		requestedWindowSize = par.getInteger("number");
-		if (!docResults.sizeAtLeast(first + 1)) {
+		if (!sourceResults.sizeAtLeast(first + 1)) {
 			debug(logger, "Parameter first (" + first + ") out of range; setting to 0");
 			first = 0;
 		}
-		window = docResults.window(first, requestedWindowSize);
+		window = sourceResults.window(first, requestedWindowSize);
+	}
+
+	@Override
+	protected void setPriorityInternal() {
+		if (sourceResults != null)
+			setDocsPriority(sourceResults);
 	}
 
 	public DocResultsWindow getWindow() {

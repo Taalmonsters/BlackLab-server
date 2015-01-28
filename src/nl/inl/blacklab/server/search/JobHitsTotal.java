@@ -35,6 +35,11 @@ public class JobHitsTotal extends Job {
 		}
 	}
 
+	@Override
+	protected void setPriorityInternal() {
+		setHitsPriority(hits);
+	}
+
 	/**
 	 * Returns the Hits object when available.
 	 *
