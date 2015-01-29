@@ -99,7 +99,7 @@ public class SearchCache {
 		
 		removeOldSearches();
 		
-		performLoadSpecificBehaviour(search);
+		performLoadManagement(search);
 
 		// Search already in cache?
 		SearchParameters searchParameters = search.getParameters();
@@ -169,7 +169,7 @@ public class SearchCache {
 		// Get rid of old searches
 		boolean lookAtCacheSizeAndSearchAccessTime = true;
 		for (Job search: lastAccessOrder) {
-			if (!search.finished() && search.executionTimeMillis() / 1000 > maxSearchTimeSec) {
+			if (!search.finished() && search.executionTime() > maxSearchTimeSec) {
 				// Search is taking too long. Cancel it.
 				logger.debug("Search is taking too long, cancelling: " + search);
 				abortSearch(search);
@@ -233,7 +233,7 @@ public class SearchCache {
 	 * @return true iff the search is too old
 	 */
 	private boolean searchTooOld(Job search) {
-		boolean tooOld = maxJobAgeSec >= 0 && search.ageInSeconds() > maxJobAgeSec;
+		boolean tooOld = maxJobAgeSec >= 0 && search.cacheAge() > maxJobAgeSec;
 		return tooOld;
 	}
 
@@ -482,8 +482,10 @@ public class SearchCache {
 	/**
 	 * Evaluate what we need to do (if anything) with each search given the 
 	 * current server load.
+	 * 
+	 * @param newSearch the new search just started, or null if none.
 	 */
-	void performLoadSpecificBehaviour(Job newSearch) {
+	void performLoadManagement(Job newSearch) {
 		if (serverLoadStates == null || serverLoadStates.size() == 0) {
 			// Not configured. Don't activate the load manager stuff.
 			return;
@@ -509,7 +511,8 @@ public class SearchCache {
 			// changes, we're done.
 			for (int i = 0; i < matchers.size() && !stateChanged; i++)  {
 				QueryStateMatcher m = matchers.get(i);
-				for (Job search: cachedSearches.values()) {
+				List<Job> searches = new ArrayList<Job>(cachedSearches.values());
+				for (Job search: searches) {
 					ServerLoadQueryAction action = actions.get(i);
 					if (action == null)
 						throw new RuntimeException("action == null");
@@ -527,7 +530,7 @@ public class SearchCache {
 					// See if this search matches this rule.
 					if (m.matches(search)) {
 						// Yes. Apply the action.
-						logger.debug("Match: " + m.toString() + "(" + m.explainMatch(search) + ")");
+						logger.debug("Match: " + m.toString() + " (" + m.explainMatch(search) + ")");
 						applyAction(search, action);
 						
 						// Did this action affect the current load state?

@@ -11,6 +11,7 @@ import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.exceptions.InternalServerError;
 import nl.inl.util.ExUtil;
 import nl.inl.util.ThreadPriority;
+import nl.inl.util.ThreadPriority.Level;
 
 import org.apache.log4j.Logger;
 
@@ -263,22 +264,6 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	/**
-	 * Return this search's age in seconds.
-	 *
-	 * Age is defined as the time between now and the last time
-	 * it was accessed, but only for finished searches. Running
-	 * searches always have a zero age. Check executionTimeMillis() for
-	 * search time.
-	 *
-	 * @return the age in seconds
-	 */
-	public int ageInSeconds() {
-		if (finished())
-			return (int) (System.currentTimeMillis() - lastAccessed) / 1000;
-		return 0;
-	}
-
-	/**
 	 * Wait until this job's finished, an Exception is thrown or the specified
 	 * time runs out.
 	 *
@@ -350,18 +335,6 @@ public abstract class Job implements Comparable<Job> {
 			j.changeClientsWaiting(-1);
 		}
 		waitingFor.clear();
-	}
-
-	/**
-	 * How long this job took to execute (so far).
-	 * @return execution time in ms
-	 */
-	public int executionTimeMillis() {
-		if (startedAt < 0)
-			return -1;
-		if (finishedAt < 0)
-			return (int)(System.currentTimeMillis() - startedAt);
-		return (int)(finishedAt - startedAt);
 	}
 
 	/**
@@ -444,20 +417,53 @@ public abstract class Job implements Comparable<Job> {
 		}
 	}
 
-	public long lastAccessed() {
-		return lastAccessed;
+	/**
+	 * Return this search's cache age in seconds.
+	 *
+	 * Cache age is defined as the time between now and the last time
+	 * it was accessed (for finished searches only).
+	 * 
+	 * Running searches always have a zero age. Check executionTimeMillis() 
+	 * for search time.
+	 *
+	 * @return the age in seconds
+	 */
+	public double cacheAge() {
+		if (finished())
+			return (System.currentTimeMillis() - lastAccessed) / 1000.0;
+		return 0;
 	}
 
-	public long lastAccessedAgo() {
-		return System.currentTimeMillis() - lastAccessed;
+	/**
+	 * How long this job took to execute (so far).
+	 * 
+	 * @return execution time in ms
+	 */
+	public double executionTime() {
+		if (startedAt < 0)
+			return -1;
+		if (finishedAt < 0)
+			return (System.currentTimeMillis() - startedAt) / 1000.0;
+		return (finishedAt - startedAt) / 1000.0;
+	}
+
+	/**
+	 * Returns how long ago this job was last accessed.
+	 * 
+	 * @return how long ago this job was last accessed.
+	 */
+	public double notAccessedFor() {
+		return (System.currentTimeMillis() - lastAccessed) / 1000.0;
 	}
 
 	/**
 	 * How long has this job been paused for?
-	 * @return number of ms since the job was paused
+	 * @return number of ms since the job was paused, or 0 if not paused
 	 */
-	public long pausedFor() {
-		return System.currentTimeMillis() - pausedAt;
+	public double pausedFor() {
+		if (level != Level.PAUSED)
+			return 0;
+		return (System.currentTimeMillis() - pausedAt) / 1000.0;
 	}
 	
 	/**

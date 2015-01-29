@@ -213,6 +213,12 @@ public class SearchManager {
 	
 	/** The method to invoke for determining the current user. */
 	private Method authMethodDetermineCurrentUser;
+
+	/**
+	 * A thread that calls performLoadSpecificBehaviour(null) regularly,
+	 * to ensure load management continues even if no new requests are coming in.
+	 */
+	private Thread loadManagerThread;
 	
 	public SearchManager(JSONObject properties) throws ConfigurationException {
 		logger.debug("SearchManager created");
@@ -456,6 +462,25 @@ public class SearchManager {
 				"" + Hits.getDefaultMaxHitsToCount());
 		defaultParameterValues.put("sensitive", "no");
 		defaultParameterValues.put("property", "word");
+		
+		loadManagerThread = new LoadManagerThread(this);
+		loadManagerThread.start();
+		
+	}
+	
+	/**
+	 * Clean up resources.
+	 * 
+	 * In particular, stops the load manager thread.
+	 */
+	public synchronized void cleanup() {
+		// Stop the load manager thread
+		loadManagerThread.interrupt();
+		loadManagerThread = null;
+	}
+
+	public synchronized void performLoadManagement() {
+		cache.performLoadManagement(null);
 	}
 
 	public User determineCurrentUser(HttpServlet servlet, HttpServletRequest request) {
@@ -1394,9 +1419,7 @@ public class SearchManager {
 		// has been running, the less frequently the client
 		// should check its progress. Just divide the search time by
 		// 5 with a configured minimum.
-		int runningFor = search.ageInSeconds();
-		int checkAgainAdvice = Math.min(checkAgainAdviceMinimumMs, runningFor
-				* 1000 / checkAgainAdviceDivider);
+		int checkAgainAdvice = Math.min(checkAgainAdviceMinimumMs, (int)(search.executionTime() * 1000 / checkAgainAdviceDivider));
 
 		return checkAgainAdvice;
 	}

@@ -184,6 +184,10 @@ public class BlackLabServer extends HttpServlet {
 
 	@Override
 	public void destroy() {
+		
+		// Stops the load management thread
+		searchManager.cleanup();
+		
 		super.destroy();
 	}
 

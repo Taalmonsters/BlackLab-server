@@ -79,11 +79,11 @@ public class QueryStateMatcher {
 			case "never":
 				break;
 			case "age":
-				if (query.executionTimeMillis() >= value)
+				if (query.executionTime() >= value)
 					matchingClause = i;
 				break;
 			case "ignored":
-				if (query.lastAccessedAgo() >= value)
+				if (query.notAccessedFor() >= value)
 					matchingClause = i;
 				break;
 			case "paused":
@@ -91,7 +91,7 @@ public class QueryStateMatcher {
 					matchingClause = i;
 				break;
 			case "cached":
-				if (query.ageInSeconds() >= value)
+				if (query.cacheAge() >= value)
 					matchingClause = i;
 				break;
 			default:
@@ -108,13 +108,13 @@ public class QueryStateMatcher {
 		case "always":
 			return "all queries match";
 		case "age":
-			return "age is " + query.executionTimeMillis();
+			return "age is " + query.executionTime();
 		case "ignored":
-			return "ignored for " + query.lastAccessedAgo();
+			return "ignored for " + query.notAccessedFor();
 		case "paused":
-			return "paused for " + query.lastAccessedAgo();
+			return "paused for " + query.notAccessedFor();
 		case "cached":
-			return "cached for " + query.ageInSeconds();
+			return "cached for " + query.cacheAge();
 		default:
 			throw new RuntimeException(); // Cannot happen, we checked..
 		}
