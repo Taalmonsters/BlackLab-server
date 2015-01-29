@@ -233,8 +233,8 @@ public class RequestHandlerDocs extends RequestHandler {
 				summary.put("numberOfDocs", numberOfDocsCounted);
 				summary.put("numberOfDocsRetrieved", hits == null ? group.getResults().size() : hits.countSoFarDocsRetrieved());
 			} else {
-				// TODO: DocResults.countSoFarDocsCounted/Retrieved?
-				summary.put("numberOfDocs", docs.size());
+				summary.put("numberOfDocs", docs.countSoFarDocsCounted());
+				summary.put("numberOfDocsRetrieved", docs.countSoFarDocsRetrieved());
 			}
 			summary.put("windowFirstResult", window.first());
 			summary.put("requestedWindowSize", searchParam.getInteger("number"));

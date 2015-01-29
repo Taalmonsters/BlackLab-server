@@ -4,6 +4,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import nl.inl.blacklab.perdocument.DocGroup;
 import nl.inl.blacklab.perdocument.DocGroups;
+import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.server.BlackLabServer;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
@@ -64,16 +65,19 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 	
 			// The summary
 			DataObjectMapElement summary = new DataObjectMapElement();
-			Hits hits = search.getDocResults().getOriginalHits();
+			DocResults docResults = search.getDocResults();
+			Hits hits = docResults.getOriginalHits();
 			summary.put("searchParam", searchParam.toDataObject());
 			summary.put("searchTime", (int)(search.executionTime() * 1000));
 			summary.put("stillCounting", false);
-			summary.put("numberOfHits", hits.countSoFarHitsCounted());
-			summary.put("numberOfHitsRetrieved", hits.countSoFarHitsRetrieved());
-			summary.put("stoppedCountingHits", hits.maxHitsCounted());
-			summary.put("stoppedRetrievingHits", hits.maxHitsRetrieved());
-			summary.put("numberOfDocs", hits.countSoFarDocsCounted());
-			summary.put("numberOfDocsRetrieved", hits.countSoFarDocsRetrieved());
+			if (hits != null) {
+				summary.put("numberOfHits", hits.countSoFarHitsCounted());
+				summary.put("numberOfHitsRetrieved", hits.countSoFarHitsRetrieved());
+				summary.put("stoppedCountingHits", hits.maxHitsCounted());
+				summary.put("stoppedRetrievingHits", hits.maxHitsRetrieved());
+			}
+			summary.put("numberOfDocs", docResults.countSoFarDocsCounted());
+			summary.put("numberOfDocsRetrieved", docResults.countSoFarDocsRetrieved());
 			summary.put("numberOfGroups", groups.numberOfGroups());
 			summary.put("windowFirstResult", first);
 			summary.put("requestedWindowSize", number);
