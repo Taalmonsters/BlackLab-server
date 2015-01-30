@@ -3,6 +3,7 @@ package nl.inl.blacklab.server.search;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.ServiceUnavailable;
 
 /**
  * Represents finding the total number of docs.
@@ -18,7 +19,7 @@ public class JobDocsTotal extends Job {
 	}
 
 	@Override
-	public void performSearch() throws BlsException, InterruptedException  {
+	public void performSearch() throws BlsException {
 		// First, execute blocking docs search.
 		JobWithDocs docsSearch = searchMan.searchDocs(user, par);
 		try {
@@ -33,7 +34,7 @@ public class JobDocsTotal extends Job {
 		}
 		docResults.size();
 		if (Thread.interrupted()) {
-			throw new InterruptedException("Interrupted while determining total number of docs");
+			throw new ServiceUnavailable("Determining total number of docs took too long, cancelled");
 		}
 	}
 

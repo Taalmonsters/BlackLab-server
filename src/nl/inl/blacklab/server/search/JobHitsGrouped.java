@@ -22,7 +22,7 @@ public class JobHitsGrouped extends Job {
 	}
 
 	@Override
-	public void performSearch() throws BlsException, InterruptedException  {
+	public void performSearch() throws BlsException {
 		// First, execute blocking hits search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithHits hitsSearch = searchMan.searchHits(user, parNoGroup);

@@ -335,6 +335,7 @@ public class SearchCache {
 
 	public DataObject getCacheStatusDataObject() {
 		DataObjectMapElement doCache = new DataObjectMapElement();
+		doCache.put("currentLoadState", currentLoadState == null ? "(none)" : currentLoadState.toString());
 		doCache.put("maxSizeBytes", getMaxSizeBytes());
 		doCache.put("maxNumberOfSearches", getMaxJobsToCache());
 		doCache.put("maxSearchAgeSec", getMaxJobAgeSec());
@@ -491,7 +492,7 @@ public class SearchCache {
 			return;
 		}
 		
-		logger.debug("LOADMGR: START");
+		//logger.debug("LOADMGR: START");
 		determineCurrentLoad();
 		if (currentLoadState == null) {
 			logger.debug("LOADMGR: we're not in any of the states! => DONE");
@@ -553,7 +554,7 @@ public class SearchCache {
 				}
 			}
 		} while(stateChanged); // continue until there's nothing more to do 
-		logger.debug("LOADMGR: DONE");
+		//logger.debug("LOADMGR: DONE");
 	}
 
 	/**
@@ -579,7 +580,7 @@ public class SearchCache {
 		case PAUSE_COUNT:
 		case PAUSE_NEW:
 			if (search.getPriorityLevel() != Level.PAUSED && numberOfPausedSearches() < MAX_PAUSED) {
-				logger.debug("LOADMGR: Pausing search: " + search);
+				logger.debug("LOADMGR: Pausing search: " + search + " (was: "+search.getPriorityLevel()+")");
 				search.setPriorityLevel(Level.PAUSED);
 			}
 			break;

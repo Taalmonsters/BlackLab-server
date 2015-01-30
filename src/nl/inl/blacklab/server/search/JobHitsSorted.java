@@ -15,7 +15,7 @@ public class JobHitsSorted extends JobWithHits {
 	}
 
 	@Override
-	public void performSearch() throws BlsException, InterruptedException  {
+	public void performSearch() throws BlsException {
 		// First, execute blocking hits search.
 		SearchParameters parNoSort = par.copyWithout("sort");
 		JobWithHits hitsSearch = searchMan.searchHits(user, parNoSort);

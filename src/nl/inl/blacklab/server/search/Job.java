@@ -9,6 +9,7 @@ import nl.inl.blacklab.search.Searcher;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.exceptions.InternalServerError;
+import nl.inl.blacklab.server.exceptions.ServiceUnavailable;
 import nl.inl.util.ExUtil;
 import nl.inl.util.ThreadPriority;
 import nl.inl.util.ThreadPriority.Level;
@@ -93,10 +94,9 @@ public abstract class Job implements Comparable<Job> {
 	/**
 	 * Wait for the specified job to finish
 	 * @param job the job to wait for
-	 * @throws InterruptedException
 	 * @throws BlsException
 	 */
-	protected void waitForJobToFinish(Job job) throws InterruptedException, BlsException {
+	protected void waitForJobToFinish(Job job) throws BlsException {
 		waitingFor.add(job);
 		job.waitUntilFinished();
 		waitingFor.remove(job);
@@ -192,9 +192,8 @@ public abstract class Job implements Comparable<Job> {
 	 *   then returns.
 	 *
 	 * @throws BlsException on parse error or other query-related error (e.g. too broad)
-	 * @throws InterruptedException if the thread was interrupted
 	 */
-	final public void perform(int waitTimeMs) throws BlsException, InterruptedException {
+	final public void perform(int waitTimeMs) throws BlsException {
 		if (performCalled)
 			throw new RuntimeException("Already performing search!");
 
@@ -210,7 +209,7 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	@SuppressWarnings("unused")
-	protected void performSearch() throws BlsException, InterruptedException {
+	protected void performSearch() throws BlsException {
 		// (to override)
 	}
 
@@ -249,17 +248,14 @@ public abstract class Job implements Comparable<Job> {
 	 * Re-throw the exception thrown by the search thread, if any.
 
 	 * @throws BlsException
-	 * @throws InterruptedException
 	 */
-	public void rethrowException() throws BlsException, InterruptedException {
+	public void rethrowException() throws BlsException {
 		Throwable exception = getThrownException();
 		if (exception == null)
 			return;
 		logger.debug("Re-throwing exception from search thread:\n" + exception.getClass().getName() + ": " + exception.getMessage());
 		if (exception instanceof BlsException)
 			throw (BlsException)exception;
-		else if (exception instanceof InterruptedException)
-			throw (InterruptedException)exception;
 		throw ExUtil.wrapRuntimeException(exception);
 	}
 
@@ -268,14 +264,17 @@ public abstract class Job implements Comparable<Job> {
 	 * time runs out.
 	 *
 	 * @param maxWaitMs maximum time to wait, or a negative number for no limit
-	 * @throws InterruptedException if the thread was interrupted
 	 * @throws BlsException
 	 */
-	public void waitUntilFinished(int maxWaitMs) throws InterruptedException, BlsException {
+	public void waitUntilFinished(int maxWaitMs) throws BlsException {
 		int defaultWaitStep = 100;
 		while (!performCalled || (maxWaitMs != 0 && !finished())) {
 			int w = maxWaitMs < 0 ? defaultWaitStep : Math.min(maxWaitMs, defaultWaitStep);
-			Thread.sleep(w);
+			try {
+				Thread.sleep(w);
+			} catch (InterruptedException e) {
+				throw new ServiceUnavailable("The server seems to be under heavy load right now. Please try again later.");
+			}
 			if (maxWaitMs >= 0)
 				maxWaitMs -= w;
 		}
@@ -286,10 +285,9 @@ public abstract class Job implements Comparable<Job> {
 	/**
 	 * Wait until this job is finished (or an Exception is thrown)
 	 *
-	 * @throws InterruptedException
 	 * @throws BlsException
 	 */
-	public void waitUntilFinished() throws InterruptedException, BlsException {
+	public void waitUntilFinished() throws BlsException {
 		waitUntilFinished(-1);
 	}
 
@@ -377,13 +375,16 @@ public abstract class Job implements Comparable<Job> {
 
 	public DataObjectMapElement toDataObject() {
 		DataObjectMapElement stats = new DataObjectMapElement();
+		boolean isCount = (this instanceof JobHitsTotal) || (this instanceof JobDocsTotal);
+		stats.put("type", isCount ? "count" : "search");
+		stats.put("status", status());
+		stats.put("executionTime", executionTime());
+		stats.put("notAccessedFor", notAccessedFor());
+		stats.put("pausedFor", pausedFor());
+		stats.put("createdBy", shortUserId());
+		//stats.put("finished", finished());
 		stats.put("clientsWaiting", clientsWaiting);
 		stats.put("waitingForJobs", waitingFor.size());
-		stats.put("startedAt", (startedAt - searchMan.createdAt)/1000.0);
-		stats.put("finishedAt", (finishedAt - searchMan.createdAt)/1000.0);
-		stats.put("lastAccessed", (lastAccessed - searchMan.createdAt)/1000.0);
-		stats.put("createdBy", shortUserId());
-		stats.put("threadFinished", finished());
 
 		DataObjectMapElement d = new DataObjectMapElement();
 		d.put("id", id);
@@ -393,6 +394,16 @@ public abstract class Job implements Comparable<Job> {
 		return d;
 	}
 	
+	private String status() {
+		if (finished())
+			return "finished";
+		switch(level) {
+		case PAUSED: return "paused";
+		case LOW:    return "lowprio";
+		default: return "running";
+		}
+	}
+
 	protected void cleanup() {
 		logger.debug("Job.cleanup() called");
 		if (waitingFor != null)
@@ -450,9 +461,13 @@ public abstract class Job implements Comparable<Job> {
 	/**
 	 * Returns how long ago this job was last accessed.
 	 * 
+	 * Note that if a client is waiting for this job to complete, this always returns 0.
+	 * 
 	 * @return how long ago this job was last accessed.
 	 */
 	public double notAccessedFor() {
+		if (clientsWaiting > 0)
+			return 0;
 		return (System.currentTimeMillis() - lastAccessed) / 1000.0;
 	}
 
@@ -482,6 +497,8 @@ public abstract class Job implements Comparable<Job> {
 	 */
 	public void setPriorityLevel(ThreadPriority.Level level) {
 		if (this.level != level) {
+			if (level == Level.PAUSED)
+				pausedAt = System.currentTimeMillis();
 			this.level = level;
 			setPriorityInternal();
 		}

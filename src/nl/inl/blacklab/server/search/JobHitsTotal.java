@@ -3,6 +3,7 @@ package nl.inl.blacklab.server.search;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.ServiceUnavailable;
 
 /**
  * Represents finding the total number of hits.
@@ -16,7 +17,7 @@ public class JobHitsTotal extends Job {
 	}
 
 	@Override
-	public void performSearch() throws BlsException, InterruptedException  {
+	public void performSearch() throws BlsException {
 		// First, execute blocking hits search.
 		JobWithHits hitsSearch = searchMan.searchHits(user, par);
 		try {
@@ -31,7 +32,7 @@ public class JobHitsTotal extends Job {
 		}
 		hits.size();
 		if (Thread.interrupted()) {
-			throw new InterruptedException("Interrupted while determining total number of hits");
+			throw new ServiceUnavailable("Determining total number of hits took too long, cancelled");
 		}
 	}
 

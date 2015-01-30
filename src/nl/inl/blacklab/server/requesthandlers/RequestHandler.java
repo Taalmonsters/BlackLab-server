@@ -272,7 +272,9 @@ public abstract class RequestHandler {
 		this.urlPathInfo = urlPathInfo;
 		this.user = user;
 
-		logger.info(ServletUtil.shortenIpv6(request.getRemoteAddr()) + " " + user.uniqueIdShort() + " " + request.getMethod() + " " + ServletUtil.getPathAndQueryString(request));
+		String pathAndQueryString = ServletUtil.getPathAndQueryString(request);
+		if (!pathAndQueryString.equals("/cache-info")) // annoying when monitoring
+			logger.info(ServletUtil.shortenIpv6(request.getRemoteAddr()) + " " + user.uniqueIdShort() + " " + request.getMethod() + " " + pathAndQueryString);
 	}
 
 	private void setDebug(boolean debugMode) {

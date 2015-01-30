@@ -22,7 +22,7 @@ public class JobDocsGrouped extends Job {
 	}
 
 	@Override
-	public void performSearch() throws BlsException, InterruptedException  {
+	public void performSearch() throws BlsException {
 		// First, execute blocking docs search.
 		SearchParameters parNoGroup = par.copyWithout("group", "sort");
 		JobWithDocs docsSearch = searchMan.searchDocs(user, parNoGroup);

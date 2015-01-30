@@ -17,7 +17,7 @@ public class JobDocs extends JobWithDocs {
 	}
 
 	@Override
-	public void performSearch() throws BlsException, InterruptedException {
+	public void performSearch() throws BlsException {
 		// First, execute blocking hits search.
 		String patt = par.getString("patt");
 		if (patt != null && patt.length() > 0) {

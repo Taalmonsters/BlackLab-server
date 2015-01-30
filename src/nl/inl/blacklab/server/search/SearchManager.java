@@ -72,7 +72,7 @@ public class SearchManager {
 	 * situations under certain loads.
 	 * (EXPERIMENTAL)
 	 */
-	static final boolean ENABLE_THREAD_ETIQUETTE = true;
+	static final boolean ENABLE_THREAD_PRIORITY = true;
 
 	/**
 	 * A file filter that returns readable directories only; used for scanning
@@ -302,7 +302,7 @@ public class SearchManager {
 					
 					// Make sure long operations yield their thread occasionally,
 					// and automatically abort really long operations.
-					ThreadPriority.setEnabled(ENABLE_THREAD_ETIQUETTE);
+					ThreadPriority.setEnabled(ENABLE_THREAD_PRIORITY);
 					
 					JSONArray jsonStates = perfProp.getJSONArray("serverLoadStates");
 					cache.setServerLoadStates(jsonStates);
@@ -1000,7 +1000,7 @@ public class SearchManager {
 	}
 
 	public JobWithHits searchHits(User user, SearchParameters par)
-			throws BlsException, InterruptedException {
+			throws BlsException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "docpid",
 				"maxretrieve", "maxcount");
@@ -1019,7 +1019,7 @@ public class SearchManager {
 	}
 
 	public JobWithDocs searchDocs(User user, SearchParameters par)
-			throws BlsException, InterruptedException {
+			throws BlsException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "usecontent",
 				"maxretrieve", "maxcount");
@@ -1038,7 +1038,7 @@ public class SearchManager {
 	}
 
 	public JobHitsWindow searchHitsWindow(User user, SearchParameters par)
-			throws BlsException, InterruptedException {
+			throws BlsException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
 				"wordsaroundhit", "usecontent", "maxretrieve", "maxcount");
@@ -1047,7 +1047,7 @@ public class SearchManager {
 	}
 
 	public JobDocsWindow searchDocsWindow(User user, SearchParameters par)
-			throws BlsException, InterruptedException {
+			throws BlsException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "sort", "first", "number",
 				"wordsaroundhit", "usecontent", "maxretrieve", "maxcount");
@@ -1056,7 +1056,7 @@ public class SearchManager {
 	}
 
 	public JobHitsTotal searchHitsTotal(User user, SearchParameters par)
-			throws BlsException, InterruptedException {
+			throws BlsException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobHitsTotal");
@@ -1064,7 +1064,7 @@ public class SearchManager {
 	}
 
 	public JobDocsTotal searchDocsTotal(User user, SearchParameters par)
-			throws BlsException, InterruptedException {
+			throws BlsException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "maxretrieve", "maxcount");
 		parBasic.put("jobclass", "JobDocsTotal");
@@ -1072,7 +1072,7 @@ public class SearchManager {
 	}
 
 	public JobHitsGrouped searchHitsGrouped(User user, SearchParameters par)
-			throws BlsException, InterruptedException {
+			throws BlsException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "group", "sort",
 				"maxretrieve", "maxcount");
@@ -1081,7 +1081,7 @@ public class SearchManager {
 	}
 
 	public JobDocsGrouped searchDocsGrouped(User user, SearchParameters par)
-			throws BlsException, InterruptedException {
+			throws BlsException {
 		SearchParameters parBasic = par.copyWithOnly("indexname", "patt",
 				"pattlang", "filter", "filterlang", "group", "sort",
 				"maxretrieve", "maxcount");
@@ -1090,7 +1090,7 @@ public class SearchManager {
 	}
 
 	public JobFacets searchFacets(User user, SearchParameters par)
-			throws BlsException, InterruptedException {
+			throws BlsException {
 		SearchParameters parBasic = par.copyWithOnly("facets", "indexname",
 				"patt", "pattlang", "filter", "filterlang");
 		parBasic.put("jobclass", "JobFacets");
@@ -1111,11 +1111,9 @@ public class SearchManager {
 	 * @return a Search object corresponding to these parameters
 	 * @throws BlsException
 	 *             if the query couldn't be executed
-	 * @throws InterruptedException
-	 *             if the search thread was interrupted
 	 */
 	private Job search(User user, SearchParameters searchParameters)
-			throws BlsException, InterruptedException {
+			throws BlsException {
 		//logger.debug("@PERF search");
 		try {
 		// Search the cache / running jobs for this search, create new if not
@@ -1135,7 +1133,7 @@ public class SearchManager {
 					logger.warn("Can't start new search, not enough memory ("
 							+ freeMegs + "M < " + minFreeMemForSearchMegs
 							+ "M)");
-					throw new ServiceUnavailable("The server is under heavy load right now. Please try again later.");
+					throw new ServiceUnavailable("The server seems to be under heavy load right now. Please try again later.");
 				}
 				// logger.debug("Enough free memory: " + freeMegs + "M");
 
@@ -1365,12 +1363,12 @@ public class SearchManager {
 		return debugModeIps.contains(ip);
 	}
 
-	static void debugWait() {
+	static void debugWait() throws BlsException {
 		// Fake extra search time
 		try {
 			Thread.sleep(2000);
 		} catch (InterruptedException e) {
-			throw new RuntimeException(e);
+			throw new ServiceUnavailable("Debug wait interrupted");
 		}
 	}
 

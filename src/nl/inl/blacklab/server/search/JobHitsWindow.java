@@ -24,7 +24,7 @@ public class JobHitsWindow extends Job {
 	}
 
 	@Override
-	public void performSearch() throws BlsException, InterruptedException  {
+	public void performSearch() throws BlsException {
 		// First, execute blocking hits search.
 		JobWithHits hitsSearch = searchMan.searchHits(user, par);
 		waitForJobToFinish(hitsSearch);

@@ -17,7 +17,7 @@ public class JobDocsSorted extends JobWithDocs {
 	}
 
 	@Override
-	public void performSearch() throws BlsException, InterruptedException  {
+	public void performSearch() throws BlsException {
 		// First, execute blocking docs search.
 		SearchParameters parNoSort = par.copyWithout("sort");
 		JobWithDocs search = searchMan.searchDocs(user, parNoSort);
