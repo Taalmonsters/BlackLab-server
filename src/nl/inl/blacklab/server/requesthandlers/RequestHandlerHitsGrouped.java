@@ -22,7 +22,7 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws BlsException, InterruptedException {
+	public Response handle() throws BlsException {
 		//logger.debug("@PERF RHHitsGrouped: START");
 		
 		// Get the window we're interested in

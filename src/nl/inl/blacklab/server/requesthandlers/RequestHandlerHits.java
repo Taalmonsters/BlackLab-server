@@ -44,7 +44,7 @@ public class RequestHandlerHits extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws BlsException, InterruptedException {
+	public Response handle() throws BlsException {
 		//logger.debug("@PERF RHHits: START");
 		
 		// Do we want to view a single group after grouping?

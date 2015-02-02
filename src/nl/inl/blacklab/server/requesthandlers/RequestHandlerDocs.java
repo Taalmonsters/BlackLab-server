@@ -40,7 +40,7 @@ public class RequestHandlerDocs extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws BlsException, InterruptedException {
+	public Response handle() throws BlsException {
 		// Do we want to view a single group after grouping?
 		String groupBy = searchParam.getString("group");
 		if (groupBy == null)

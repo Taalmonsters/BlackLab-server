@@ -23,7 +23,7 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws BlsException, InterruptedException {
+	public Response handle() throws BlsException {
 		// Get the window we're interested in
 		JobDocsGrouped search = searchMan.searchDocsGrouped(user, searchParam);
 		try {

@@ -27,7 +27,7 @@ public class RequestHandlerDocContents extends RequestHandler {
 	}
 
 	@Override
-	public Response handle() throws BlsException, InterruptedException {
+	public Response handle() throws BlsException {
 		int i = urlPathInfo.indexOf('/');
 		String docId = i >= 0 ? urlPathInfo.substring(0, i) : urlPathInfo;
 		if (docId.length() == 0)
