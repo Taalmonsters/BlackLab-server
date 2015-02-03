@@ -4,6 +4,7 @@ import nl.inl.blacklab.perdocument.DocProperty;
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.util.ThreadPriority.Level;
 
 /**
  * Represents a docs search and sort operation.
@@ -26,6 +27,7 @@ public class JobDocsSorted extends JobWithDocs {
 	
 			// Now, sort the docs.
 			sourceResults = search.getDocResults();
+			setPriorityInternal();
 		} finally {
 			search.decrRef();
 			search = null;
@@ -62,8 +64,13 @@ public class JobDocsSorted extends JobWithDocs {
 	}
 
 	@Override
-	public DataObjectMapElement toDataObject() {
-		DataObjectMapElement d = super.toDataObject();
+	public Level getPriorityOfResultsObject() {
+		return sourceResults == null ? Level.NORMAL : sourceResults.getPriorityLevel();
+	}
+
+	@Override
+	public DataObjectMapElement toDataObject(boolean debugInfo) {
+		DataObjectMapElement d = super.toDataObject(debugInfo);
 		d.put("numberOfDocResults", docResults == null ? -1 : docResults.size());
 		return d;
 	}

@@ -136,14 +136,19 @@
         // always:      matches all searches
         // never:       matches no searches
         // age <n>:     matches searches that were started at least n seconds ago
-        // ignored <n>: matches searches that haven't been touched for at least n seconds
-        //              (e.g. no-one has asked about the status of this search)
+        // ignored <n>: matches searches that have not been referenced (except by the
+        //              cache) for at least n seconds.
         // paused <n>:  matches searches that have been paused for at least n seconds
         // cached <n>:  matches finished searches for which the results have been cached 
         //              for at least n seconds.
         //
         // (the default of 7 == HEAVY seems to be a good setup for an 8-core machine)
-        "serverLoadBehaviour": [
+        //
+        // If you change these rules, be careful not to create situations that 
+        // are irreversible (like searches getting paused but never resumed), or 
+        // 'oscillating' situations (searches getting paused, resumed, paused, resumed, 
+        // etc.)!
+        "serverLoadStates": [
             
             {
                 "name": "HEAVY",
@@ -152,6 +157,7 @@
                 // How should we behave in this state?
                 "discardResults":   "cached 450",  // When to remove search results from the cache
                 "lowerPriority":    "always",      // When to lower priority of a query
+                "raisePriority":    "never",       // When to raise priority of a query
                 "pauseCount":       "always",      // When to pause a count
                 "pauseSearch":      "age 60",      // When to pause a search
                 "resumeSearch":     "never",       // Resume searches or not?
@@ -168,7 +174,8 @@
                 // How should we behave in this state?
                 "discardResults":   "cached 900",  // When to remove search results from the cache
                 "lowerPriority":    "age 60",      // When to lower priority of a query
-                "pauseCount":       "ignored 60",  // When to pause a count
+                "raisePriority":    "never",       // When to raise priority of a query
+                "pauseCount":       "age 60",      // When to pause a count
                 "pauseSearch":      "age 300",     // When to pause a search
                 "resumeSearch":     "never",       // Resume searches or not?
                 "abortCount":       "ignored 300", // When to abort a count
@@ -186,9 +193,10 @@
                 // How should we behave in this state? (NOTE: these are the default values for these options)
                 "discardResults":   "cached 1800", // When to remove search results from the cache
                 "lowerPriority":    "never",       // When to lower priority of a query
+                "raisePriority":    "always",      // When to raise priority of a query
                 "pauseCount":       "never",       // When to pause a count
                 "pauseSearch":      "never",       // When to pause a search
-                "resumeSearch":     "paused 60",   // Resume searches or not?
+                "resumeSearch":     "paused 30",   // Resume searches or not?
                                                    // NOTE: we check that it's been paused for a while to
                                                    // avoid 'oscillation'
                 "abortCount":       "never",       // When to abort a count

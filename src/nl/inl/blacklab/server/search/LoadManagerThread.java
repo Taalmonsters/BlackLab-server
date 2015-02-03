@@ -19,6 +19,7 @@ public class LoadManagerThread extends Thread implements UncaughtExceptionHandle
 	 * @param searchMan the search manager, for calling load management function 
 	 */
 	public LoadManagerThread(SearchManager searchMan) {
+		logger.debug("Creating LOADMGR thread...");
 		this.searchMan = searchMan;
 		setUncaughtExceptionHandler(this);
 	}

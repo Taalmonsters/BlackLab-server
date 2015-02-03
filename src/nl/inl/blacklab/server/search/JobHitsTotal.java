@@ -4,6 +4,7 @@ import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.exceptions.ServiceUnavailable;
+import nl.inl.util.ThreadPriority.Level;
 
 /**
  * Represents finding the total number of hits.
@@ -26,6 +27,7 @@ public class JobHitsTotal extends Job {
 			// Get the total number of hits (we ignore the value because you can monitor progress
 			// and get the final total through the getHits() method yourself.
 			hits = hitsSearch.getHits();
+			setPriorityInternal(); // make sure hits has the right priority
 		} finally {
 			hitsSearch.decrRef();
 			hitsSearch = null;
@@ -41,6 +43,11 @@ public class JobHitsTotal extends Job {
 		setHitsPriority(hits);
 	}
 
+	@Override
+	public Level getPriorityOfResultsObject() {
+		return hits == null ? Level.NORMAL : hits.getPriorityLevel();
+	}
+
 	/**
 	 * Returns the Hits object when available.
 	 *
@@ -51,8 +58,8 @@ public class JobHitsTotal extends Job {
 	}
 
 	@Override
-	public DataObjectMapElement toDataObject() {
-		DataObjectMapElement d = super.toDataObject();
+	public DataObjectMapElement toDataObject(boolean debugInfo) {
+		DataObjectMapElement d = super.toDataObject(debugInfo);
 		d.put("hitsCounted", hits != null ? hits.countSoFarHitsCounted() : -1);
 		return d;
 	}

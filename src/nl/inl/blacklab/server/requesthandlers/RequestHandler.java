@@ -273,7 +273,7 @@ public abstract class RequestHandler {
 		this.user = user;
 
 		String pathAndQueryString = ServletUtil.getPathAndQueryString(request);
-		if (!pathAndQueryString.equals("/cache-info")) // annoying when monitoring
+		if (!pathAndQueryString.startsWith("/cache-info")) // annoying when monitoring
 			logger.info(ServletUtil.shortenIpv6(request.getRemoteAddr()) + " " + user.uniqueIdShort() + " " + request.getMethod() + " " + pathAndQueryString);
 	}
 

@@ -3,6 +3,7 @@ package nl.inl.blacklab.server.search;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.util.ThreadPriority.Level;
 
 /**
  * A search job that produces a Hits object
@@ -21,8 +22,8 @@ public class JobWithHits extends Job {
 	}
 
 	@Override
-	public DataObjectMapElement toDataObject() {
-		DataObjectMapElement d = super.toDataObject();
+	public DataObjectMapElement toDataObject(boolean debugInfo) {
+		DataObjectMapElement d = super.toDataObject(debugInfo);
 		d.put("countHitsRetrieved", hits == null ? -1 : hits.countSoFarDocsRetrieved());
 		return d;
 	}
@@ -30,6 +31,11 @@ public class JobWithHits extends Job {
 	@Override
 	protected void setPriorityInternal() {
 		setHitsPriority(hits);
+	}
+
+	@Override
+	public Level getPriorityOfResultsObject() {
+		return hits == null ? Level.NORMAL : hits.getPriorityLevel();
 	}
 
 	@Override

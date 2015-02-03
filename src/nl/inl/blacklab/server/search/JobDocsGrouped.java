@@ -7,6 +7,7 @@ import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BadRequest;
 import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.util.ThreadPriority.Level;
 
 /**
  * Represents a hits search and sort operation.
@@ -31,6 +32,7 @@ public class JobDocsGrouped extends Job {
 	
 			// Now, group the docs.
 			docResults = docsSearch.getDocResults();
+			setPriorityInternal();
 		} finally {
 			docsSearch.decrRef();
 			docsSearch = null;
@@ -64,6 +66,11 @@ public class JobDocsGrouped extends Job {
 			setDocsPriority(docResults);
 	}
 
+	@Override
+	public Level getPriorityOfResultsObject() {
+		return docResults == null ? Level.NORMAL : docResults.getPriorityLevel();
+	}
+
 	public DocGroups getGroups() {
 		return groups;
 	}
@@ -73,8 +80,8 @@ public class JobDocsGrouped extends Job {
 	}
 
 	@Override
-	public DataObjectMapElement toDataObject() {
-		DataObjectMapElement d = super.toDataObject();
+	public DataObjectMapElement toDataObject(boolean debugInfo) {
+		DataObjectMapElement d = super.toDataObject(debugInfo);
 		d.put("numberOfDocResults", docResults == null ? -1 : docResults.size());
 		d.put("numberOfGroups", groups == null ? -1 : groups.numberOfGroups());
 		return d;

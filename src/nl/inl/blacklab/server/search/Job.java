@@ -1,11 +1,14 @@
 package nl.inl.blacklab.server.search;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.HashSet;
 import java.util.Set;
 
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.Searcher;
+import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.exceptions.InternalServerError;
@@ -17,6 +20,8 @@ import nl.inl.util.ThreadPriority.Level;
 import org.apache.log4j.Logger;
 
 public abstract class Job implements Comparable<Job> {
+	private static final int REFS_INVALID = -9999;
+
 	protected static final Logger logger = Logger.getLogger(Job.class);
 	
 	/** If true (as it should be for production use), we call cleanup() on jobs that 
@@ -74,17 +79,14 @@ public abstract class Job implements Comparable<Job> {
 	/**
 	 * Number of references to this Job. If this reaches 0, and the thread
 	 * is not running, we can safely call cleanup().
+	 * 
+	 * Note that the cache itself also counts as a reference to the job,
+	 * so if refsToJob == 1, it is only in the cache, not currently referenced
+	 * by another job or search request. We can use this to decide when a
+	 * search can safely be removed from the cache.
 	 */
 	int refsToJob = 0;
-
-	/** Number of clients waiting for the results of this job.
-	 * This is used to allow clients to cancel long searches: if this number reaches
-	 * 0 before the search is done, it may be cancelled. Jobs that use other Jobs will
-	 * also count as a client of that Job, and will tell that Job they're no longer interested
-	 * if they are cancelled themselves.
-	 */
-	int clientsWaiting = 0;
-
+	
 	/**
 	 * The jobs we're waiting for, so we can notify them in case we get cancelled,
 	 * and our "load scheduler" knows we're not currently using the CPU.
@@ -97,9 +99,18 @@ public abstract class Job implements Comparable<Job> {
 	 * @throws BlsException
 	 */
 	protected void waitForJobToFinish(Job job) throws BlsException {
-		waitingFor.add(job);
-		job.waitUntilFinished();
-		waitingFor.remove(job);
+		synchronized(waitingFor) {
+			waitingFor.add(job);
+			job.incrRef();
+		}
+		try {
+			job.waitUntilFinished();
+		} finally {
+			synchronized(waitingFor) {
+				job.decrRef();
+				waitingFor.remove(job);
+			}
+		}
 	}
 
 	/** When this job was started (or -1 if not started yet) */
@@ -203,7 +214,6 @@ public abstract class Job implements Comparable<Job> {
 		searchThread = new SearchThread(this);
 		searchThread.start();
 		performCalled = true;
-		clientsWaiting++; // someone wants to know the answer
 
 		waitUntilFinished(waitTimeMs);
 	}
@@ -268,15 +278,19 @@ public abstract class Job implements Comparable<Job> {
 	 */
 	public void waitUntilFinished(int maxWaitMs) throws BlsException {
 		int defaultWaitStep = 100;
-		while (!performCalled || (maxWaitMs != 0 && !finished())) {
-			int w = maxWaitMs < 0 ? defaultWaitStep : Math.min(maxWaitMs, defaultWaitStep);
+		boolean waitUntilFinished = maxWaitMs < 0;
+		while (!performCalled || ( (waitUntilFinished || maxWaitMs > 0) && !finished())) {
+			int w = defaultWaitStep;
+			if (!waitUntilFinished) {
+				if (maxWaitMs < defaultWaitStep)
+					w = maxWaitMs;
+				maxWaitMs -= w;
+			}
 			try {
 				Thread.sleep(w);
 			} catch (InterruptedException e) {
 				throw new ServiceUnavailable("The server seems to be under heavy load right now. Please try again later.");
 			}
-			if (maxWaitMs >= 0)
-				maxWaitMs -= w;
 		}
 		// If an Exception occurred, re-throw it now.
 		rethrowException();
@@ -292,31 +306,6 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	/**
-	 * Should this job be cancelled?
-	 *
-	 * True if the job hasn't finished and there are no more clients
-	 * waiting for its results.
-	 *
-	 * @return true iff the job should be cancelled
-	 */
-	public boolean shouldBeCancelled() {
-		return !finished() && clientsWaiting == 0;
-	}
-
-	/**
-	 * Change how many clients are waiting for the results of this job.
-	 * @param delta how many clients to add or subtract
-	 */
-	public void changeClientsWaiting(int delta) {
-		clientsWaiting += delta;
-		if (clientsWaiting < 0)
-			error(logger, "clientsWaiting < 0 for job: " + this);
-		if (shouldBeCancelled()) {
-			cancelJob();
-		}
-	}
-
-	/**
 	 * Try to cancel this job.
 	 */
 	public void cancelJob() {
@@ -324,15 +313,20 @@ public abstract class Job implements Comparable<Job> {
 			return; // can't cancel, hasn't been started yet (shouldn't happen)
 		if (cancelJobCalled)
 			return; // don't call this twice!
+		cancelJobCalled = true;
+		
 		searchThread.interrupt();
 		searchThread = null; // ensure garbage collection
-		cancelJobCalled = true;
 
 		// Tell the jobs we were waiting for we're no longer interested
-		for (Job j: waitingFor) {
-			j.changeClientsWaiting(-1);
+		if (waitingFor != null) {
+			synchronized(waitingFor) {
+				for (Job j: waitingFor) {
+					j.decrRef(); //decrementClientsWaiting();
+				}
+				waitingFor.clear();
+			}
 		}
-		waitingFor.clear();
 	}
 
 	/**
@@ -373,7 +367,7 @@ public abstract class Job implements Comparable<Job> {
 		logger.error(shortUserId() + " " + msg);
 	}
 
-	public DataObjectMapElement toDataObject() {
+	public DataObjectMapElement toDataObject(boolean debugInfo) {
 		DataObjectMapElement stats = new DataObjectMapElement();
 		boolean isCount = (this instanceof JobHitsTotal) || (this instanceof JobDocsTotal);
 		stats.put("type", isCount ? "count" : "search");
@@ -382,21 +376,77 @@ public abstract class Job implements Comparable<Job> {
 		stats.put("notAccessedFor", notAccessedFor());
 		stats.put("pausedFor", pausedFor());
 		stats.put("createdBy", shortUserId());
-		//stats.put("finished", finished());
-		stats.put("clientsWaiting", clientsWaiting);
+		stats.put("refsToJob", refsToJob - 1); // (- 1 because the cache always references it)
 		stats.put("waitingForJobs", waitingFor.size());
-
+		
 		DataObjectMapElement d = new DataObjectMapElement();
 		d.put("id", id);
 		d.put("class", getClass().getSimpleName());
 		d.put("searchParam", par.toDataObject());
 		d.put("stats", stats);
+		
+		if (debugInfo) {
+			// Add extra debug info.
+			DataObjectMapElement dbg = new DataObjectMapElement();
+			
+			// Ids of the jobs this thread is waiting for, if any
+			DataObjectList wfIds = new DataObjectList("jobId");
+			if (waitingFor.size() > 0) {
+				for (Job j: waitingFor) {
+					wfIds.add(j.id);
+				}
+			}
+			dbg.put("waitingForIds", wfIds);
+			
+			// More information about job state
+			dbg.put("startedAt", startedAt);
+			dbg.put("finishedAt", finishedAt);
+			dbg.put("lastAccessed", lastAccessed);
+			dbg.put("pausedAt", pausedAt);
+			dbg.put("performCalled", performCalled);
+			dbg.put("cancelJobCalled", cancelJobCalled);
+			dbg.put("priorityLevel", level.toString());
+			dbg.put("resultsPriorityLevel", getPriorityOfResultsObject().toString());
+			
+			// Information about thrown exception, if any
+			DataObjectMapElement ex = new DataObjectMapElement();
+			if (thrownException != null) {
+				PrintWriter st = new PrintWriter(new StringWriter());
+				thrownException.printStackTrace(st);
+				ex.put("class", thrownException.getClass().getName());
+				ex.put("message", thrownException.getMessage());
+				ex.put("stackTrace", st.toString());
+			}
+			dbg.put("thrownException", ex);
+			
+			// Information about thread object, if any
+			DataObjectMapElement thr = new DataObjectMapElement();
+			if (searchThread != null) {
+				thr.put("name", searchThread.getName());
+				thr.put("osPriority", searchThread.getPriority());
+				thr.put("isAlive", searchThread.isAlive());
+				thr.put("isDaemon", searchThread.isDaemon());
+				thr.put("isInterrupted", searchThread.isInterrupted());
+				thr.put("state", searchThread.getState().toString());
+				StackTraceElement[] stackTrace = searchThread.getStackTrace();
+				StringBuilder stackTraceStr = new StringBuilder();
+				for (StackTraceElement element: stackTrace) {
+					stackTraceStr.append(element.toString()).append("\n");
+				}
+				thr.put("currentlyExecuting", stackTraceStr.toString());
+			}
+			dbg.put("searchThread", thr);
+			d.put("debugInfo", dbg);
+		}
+
 		return d;
 	}
 	
 	private String status() {
 		if (finished())
 			return "finished";
+		if (level == null)
+			return "(level == NULL!)";
 		switch(level) {
 		case PAUSED: return "paused";
 		case LOW:    return "lowprio";
@@ -406,23 +456,38 @@ public abstract class Job implements Comparable<Job> {
 
 	protected void cleanup() {
 		logger.debug("Job.cleanup() called");
-		if (waitingFor != null)
-			waitingFor.clear();
-		waitingFor = null;
+		if (waitingFor != null) {
+			synchronized(waitingFor) {
+				for (Job j: waitingFor) {
+					j.decrRef();
+				}
+				waitingFor.clear();
+				waitingFor = null;
+			}
+		}
 		thrownException = null;
 		searchThread = null;
-		refsToJob = -9999;
+		refsToJob = REFS_INVALID;
 	}
 	
 	public synchronized void incrRef() {
-		if (refsToJob == -9999)
+		if (refsToJob == REFS_INVALID)
 			throw new RuntimeException("Cannot add ref, job was already cleaned up!");
 		refsToJob++;
 	}
 
 	public synchronized void decrRef() {
 		refsToJob--;
-		if (refsToJob == 0) {
+		if (refsToJob == 1) {
+			// Only in cache; set the last accessed time so we
+			// know for how long it's been ignored.
+			resetLastAccessed();
+		} else if (refsToJob == 0) {
+			// No references to this job, not even in the cache.
+			// We can safely cancel it if it was still 
+			// running. We optionally call cleanup to
+			// assist with garbage collection.
+			cancelJob();
 			if (ENABLE_JOB_CLEANUP)
 				cleanup();
 		}
@@ -434,7 +499,7 @@ public abstract class Job implements Comparable<Job> {
 	 * Cache age is defined as the time between now and the last time
 	 * it was accessed (for finished searches only).
 	 * 
-	 * Running searches always have a zero age. Check executionTimeMillis() 
+	 * Running searches always have a zero age. Check executionTime() 
 	 * for search time.
 	 *
 	 * @return the age in seconds
@@ -466,8 +531,12 @@ public abstract class Job implements Comparable<Job> {
 	 * @return how long ago this job was last accessed.
 	 */
 	public double notAccessedFor() {
-		if (clientsWaiting > 0)
+		if (refsToJob > 1) {
+			// More references to this job than just the cache;
+			// This counts as being continually accessed, because
+			// those jobs apparently need this job.
 			return 0;
+		}
 		return (System.currentTimeMillis() - lastAccessed) / 1000.0;
 	}
 
@@ -487,7 +556,9 @@ public abstract class Job implements Comparable<Job> {
 	 * @return true if it's waiting, false if not
 	 */
 	public boolean isWaitingForOtherJob() {
-		return waitingFor.size() > 0;
+		synchronized(waitingFor) {
+			return waitingFor.size() > 0;
+		}
 	}
 
 	/**
@@ -500,8 +571,8 @@ public abstract class Job implements Comparable<Job> {
 			if (level == Level.PAUSED)
 				pausedAt = System.currentTimeMillis();
 			this.level = level;
-			setPriorityInternal();
 		}
+		setPriorityInternal();
 	}
 
 	/**
@@ -521,6 +592,12 @@ public abstract class Job implements Comparable<Job> {
 	protected void setPriorityInternal() {
 		// Subclasses can override this to set the priority of the operation
 	}
+
+	/**
+	 * Get the actual priority of the Hits or DocResults object.
+	 * @return the priority level
+	 */
+	public abstract Level getPriorityOfResultsObject();
 
 	/**
 	 * Set the priority/paused status of a Hits object.
@@ -543,5 +620,5 @@ public abstract class Job implements Comparable<Job> {
 			docResults.setPriorityLevel(level);
 		}
 	}
-	
+
 }

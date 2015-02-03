@@ -16,9 +16,13 @@ public class RequestHandlerCacheInfo extends RequestHandler {
 
 	@Override
 	public Response handle() {
+		
+		String strDebugInfo = request.getParameter("debug");
+		boolean debugInfo = strDebugInfo == null ? false : strDebugInfo.matches("true|yes|1");
+		
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("cacheStatus", searchMan.getCacheStatusDataObject());
-		response.put("cacheContents", searchMan.getCacheContentsDataObject());
+		response.put("cacheContents", searchMan.getCacheContentsDataObject(debugInfo));
 
 		Response r = new Response(response);
 		r.setCacheAllowed(false);

@@ -3,6 +3,7 @@ package nl.inl.blacklab.server.search;
 import nl.inl.blacklab.search.ConcordanceType;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.blacklab.server.exceptions.Forbidden;
 
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
@@ -37,8 +38,12 @@ public class JobDocs extends JobWithDocs {
 		} else {
 			// Documents only
 			Query filterQuery = SearchManager.parseFilter(searcher, par.getString("filter"), par.getString("filterlang"));
-			if (filterQuery == null)
-				filterQuery = new MatchAllDocsQuery();
+			if (filterQuery == null) {
+				if (SearchManager.isAllDocsQueryAllowed())
+					filterQuery = new MatchAllDocsQuery();
+				else
+					throw new Forbidden("You must specify at least a filter query.");
+			}
 			docResults = searcher.queryDocuments(filterQuery);
 		}
 	}

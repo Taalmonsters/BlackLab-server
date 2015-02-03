@@ -139,13 +139,24 @@ public class SearchCache {
 	 * Get rid of all the cached Searches.
 	 */
 	public void clearCache() {
+		clearCache(false);
+	}
+
+	/**
+	 * Get rid of all the cached Searches.
+	 * 
+	 * @param cancelRunning if true, cancels all running searches as well.
+	 */
+	public void clearCache(boolean cancelRunning) {
 		for (Job cachedSearch: cachedSearches.values()) {
+			if (!cachedSearch.finished())
+				cachedSearch.cancelJob();
 			cachedSearch.decrRef();
 		}
 		cachedSearches.clear();
 		logger.debug("Cache cleared.");
 	}
-
+	
 	/**
 	 * If the cache exceeds the given parameters, clean it up by
 	 * removing less recently used searches.
@@ -312,7 +323,7 @@ public class SearchCache {
 	public int numberOfRunningSearches() {
 		int n = 0;
 		for (Job job: cachedSearches.values()) {
-			if (!job.finished() && !job.isWaitingForOtherJob()) {
+			if (!job.finished() && !job.isWaitingForOtherJob() && job.getPriorityLevel() != Level.PAUSED) {
 				n++;
 			}
 		}
@@ -344,10 +355,10 @@ public class SearchCache {
 		return doCache;
 	}
 
-	public DataObject getContentsDataObject() {
+	public DataObject getContentsDataObject(boolean debugInfo) {
 		DataObjectList doCacheContents = new DataObjectList("job");
 		for (Job job: cachedSearches.values()) {
-			doCacheContents.add(job.toDataObject());
+			doCacheContents.add(job.toDataObject(debugInfo));
 		}
 		return doCacheContents;
 	}
@@ -356,9 +367,9 @@ public class SearchCache {
 	 * What we can do to a query in response to the server load.
 	 */
 	enum ServerLoadQueryAction {
-		NONE,         // no action
+		PAUSED_OR_NORMAL_PRIO,         // no action
 		DISCARD,      // discard results from cache
-		LOWER_PRIO,   // continue searching with lower thread priority
+		RUN_LOW_PRIO,   // continue searching with lower thread priority
 		PAUSE_SEARCH, // pause search
 		PAUSE_COUNT,  // pause count
 		PAUSE_NEW,    // abort new search
@@ -448,7 +459,8 @@ public class SearchCache {
 			int minSearches = JsonUtil.getIntProp(jsonState, "minSearches", 0);
 			ServerLoadState state = new ServerLoadState(name, minSearches);
 			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "discardResults", "cached 1800")), ServerLoadQueryAction.DISCARD);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "lowerPriority", "never")), ServerLoadQueryAction.LOWER_PRIO);
+			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "lowerPriority", "never")), ServerLoadQueryAction.RUN_LOW_PRIO);
+			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "raisePriority", "always")), ServerLoadQueryAction.PAUSED_OR_NORMAL_PRIO);
 			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "pauseCount", "never")), ServerLoadQueryAction.PAUSE_COUNT);
 			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "pauseSearch", "never")), ServerLoadQueryAction.PAUSE_SEARCH);
 			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "resumeSearch", "paused 60")), ServerLoadQueryAction.RESUME);
@@ -459,6 +471,7 @@ public class SearchCache {
 			serverLoadStates.add(state);
 		}
 		Collections.sort(serverLoadStates);
+		logger.debug("LOADMGR: read " + serverLoadStates.size() + " load states from config file.");
 	}
 	
 	/**
@@ -467,6 +480,8 @@ public class SearchCache {
 	 * be set to null.
 	 */
 	public void determineCurrentLoad() {
+		ServerLoadState oldLoadState = currentLoadState;
+		
 		// serverLoadStates is sorted by minSearches descending,
 		// so the first matching state is the current one
 		int nSearches = numberOfRunningSearches();
@@ -475,9 +490,13 @@ public class SearchCache {
 			// If if matches, or it's the last state (automatch)
 			if (nSearches >= state.getMinSearches()) {
 				currentLoadState = state;
+				if (currentLoadState != oldLoadState)
+					logger.debug("LOADMGR: changed from state " + oldLoadState + " to " + currentLoadState);
 				return;
 			}
 		}
+		if (currentLoadState != oldLoadState)
+			logger.debug("LOADMGR: changed from state " + oldLoadState + " to " + currentLoadState);
 	}
 
 	/**
@@ -531,12 +550,11 @@ public class SearchCache {
 					// See if this search matches this rule.
 					if (m.matches(search)) {
 						// Yes. Apply the action.
-						logger.debug("Match: " + m.toString() + " (" + m.explainMatch(search) + ")");
-						applyAction(search, action);
+						applyAction(m, search, action);
 						
 						// Did this action affect the current load state?
 						// (NB lower/raise priority cannot affect the load state)
-						if (action != ServerLoadQueryAction.LOWER_PRIO && action != ServerLoadQueryAction.NONE) {
+						if (action != ServerLoadQueryAction.RUN_LOW_PRIO && action != ServerLoadQueryAction.PAUSED_OR_NORMAL_PRIO) {
 							// See what our current load state is, and if it has changed.
 							ServerLoadState oldLoadState = currentLoadState;
 							determineCurrentLoad();
@@ -547,7 +565,7 @@ public class SearchCache {
 							if (oldLoadState != currentLoadState) {
 								// We've gone to a different state; restart the process.
 								stateChanged = true;
-								logger.debug("LOADMGR: changed from state " + oldLoadState + " to " + currentLoadState);
+								break; // don't continue processing searches according to the old state.
 							}
 						}
 					}
@@ -559,19 +577,23 @@ public class SearchCache {
 
 	/**
 	 * Apply one of the load managing actions to a search.
+	 * @param m 
 	 * 
 	 * @param search the search
 	 * @param action the action to apply
 	 */
-	private void applyAction(Job search, ServerLoadQueryAction action) {
+	private void applyAction(QueryStateMatcher m, Job search, ServerLoadQueryAction action) {
 		// See what to do with the current search
+		String why = "(rule matched: " + m.toString() + "; " + m.explainMatch(search) + ")";
 		switch(action) {
 		case DISCARD:
+			logger.debug(why);
 			logger.debug("LOADMGR: Discarding from cache: " + search);
 			removeFromCache(search);
 			break;
-		case LOWER_PRIO:
-			if (search.getPriorityLevel() != Level.LOW) {
+		case RUN_LOW_PRIO:
+			if (search.getPriorityLevel() == Level.NORMAL) {
+				logger.debug(why);
 				logger.debug("LOADMGR: Lowering priority of: " + search);
 				search.setPriorityLevel(Level.LOW);
 			}
@@ -580,12 +602,14 @@ public class SearchCache {
 		case PAUSE_COUNT:
 		case PAUSE_NEW:
 			if (search.getPriorityLevel() != Level.PAUSED && numberOfPausedSearches() < MAX_PAUSED) {
+				logger.debug(why);
 				logger.debug("LOADMGR: Pausing search: " + search + " (was: "+search.getPriorityLevel()+")");
 				search.setPriorityLevel(Level.PAUSED);
 			}
 			break;
 		case RESUME:
 			if (search.getPriorityLevel() == Level.PAUSED) {
+				logger.debug(why);
 				logger.debug("LOADMGR: Resuming search: " + search);
 				search.setPriorityLevel(Level.NORMAL);
 			}
@@ -595,13 +619,15 @@ public class SearchCache {
 		case ABORT_NEW:
 			if (!search.finished()) {
 				// TODO: Maybe we should blacklist certain searches for a time?
+				logger.debug(why);
 				logger.warn("LOADMGR: Aborting search: " + search);
 				abortSearch(search);
 			}
 			break;
-		case NONE:
-			// Make sure it's running at normal priority (or paused, which is also ok)
-			if (search.getPriorityLevel() != Level.LOW) {
+		case PAUSED_OR_NORMAL_PRIO:
+			// "No action": if paused, keep paused; if running, run normally (not low prio)
+			if (search.getPriorityLevel() == Level.LOW) {
+				logger.debug(why);
 				logger.debug("LOADMGR: Raising priority of: " + search);
 				search.setPriorityLevel(Level.NORMAL);
 			}

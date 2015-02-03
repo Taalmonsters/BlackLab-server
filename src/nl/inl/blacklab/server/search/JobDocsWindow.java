@@ -4,6 +4,7 @@ import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.perdocument.DocResultsWindow;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.util.ThreadPriority.Level;
 
 import org.apache.log4j.Logger;
 
@@ -33,6 +34,7 @@ public class JobDocsWindow extends Job {
 	
 			// Now, create a HitsWindow on these hits.
 			sourceResults = docsSearch.getDocResults();
+			setPriorityInternal(); // make sure sourceResults has the right priority
 		} finally {
 			docsSearch.decrRef();
 			docsSearch = null;
@@ -52,13 +54,18 @@ public class JobDocsWindow extends Job {
 			setDocsPriority(sourceResults);
 	}
 
+	@Override
+	public Level getPriorityOfResultsObject() {
+		return sourceResults == null ? Level.NORMAL : sourceResults.getPriorityLevel();
+	}
+
 	public DocResultsWindow getWindow() {
 		return window;
 	}
 
 	@Override
-	public DataObjectMapElement toDataObject() {
-		DataObjectMapElement d = super.toDataObject();
+	public DataObjectMapElement toDataObject(boolean debugInfo) {
+		DataObjectMapElement d = super.toDataObject(debugInfo);
 		d.put("requestedWindowSize", requestedWindowSize);
 		d.put("actualWindowSize", window == null ? -1 : window.size());
 		return d;

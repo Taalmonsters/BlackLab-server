@@ -7,6 +7,7 @@ import nl.inl.blacklab.search.grouping.HitProperty;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BadRequest;
 import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.util.ThreadPriority.Level;
 
 /**
  * Represents a hits search and sort operation.
@@ -31,6 +32,7 @@ public class JobHitsGrouped extends Job {
 	
 			// Now, group the hits.
 			hits = hitsSearch.getHits();
+			setPriorityInternal();
 		} finally {
 			hitsSearch.decrRef();
 			hitsSearch = null;
@@ -72,8 +74,13 @@ public class JobHitsGrouped extends Job {
 	}
 
 	@Override
-	public DataObjectMapElement toDataObject() {
-		DataObjectMapElement d = super.toDataObject();
+	public Level getPriorityOfResultsObject() {
+		return hits == null ? Level.NORMAL : hits.getPriorityLevel();
+	}
+
+	@Override
+	public DataObjectMapElement toDataObject(boolean debugInfo) {
+		DataObjectMapElement d = super.toDataObject(debugInfo);
 		d.put("hitsRetrieved", hits == null ? -1 : hits.countSoFarHitsRetrieved());
 		d.put("numberOfGroups", groups == null ? -1 : groups.numberOfGroups());
 		return d;

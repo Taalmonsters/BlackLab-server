@@ -4,6 +4,7 @@ import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.grouping.HitProperty;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
+import nl.inl.util.ThreadPriority.Level;
 
 /**
  * Represents a hits search and sort operation.
@@ -52,11 +53,23 @@ public class JobHitsSorted extends JobWithHits {
 			hits = hitsUnsorted.sortedBy(sortProp, reverse);
 		} else
 			hits = hitsUnsorted;
+		setPriorityInternal();
 	}
 
 	@Override
-	public DataObjectMapElement toDataObject() {
-		DataObjectMapElement d = super.toDataObject();
+	protected void setPriorityInternal() {
+		if (hits != null)
+			setHitsPriority(hits);
+	}
+
+	@Override
+	public Level getPriorityOfResultsObject() {
+		return hits == null ? Level.NORMAL : hits.getPriorityLevel();
+	}
+
+	@Override
+	public DataObjectMapElement toDataObject(boolean debugInfo) {
+		DataObjectMapElement d = super.toDataObject(debugInfo);
 		d.put("numberOfHits", hits == null ? -1 : hits.size());
 		return d;
 	}

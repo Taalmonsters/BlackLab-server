@@ -86,6 +86,13 @@ public class SearchManager {
 	};
 
 	/**
+	 * Are we allowed to query the list of all document?
+	 * (slow for large corpora)
+	 * TODO: make configurable
+	 */
+	private static boolean allDocsQueryAllowed = false;
+
+	/**
 	 * When the SearchManager was created. Used in logging to show ms since
 	 * server start instead of all-time.
 	 */
@@ -306,6 +313,8 @@ public class SearchManager {
 					
 					JSONArray jsonStates = perfProp.getJSONArray("serverLoadStates");
 					cache.setServerLoadStates(jsonStates);
+				} else {
+					logger.debug("LOADMGR: no config found, disabling");
 				}
 			}
 
@@ -471,12 +480,16 @@ public class SearchManager {
 	/**
 	 * Clean up resources.
 	 * 
-	 * In particular, stops the load manager thread.
+	 * In particular, stops the load manager thread and
+	 * cancels any running searches.
 	 */
 	public synchronized void cleanup() {
 		// Stop the load manager thread
 		loadManagerThread.interrupt();
 		loadManagerThread = null;
+		
+		// Stop any running searches
+		cache.clearCache(true);
 	}
 
 	public synchronized void performLoadManagement() {
@@ -538,7 +551,7 @@ public class SearchManager {
 	 *            the index name
 	 * @return the index dir and mayViewContents setting
 	 */
-	private IndexParam getIndexParam(String indexName) {
+	private synchronized IndexParam getIndexParam(String indexName) {
 		//logger.debug("@PERF getIndexParam");
 		try {
 
@@ -596,7 +609,7 @@ public class SearchManager {
 	 * @param parts 
 	 * @return the index parameters if found.
 	 */
-	private IndexParam findIndexInCollection(String name, File collection,
+	private synchronized IndexParam findIndexInCollection(String name, File collection,
 			boolean addToCache, String userIdPrefix) {
 		// Look for the index in this collection dir
 		File dir = new File(collection, name);
@@ -625,7 +638,7 @@ public class SearchManager {
 		return indexName.matches("[a-zA-Z][a-zA-Z0-9_\\-]*");
 	}
 
-	public void closeSearcher(String indexName) throws BlsException {
+	public synchronized void closeSearcher(String indexName) throws BlsException {
 		if (!isValidIndexName(indexName))
 			throw new IllegalIndexName(indexName);
 		if (searchers.containsKey(indexName)) {
@@ -968,7 +981,7 @@ public class SearchManager {
 	 * 
 	 * @return the list of index names
 	 */
-	public Collection<String> getAvailablePublicIndices() {
+	public synchronized Collection<String> getAvailablePublicIndices() {
 		Set<String> indices = new HashSet<String>();
 		
 		// Scan collections for any new indices
@@ -1116,78 +1129,81 @@ public class SearchManager {
 			throws BlsException {
 		//logger.debug("@PERF search");
 		try {
-		// Search the cache / running jobs for this search, create new if not
-		// found.
-		boolean performSearch = false;
-		Job search;
-		synchronized (this) {
-			search = cache.get(searchParameters);
-			if (search == null) {
-				// Not found in cache
-
-				// Do we have enough memory to start a new search?
-				long freeMegs = MemoryUtil.getFree() / 1000000;
-				if (freeMegs < minFreeMemForSearchMegs) {
-					cache.removeOldSearches(); // try to free up space for next
-												// search
-					logger.warn("Can't start new search, not enough memory ("
-							+ freeMegs + "M < " + minFreeMemForSearchMegs
-							+ "M)");
-					throw new ServiceUnavailable("The server seems to be under heavy load right now. Please try again later.");
-				}
-				// logger.debug("Enough free memory: " + freeMegs + "M");
-
-				// Is this user allowed to start another search?
-				int numRunningJobs = 0;
-				String uniqueId = user.uniqueId();
-				Set<Job> runningJobs = runningJobsPerUser.get(uniqueId);
-				Set<Job> newRunningJobs = new HashSet<Job>();
-				if (runningJobs != null) {
-					for (Job job : runningJobs) {
-						if (!job.finished()) {
-							numRunningJobs++;
-							newRunningJobs.add(job);
+			// Search the cache / running jobs for this search, create new if not
+			// found.
+			boolean performSearch = false;
+			Job search;
+			synchronized (this) {
+				search = cache.get(searchParameters);
+				if (search == null) {
+					// Not found in cache
+	
+					// Do we have enough memory to start a new search?
+					long freeMegs = MemoryUtil.getFree() / 1000000;
+					if (freeMegs < minFreeMemForSearchMegs) {
+						cache.removeOldSearches(); // try to free up space for next
+													// search
+						logger.warn("Can't start new search, not enough memory ("
+								+ freeMegs + "M < " + minFreeMemForSearchMegs
+								+ "M)");
+						throw new ServiceUnavailable("The server seems to be under heavy load right now. Please try again later.");
+					}
+					// logger.debug("Enough free memory: " + freeMegs + "M");
+	
+					// Is this user allowed to start another search?
+					int numRunningJobs = 0;
+					String uniqueId = user.uniqueId();
+					Set<Job> runningJobs = runningJobsPerUser.get(uniqueId);
+					Set<Job> newRunningJobs = new HashSet<Job>();
+					if (runningJobs != null) {
+						for (Job job : runningJobs) {
+							if (!job.finished()) {
+								numRunningJobs++;
+								newRunningJobs.add(job);
+							}
 						}
 					}
+					if (numRunningJobs >= maxRunningJobsPerUser) {
+						// User has too many running jobs. Can't start another one.
+						runningJobsPerUser.put(uniqueId, newRunningJobs); // refresh
+																			// the
+																			// list
+						logger.warn("Can't start new search, user already has "
+								+ numRunningJobs + " jobs running.");
+						throw new TooManyRequests("You already have too many running searches. Please wait for some previous searches to complete before starting new ones.");
+					}
+	
+					// Create a new search object with these parameters and place it
+					// in the cache
+					search = Job.create(this, user, searchParameters);
+					if (search == null) {
+						logger.error("search == null, unpossiblez!!!");
+					}
+					cache.put(search);
+	
+					// Update running jobs
+					newRunningJobs.add(search);
+					runningJobsPerUser.put(uniqueId, newRunningJobs);
+	
+					performSearch = true;
 				}
-				if (numRunningJobs >= maxRunningJobsPerUser) {
-					// User has too many running jobs. Can't start another one.
-					runningJobsPerUser.put(uniqueId, newRunningJobs); // refresh
-																		// the
-																		// list
-					logger.warn("Can't start new search, user already has "
-							+ numRunningJobs + " jobs running.");
-					throw new TooManyRequests("You already have too many running searches. Please wait for some previous searches to complete before starting new ones.");
-				}
-
-				// Create a new search object with these parameters and place it
-				// in the cache
-				search = Job.create(this, user, searchParameters);
-				if (search == null) {
-					logger.error("search == null, unpossiblez!!!");
-				}
-				cache.put(search);
-
-				// Update running jobs
-				newRunningJobs.add(search);
-				runningJobsPerUser.put(uniqueId, newRunningJobs);
-
-				performSearch = true;
 			}
-		}
-
-		if (performSearch) {
-			// Start the search, waiting a short time in case it's a fast search
-			search.perform(waitTimeInNonblockingModeMs);
-		}
-
-		// If the search thread threw an exception, rethrow it now.
-		if (search.threwException()) {
-			search.rethrowException();
-		}
-
-		search.incrRef();
-		return search;
+	
+			if (performSearch) {
+				// Start the search, waiting a short time in case it's a fast search
+				search.perform(waitTimeInNonblockingModeMs);
+			}
+//			else {
+//				search.incrementClientsWaiting();
+//			}
+	
+			// If the search thread threw an exception, rethrow it now.
+			if (search.threwException()) {
+				search.rethrowException();
+			}
+	
+			search.incrRef();
+			return search;
 		
 		} finally {
 			//logger.debug("@PERF search EXIT");
@@ -1380,12 +1396,12 @@ public class SearchManager {
 		return maxContextSize;
 	}
 
-	public DataObject getCacheStatusDataObject() {
+	public synchronized DataObject getCacheStatusDataObject() {
 		return cache.getCacheStatusDataObject();
 	}
 
-	public DataObject getCacheContentsDataObject() {
-		return cache.getContentsDataObject();
+	public synchronized DataObject getCacheContentsDataObject(boolean debugInfo) {
+		return cache.getContentsDataObject(debugInfo);
 	}
 
 	public int getMaxSnippetSize() {
@@ -1519,8 +1535,26 @@ public class SearchManager {
 		return indices;
 	}
 
-	public void clearCache() {
+	public synchronized void clearCache() {
 		cache.clearCache();
+	}
+
+	/**
+	 * Are we allowed to query the list of all document?
+	 * (slow for large corpora)
+	 * @return true if we are, false if not
+	 */
+	public static boolean isAllDocsQueryAllowed() {
+		return allDocsQueryAllowed;
+	}
+
+	/**
+	 * Remove a cancelled job from the cache.
+	 * 
+	 * @param job the job to remove
+	 */
+	public void removeFromCache(Job job) {
+		removeFromCache(job);
 	}
 
 }
