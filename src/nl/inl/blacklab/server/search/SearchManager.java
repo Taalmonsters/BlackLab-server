@@ -304,18 +304,17 @@ public class SearchManager {
 				// Start with empty cache
 				cache = new SearchCache(cacheProp);
 				
-				if (perfProp.has("serverLoadStates")) {
+				JSONObject jsonServerLoad = null;
+				if (perfProp.has("serverLoad")) {
 					// Load manager stuff (experimental)
 					
 					// Make sure long operations yield their thread occasionally,
 					// and automatically abort really long operations.
 					ThreadPriority.setEnabled(ENABLE_THREAD_PRIORITY);
 					
-					JSONArray jsonStates = perfProp.getJSONArray("serverLoadStates");
-					cache.setServerLoadStates(jsonStates);
-				} else {
-					logger.debug("LOADMGR: no config found, disabling");
+					jsonServerLoad = perfProp.getJSONObject("serverLoad");
 				}
+				cache.setServerLoadOptions(jsonServerLoad);
 			}
 
 			// Find the indices
@@ -401,9 +400,16 @@ public class SearchManager {
 				}
 			}
 			
-			if (!indicesFound)
+			if (!indicesFound) {
 				throw new ConfigurationException(
-						"Configuration error: no indices or collections available. Put blacklab-server.json on classpath (i.e. Tomcat shared or lib dir) with at least: { \"indices\": { \"myindex\": { \"dir\": \"/path/to/my/index\" } } } ");
+					"Configuration error: no index locations found. Create " +
+					"/etc/blacklab/blacklab-server.json containing at least the following:\n" +
+					"{\n" +
+					"  \"indexCollections\": [\n" +
+					"    \"/dir/containing/indices\"\n" +
+					"  ]\n" +
+					"}");
+			}
 
 			// Init auth system
 			String authClass = "";
@@ -1433,7 +1439,7 @@ public class SearchManager {
 		// has been running, the less frequently the client
 		// should check its progress. Just divide the search time by
 		// 5 with a configured minimum.
-		int checkAgainAdvice = Math.min(checkAgainAdviceMinimumMs, (int)(search.executionTime() * 1000 / checkAgainAdviceDivider));
+		int checkAgainAdvice = Math.min(checkAgainAdviceMinimumMs, (int)(search.userWaitTime() * 1000 / checkAgainAdviceDivider));
 
 		return checkAgainAdvice;
 	}

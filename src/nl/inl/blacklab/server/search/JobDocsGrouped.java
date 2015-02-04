@@ -68,7 +68,7 @@ public class JobDocsGrouped extends Job {
 
 	@Override
 	public Level getPriorityOfResultsObject() {
-		return docResults == null ? Level.NORMAL : docResults.getPriorityLevel();
+		return docResults == null ? Level.RUNNING : docResults.getPriorityLevel();
 	}
 
 	public DocGroups getGroups() {

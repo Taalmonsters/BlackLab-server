@@ -29,7 +29,7 @@ final class SearchThread extends Thread implements UncaughtExceptionHandler {
 	public void run() {
 		try {
 			search.performSearch();
-			search.finishedAt = System.currentTimeMillis();
+			search.setFinished();
 		} catch (Throwable e) {
 			// NOTE: we catch Throwable here (while it's normally good practice to
 			//  catch only Exception and derived classes) because we need to know if
@@ -41,8 +41,10 @@ final class SearchThread extends Thread implements UncaughtExceptionHandler {
 			// which does the same thing, because apparently some exceptions can occur
 			// outside the run() method or aren't caught here for some other reason).
 			// Even then, some low-level ones (like OutOfMemoryException) seem to slip by.
-			if (search != null)
+			if (search != null) {
 				search.thrownException = e;
+				search.setFinished();
+			}
 		}
 		search = null; // make sure Job gets garbage collected
 	}
@@ -50,8 +52,10 @@ final class SearchThread extends Thread implements UncaughtExceptionHandler {
 	@Override
 	public void uncaughtException(Thread t, Throwable e) {
 		logger.debug("Search thread threw an exception, saving it:\n" + e.getClass().getName() + ": " + e.getMessage());
-		if (search != null)
+		if (search != null) {
 			search.thrownException = e;
+			search.setFinished();
+		}
 		search = null; // make sure Job gets garbage collected
 	}
 

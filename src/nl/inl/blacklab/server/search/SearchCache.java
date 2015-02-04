@@ -12,18 +12,14 @@ import java.util.Map.Entry;
 import nl.inl.blacklab.server.dataobject.DataObject;
 import nl.inl.blacklab.server.dataobject.DataObjectList;
 import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
-import nl.inl.blacklab.server.exceptions.ConfigurationException;
 import nl.inl.util.MemoryUtil;
 import nl.inl.util.ThreadPriority.Level;
-import nl.inl.util.json.JSONArray;
 import nl.inl.util.json.JSONObject;
 
 import org.apache.log4j.Logger;
 
 public class SearchCache {
 	private static final Logger logger = Logger.getLogger(SearchCache.class);
-
-	private static final int MAX_PAUSED = 10; // TODO: configurable
 
 	/** Max time searches are allowed to run (5 minutes) */
 	public static int maxSearchTimeSec = 5 * 60;
@@ -55,6 +51,12 @@ public class SearchCache {
 
 	/** If we're below target mem, how many jobs should we get rid of each time we add something to the cache? */
 	private int numberOfJobsToPurgeWhenBelowTargetMem;
+
+	private int maxConcurrentSearches;
+
+	private boolean autoDetectMaxConcurrent;
+
+	private int maxPausedSearches;
 
 	/**
 	 * Initialize the cache.
@@ -165,7 +167,7 @@ public class SearchCache {
 		
 		// Sort cache by last access time
 		List<Job> lastAccessOrder = new ArrayList<Job>(cachedSearches.values());
-		Collections.sort(lastAccessOrder); // put stalest first
+		Collections.sort(lastAccessOrder); // sort on worthiness
 		
 		calculateSizeBytes(lastAccessOrder);
 		
@@ -177,10 +179,13 @@ public class SearchCache {
 			logger.debug("Not enough free mem, will remove some searches.");
 		}
 
+		// Look at searches from least worthy to worthiest.
 		// Get rid of old searches
 		boolean lookAtCacheSizeAndSearchAccessTime = true;
-		for (Job search: lastAccessOrder) {
-			if (!search.finished() && search.executionTime() > maxSearchTimeSec) {
+		for (int i = lastAccessOrder.size() - 1; i >= 0; i--) {
+			Job search = lastAccessOrder.get(i);
+			
+			if (!search.finished() && search.userWaitTime() > maxSearchTimeSec) {
 				// Search is taking too long. Cancel it.
 				logger.debug("Search is taking too long, cancelling: " + search);
 				abortSearch(search);
@@ -330,15 +335,15 @@ public class SearchCache {
 		return n;
 	}
 	
-	private int numberOfPausedSearches() {
-		int n = 0;
-		for (Job job: cachedSearches.values()) {
-			if (job.getPriorityLevel() == Level.PAUSED) {
-				n++;
-			}
-		}
-		return n;
-	}
+//	private int numberOfPausedSearches() {
+//		int n = 0;
+//		for (Job job: cachedSearches.values()) {
+//			if (job.getPriorityLevel() == Level.PAUSED) {
+//				n++;
+//			}
+//		}
+//		return n;
+//	}
 
 	public void setMinFreeMemTargetBytes(long minFreeMemTargetBytes) {
 		this.minFreeMemTargetMegs = minFreeMemTargetBytes;
@@ -346,7 +351,6 @@ public class SearchCache {
 
 	public DataObject getCacheStatusDataObject() {
 		DataObjectMapElement doCache = new DataObjectMapElement();
-		doCache.put("currentLoadState", currentLoadState == null ? "(none)" : currentLoadState.toString());
 		doCache.put("maxSizeBytes", getMaxSizeBytes());
 		doCache.put("maxNumberOfSearches", getMaxJobsToCache());
 		doCache.put("maxSearchAgeSec", getMaxJobAgeSec());
@@ -367,138 +371,12 @@ public class SearchCache {
 	 * What we can do to a query in response to the server load.
 	 */
 	enum ServerLoadQueryAction {
-		PAUSED_OR_NORMAL_PRIO,         // no action
-		DISCARD,      // discard results from cache
-		RUN_LOW_PRIO,   // continue searching with lower thread priority
-		PAUSE_SEARCH, // pause search
-		PAUSE_COUNT,  // pause count
-		PAUSE_NEW,    // abort new search
-		RESUME,       // resume paused search
-		ABORT_SEARCH, // abort search / refuse to start new search
-		ABORT_COUNT,  // abort count
-		ABORT_NEW,    // abort new search
+		RUN_NORMALLY,      // no action
+		PAUSE,             // pause search
+		ABORT,             // abort search / refuse to start new search
+		REMOVE_FROM_CACHE, // discard results from cache
 	}
 	
-	/**
-	 * An object describing what to do for a certain server load.
-	 * Defined in the blacklab-server.json config file under
-	 * performance.serverLoadBehaviour.
-	 */
-	class ServerLoadState implements Comparable<ServerLoadState> {
-		
-		/** State behaviour: matchers in order of importance */
-		List<QueryStateMatcher> matchers = new ArrayList<QueryStateMatcher>();
-		
-		public List<QueryStateMatcher> getMatchers() {
-			return matchers;
-		}
-
-		public List<ServerLoadQueryAction> getActions() {
-			return actions;
-		}
-
-		/** Minimum number of searches to reach this state */
-		List<ServerLoadQueryAction> actions = new ArrayList<ServerLoadQueryAction>();
-
-		/** State name */
-		private String name;
-
-		/** Minimum number of searches to reach this state */
-		private int minSearches;
-
-		public ServerLoadState(String name, int minSearches) {
-			this.name = name;
-			this.minSearches = minSearches;
-		}
-		
-		public String getName() {
-			return name;
-		}
-		
-		/**
-		 * Add a behaviour rule to this state.
-		 * @param matcher for which searches to invoke this rule
-		 * @param action what to do with the search if the rule matches
-		 */
-		public void add(QueryStateMatcher matcher, ServerLoadQueryAction action) {
-			matchers.add(matcher);
-			actions.add(action);
-		}
-
-		/**
-		 * Default sort order: descending on min. number of searches.
-		 * 
-		 * This put the heaviest load first.
-		 */
-		@Override
-		public int compareTo(ServerLoadState o) {
-			return o.minSearches - minSearches;
-		}
-
-		public int getMinSearches() {
-			return minSearches;
-		}
-
-		@Override
-		public String toString() {
-			return name;
-		}
-		
-	}
-	
-	/** Our server load states from heaviest to lightest */
-	List<ServerLoadState> serverLoadStates = new ArrayList<ServerLoadState>();
-	
-	/** Our current server load */
-	ServerLoadState currentLoadState;
-
-	public void setServerLoadStates(JSONArray jsonStates) throws ConfigurationException {
-		for (int i = 0; i < jsonStates.length(); i++) {
-			JSONObject jsonState = jsonStates.getJSONObject(i);
-			String name = jsonState.getString("name");
-			int minSearches = JsonUtil.getIntProp(jsonState, "minSearches", 0);
-			ServerLoadState state = new ServerLoadState(name, minSearches);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "discardResults", "cached 1800")), ServerLoadQueryAction.DISCARD);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "lowerPriority", "never")), ServerLoadQueryAction.RUN_LOW_PRIO);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "raisePriority", "always")), ServerLoadQueryAction.PAUSED_OR_NORMAL_PRIO);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "pauseCount", "never")), ServerLoadQueryAction.PAUSE_COUNT);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "pauseSearch", "never")), ServerLoadQueryAction.PAUSE_SEARCH);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "resumeSearch", "paused 60")), ServerLoadQueryAction.RESUME);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "abortCount", "never")), ServerLoadQueryAction.ABORT_COUNT);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "abortSearch", "never")), ServerLoadQueryAction.ABORT_SEARCH);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "queueNewSearches", "never")), ServerLoadQueryAction.PAUSE_NEW);
-			state.add(new QueryStateMatcher(JsonUtil.getProperty(jsonState, "refuseSearch", "never")), ServerLoadQueryAction.ABORT_NEW);
-			serverLoadStates.add(state);
-		}
-		Collections.sort(serverLoadStates);
-		logger.debug("LOADMGR: read " + serverLoadStates.size() + " load states from config file.");
-	}
-	
-	/**
-	 * Figure out what load state the server is currently in.
-	 * Note that no state may match, in which case currentLoadState will
-	 * be set to null.
-	 */
-	public void determineCurrentLoad() {
-		ServerLoadState oldLoadState = currentLoadState;
-		
-		// serverLoadStates is sorted by minSearches descending,
-		// so the first matching state is the current one
-		int nSearches = numberOfRunningSearches();
-		currentLoadState = null;
-		for (ServerLoadState state: serverLoadStates) {
-			// If if matches, or it's the last state (automatch)
-			if (nSearches >= state.getMinSearches()) {
-				currentLoadState = state;
-				if (currentLoadState != oldLoadState)
-					logger.debug("LOADMGR: changed from state " + oldLoadState + " to " + currentLoadState);
-				return;
-			}
-		}
-		if (currentLoadState != oldLoadState)
-			logger.debug("LOADMGR: changed from state " + oldLoadState + " to " + currentLoadState);
-	}
-
 	/**
 	 * Evaluate what we need to do (if anything) with each search given the 
 	 * current server load.
@@ -506,73 +384,54 @@ public class SearchCache {
 	 * @param newSearch the new search just started, or null if none.
 	 */
 	void performLoadManagement(Job newSearch) {
-		if (serverLoadStates == null || serverLoadStates.size() == 0) {
-			// Not configured. Don't activate the load manager stuff.
-			return;
+		
+		if (autoDetectMaxConcurrent) {
+			// Autodetect number of CPUs
+			int n = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
+			if (n != maxConcurrentSearches) {
+				logger.debug("maxConcurrentSearches autodetect: changed from " + maxConcurrentSearches + " to " + n);
+				maxConcurrentSearches = n;
+			}
 		}
 		
-		//logger.debug("LOADMGR: START");
-		determineCurrentLoad();
-		if (currentLoadState == null) {
-			logger.debug("LOADMGR: we're not in any of the states! => DONE");
-			return;
-		}
-		boolean stateChanged;
-		do {
-			stateChanged = false;
-			
-			List<QueryStateMatcher> matchers = currentLoadState.getMatchers();
-			List<ServerLoadQueryAction> actions = currentLoadState.getActions();
-			
-			// Iterate over the rules one by one, and for each rule,
-			// see if it applies to any of our searches. If one does, perform
-			// the action, then see if the state changed. If so, restart the
-			// process. If we get through the whole thing without any state
-			// changes, we're done.
-			for (int i = 0; i < matchers.size() && !stateChanged; i++)  {
-				QueryStateMatcher m = matchers.get(i);
-				List<Job> searches = new ArrayList<Job>(cachedSearches.values());
-				for (Job search: searches) {
-					ServerLoadQueryAction action = actions.get(i);
-					if (action == null)
-						throw new RuntimeException("action == null");
-					boolean isCountRule = action == ServerLoadQueryAction.PAUSE_COUNT || action == ServerLoadQueryAction.ABORT_COUNT;
-					boolean isCountQuery = (search instanceof JobHitsTotal) || (search instanceof JobDocsTotal);
-					boolean isSearchRule = action == ServerLoadQueryAction.PAUSE_SEARCH || action == ServerLoadQueryAction.ABORT_SEARCH;
-					boolean isNewQueryRule = action == ServerLoadQueryAction.PAUSE_NEW || action == ServerLoadQueryAction.ABORT_NEW;
-					boolean isNewQuery = search == newSearch;
-					if (isCountRule && !isCountQuery ||
-						isSearchRule && isCountQuery ||
-						isNewQueryRule && !isNewQuery) {
-						// This rule does not apply to this search. Skip over it.
-						continue;
-					}
-					// See if this search matches this rule.
-					if (m.matches(search)) {
-						// Yes. Apply the action.
-						applyAction(m, search, action);
-						
-						// Did this action affect the current load state?
-						// (NB lower/raise priority cannot affect the load state)
-						if (action != ServerLoadQueryAction.RUN_LOW_PRIO && action != ServerLoadQueryAction.PAUSED_OR_NORMAL_PRIO) {
-							// See what our current load state is, and if it has changed.
-							ServerLoadState oldLoadState = currentLoadState;
-							determineCurrentLoad();
-							if (currentLoadState == null) {
-								logger.debug("LOADMGR: we're not in any of the states! => DONE");
-								return; // no matching state, so nothing left to do
-							}
-							if (oldLoadState != currentLoadState) {
-								// We've gone to a different state; restart the process.
-								stateChanged = true;
-								break; // don't continue processing searches according to the old state.
-							}
-						}
-					}
+		List<Job> searches = new ArrayList<Job>(cachedSearches.values());
+		
+		// Sort the searches based on descending "worthiness"
+		Collections.sort(searches);
+		
+		int coresLeft = maxConcurrentSearches;
+		int pauseSlotsLeft = maxPausedSearches;
+		//logger.debug("=== LOADMGR: START. cores=" + coresLeft + ", pauseSlots=" + pauseSlotsLeft);
+		//int cacheSlotsLeft = maxNumberOfJobs;
+		for (Job search: searches) {
+			if (search.finished()) {
+				// Finished search. Keep in cache?
+
+				// NOTE: we'll leave this to removeOldSearches() for now.
+				// Later we'll integrate the two.
+				
+			} else if (search.isWaitingForOtherJob()) {
+				// Waiting, not taking up any CPU. Can run normally, but doesn't take a core.
+				applyAction(search, ServerLoadQueryAction.RUN_NORMALLY);
+			} else {
+				// Running search. Run, pause or abort?
+				if (coresLeft > 0) {
+					// A core is available. Run the search.
+					coresLeft--;
+					applyAction(search, ServerLoadQueryAction.RUN_NORMALLY);
+					//logger.debug("LOADMGR: cores=" + coresLeft);
+				} else if (pauseSlotsLeft > 0) {
+					// No cores, but a pause slot is left. Pause it.
+					pauseSlotsLeft--;
+					applyAction(search, ServerLoadQueryAction.PAUSE);
+					//logger.debug("LOADMGR: pauseSlots=" + pauseSlotsLeft);
+				} else {
+					// No cores or pause slots. Abort the search.
+					applyAction(search, ServerLoadQueryAction.ABORT);
 				}
 			}
-		} while(stateChanged); // continue until there's nothing more to do 
-		//logger.debug("LOADMGR: DONE");
+		}
+		//logger.debug("=== LOADMGR: END.");
 	}
 
 	/**
@@ -582,55 +441,32 @@ public class SearchCache {
 	 * @param search the search
 	 * @param action the action to apply
 	 */
-	private void applyAction(QueryStateMatcher m, Job search, ServerLoadQueryAction action) {
+	private void applyAction(Job search, ServerLoadQueryAction action) {
 		// See what to do with the current search
-		String why = "(rule matched: " + m.toString() + "; " + m.explainMatch(search) + ")";
 		switch(action) {
-		case DISCARD:
-			logger.debug(why);
-			logger.debug("LOADMGR: Discarding from cache: " + search);
-			removeFromCache(search);
-			break;
-		case RUN_LOW_PRIO:
-			if (search.getPriorityLevel() == Level.NORMAL) {
-				logger.debug(why);
-				logger.debug("LOADMGR: Lowering priority of: " + search);
-				search.setPriorityLevel(Level.LOW);
+		case RUN_NORMALLY:
+			// "No action": if paused, keep paused; if running, run normally (not low prio)
+			if (search.getPriorityLevel() != Level.RUNNING) {
+				logger.debug("LOADMGR: Resuming search: " + search);
+				search.setPriorityLevel(Level.RUNNING);
 			}
 			break;
-		case PAUSE_SEARCH:
-		case PAUSE_COUNT:
-		case PAUSE_NEW:
-			if (search.getPriorityLevel() != Level.PAUSED && numberOfPausedSearches() < MAX_PAUSED) {
-				logger.debug(why);
+		case PAUSE:
+			if (search.getPriorityLevel() != Level.PAUSED) {
 				logger.debug("LOADMGR: Pausing search: " + search + " (was: "+search.getPriorityLevel()+")");
 				search.setPriorityLevel(Level.PAUSED);
 			}
 			break;
-		case RESUME:
-			if (search.getPriorityLevel() == Level.PAUSED) {
-				logger.debug(why);
-				logger.debug("LOADMGR: Resuming search: " + search);
-				search.setPriorityLevel(Level.NORMAL);
-			}
-			break;
-		case ABORT_SEARCH:
-		case ABORT_COUNT:
-		case ABORT_NEW:
+		case ABORT:
 			if (!search.finished()) {
 				// TODO: Maybe we should blacklist certain searches for a time?
-				logger.debug(why);
 				logger.warn("LOADMGR: Aborting search: " + search);
 				abortSearch(search);
 			}
 			break;
-		case PAUSED_OR_NORMAL_PRIO:
-			// "No action": if paused, keep paused; if running, run normally (not low prio)
-			if (search.getPriorityLevel() == Level.LOW) {
-				logger.debug(why);
-				logger.debug("LOADMGR: Raising priority of: " + search);
-				search.setPriorityLevel(Level.NORMAL);
-			}
+		case REMOVE_FROM_CACHE:
+			logger.debug("LOADMGR: Discarding from cache: " + search);
+			removeFromCache(search);
 			break;
 		}
 	}
@@ -644,5 +480,20 @@ public class SearchCache {
 	private void abortSearch(Job search) {
 		search.cancelJob();
 		removeFromCache(search);
+	}
+
+	public void setServerLoadOptions(JSONObject jsonServerLoad) {
+		maxConcurrentSearches = 1;
+		if (jsonServerLoad != null)
+			maxConcurrentSearches = JsonUtil.getIntProp(jsonServerLoad, "maxConcurrentSearches", -1);
+		autoDetectMaxConcurrent = maxConcurrentSearches <= 0;
+		if (autoDetectMaxConcurrent) {
+			maxConcurrentSearches = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
+			logger.debug("Autodetect maxConcurrentSearches: " + maxConcurrentSearches);
+		}
+		
+		maxPausedSearches = 10;
+		if (jsonServerLoad != null)
+			maxPausedSearches = JsonUtil.getIntProp(jsonServerLoad, "maxPausedSearches", 10);
 	}
 }

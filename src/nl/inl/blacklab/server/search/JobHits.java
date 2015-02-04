@@ -35,7 +35,7 @@ public class JobHits extends JobWithHits {
 	public void performSearch() throws BlsException {
 		try {
 			textPattern = searchMan.parsePatt(searcher, par.getString("patt"), par.getString("pattlang"));
-			debug(logger, "Textpattern: " + textPattern);
+			//debug(logger, "Textpattern: " + textPattern);
 			Query q;
 			String docId = par.getString("docpid");
 			if (docId != null) {

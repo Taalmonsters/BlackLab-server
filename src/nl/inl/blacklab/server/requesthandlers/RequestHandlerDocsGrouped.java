@@ -68,7 +68,7 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 			DocResults docResults = search.getDocResults();
 			Hits hits = docResults.getOriginalHits();
 			summary.put("searchParam", searchParam.toDataObject());
-			summary.put("searchTime", (int)(search.executionTime() * 1000));
+			summary.put("searchTime", (int)(search.userWaitTime() * 1000));
 			summary.put("stillCounting", false);
 			if (hits != null) {
 				summary.put("numberOfHits", hits.countSoFarHitsCounted());

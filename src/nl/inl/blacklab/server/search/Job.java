@@ -20,6 +20,17 @@ import nl.inl.util.ThreadPriority.Level;
 import org.apache.log4j.Logger;
 
 public abstract class Job implements Comparable<Job> {
+	
+	private static final double ALMOST_ZERO = 0.0001;
+
+	private static final int RUN_PAUSE_PHASE_JUST_STARTED = 5;
+
+	/** How long a job remains "young". Young jobs are treated differently
+	 *  than old jobs when it comes to load management, because we want to
+	 *  give new searches a fair chance, but we also want to eventually put
+	 *  demanding searches on the back burner if the system is overloaded. */
+	private static final int YOUTH_THRESHOLD_SEC = 20;
+
 	private static final int REFS_INVALID = -9999;
 
 	protected static final Logger logger = Logger.getLogger(Job.class);
@@ -113,6 +124,15 @@ public abstract class Job implements Comparable<Job> {
 		}
 	}
 
+	/** The total accumulated paused time so far.
+	 * If the search is currently paused,
+	 * that time is not taken into account yet.
+	 * (it is added when the search is resumed).
+	 * So total paused time is:
+	 *  pausedTime + (level == PAUSED ? now() - pausedAt : 0)
+	 */
+	protected long pausedTime;
+
 	/** When this job was started (or -1 if not started yet) */
 	protected long startedAt;
 
@@ -126,7 +146,10 @@ public abstract class Job implements Comparable<Job> {
 	private long lastAccessed;
 
 	/** If we're paused, this is the time when we were paused */
-	private long pausedAt;
+	private long setLevelPausedAt;
+
+	/** If we're running, this is the time when we were set to running */
+	private long setLevelRunningAt;
 
 	/** The index searcher */
 	protected Searcher searcher;
@@ -150,7 +173,7 @@ public abstract class Job implements Comparable<Job> {
 	protected User user;
 
 	/** Is this job running in low priority? */
-	protected ThreadPriority.Level level = ThreadPriority.Level.NORMAL;
+	protected ThreadPriority.Level level = ThreadPriority.Level.RUNNING;
 
 	public Job(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
 		super();
@@ -169,19 +192,100 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	/**
-	 * Compare based on last access time.
+	 * Compare based on 'worthiness' (descending).
+	 * 
+	 * 'Worthiness' is a measure indicating how important a
+	 * job is, and determines what jobs get the CPU and what jobs
+	 * are paused or aborted. It also determines what finished
+	 * jobs are removed from the cache.
 	 *
 	 * @param o the other search, to compare to
-	 * @return -1 if this search is staler than o;
-	 *   1 if this search is fresher o;
-	 *   or 0 if they are equally fresh
+	 * @return -1 if this search is worthier than o;
+	 *   1 if this search less worthy o;
+	 *   or 0 if they are equally worthy
 	 */
 	@Override
 	public int compareTo(Job o) {
-		long diff = lastAccessed - o.lastAccessed;
-		if (diff == 0)
-			return 0;
-		return diff > 0 ? 1 : -1;
+
+		// Our return values with more logical names.
+		// (1 refers to this object, 2 to the one supplied as a parameter)
+		final int WORTHY1 = -1;
+		final int WORTHY2 = -WORTHY1;
+
+		// Determine 'finished' status for these searches
+		boolean finished1 = finished();
+		boolean finished2 = o.finished();
+		if (finished1 != finished2) {
+			// One is finished, one is not: the unfinished one is worthiest.
+			// (because the top searches get the CPU, and the bottom
+			//  finished searches might be discarded from the cache)
+			return finished2 ? WORTHY1 : WORTHY2;
+		}
+		if (finished1) {
+			// Neither are running: most recently used search is the worthiest.
+			// (because we want a LRU cache)
+			return notAccessedFor() < o.notAccessedFor() ? WORTHY1 : WORTHY2;
+		}
+		// Both searches are unfinished.
+		
+		// Rules to make sure jobs aren't oscillating between
+		// running and not running too much.
+		// First, check if job just started running, and if so,
+		// try not to pause them again right away.
+		double runtime1 = currentRunPhaseLength();
+		double runtime2 = o.currentRunPhaseLength();
+		boolean justStartedRunning1 = runtime1 > ALMOST_ZERO && runtime1 < RUN_PAUSE_PHASE_JUST_STARTED;
+		boolean justStartedRunning2 = runtime2 > ALMOST_ZERO && runtime2 < RUN_PAUSE_PHASE_JUST_STARTED;
+		if (justStartedRunning1 || justStartedRunning2) {
+			// At least one of the jobs just started running.
+			// The shortest-running one is worthiest.
+			return runtime1 < runtime2 ? WORTHY1 : WORTHY2;
+		}
+		// Now, check if job was just paused, and if so,
+		// try not to resume it right away.
+		double pause1 = currentPauseLength();
+		double pause2 = o.currentPauseLength();
+		boolean justPaused1 = pause1 > ALMOST_ZERO && pause1 < RUN_PAUSE_PHASE_JUST_STARTED;
+		boolean justPaused2 = pause2 > ALMOST_ZERO && pause2 < RUN_PAUSE_PHASE_JUST_STARTED;
+		if (justPaused1 || justPaused2) {
+			// At least one of the jobs was just paused.
+			// The longest-paused one is worthiest.
+			return pause1 > pause2 ? WORTHY1 : WORTHY2;
+		}
+		// Neither job just started running or were just paused.
+		
+		// Are these jobs relatively young or relatively old?
+		// Young jobs get the CPU in the hope that they will complete
+		// quickly; older jobs are paused sooner because they eat up
+		// a lot of resources.
+		double exec1 = totalExecTime();
+		double exec2 = o.totalExecTime();
+		boolean young1 = exec1 < YOUTH_THRESHOLD_SEC;
+		boolean young2 = exec2 < YOUTH_THRESHOLD_SEC;
+		if (young1 != young2) {
+			// One is old, one is young: young job is worthiest.
+			// (so heavy jobs don't crowd out the light ones)
+			return young1 ? WORTHY1 : WORTHY2;
+		}
+		// Both young or both old. Look at execution time.
+		if (young1) {
+			// Both young: the oldest is the worthiest.
+			// (so light jobs get a fair chance to complete)
+			return exec1 > exec2 ? WORTHY1 : WORTHY2;
+		}
+		
+		// Both jobs are old.
+		// Are they searching or counting?
+		boolean count1 = this instanceof JobHitsTotal || this instanceof JobDocsTotal;
+		boolean count2 = this instanceof JobHitsTotal || this instanceof JobDocsTotal;
+		if (count1 != count2) {
+			// One is counting, the other is searching: search is worthiest.
+			return count2 ? WORTHY1 : WORTHY2; 
+		}
+		
+		// Both searching or both counting; the youngest is worthiest.
+		// (so heavy jobs don't crowd out the lighter ones)
+		return exec1 < exec2 ? WORTHY1 : WORTHY2;
 	}
 
 	public long getLastAccessed() {
@@ -211,6 +315,7 @@ public abstract class Job implements Comparable<Job> {
 		// Create and start thread
 		// TODO: use thread pooling..?
 		startedAt = System.currentTimeMillis();
+		setLevelRunningAt = startedAt;
 		searchThread = new SearchThread(this);
 		searchThread.start();
 		performCalled = true;
@@ -232,7 +337,7 @@ public abstract class Job implements Comparable<Job> {
 	public boolean finished() {
 		if (!performCalled)
 			return false;
-		return performCalled && (finishedAt >= 0 || thrownException != null);
+		return finishedAt >= 0 || thrownException != null;
 	}
 
 	/**
@@ -372,9 +477,10 @@ public abstract class Job implements Comparable<Job> {
 		boolean isCount = (this instanceof JobHitsTotal) || (this instanceof JobDocsTotal);
 		stats.put("type", isCount ? "count" : "search");
 		stats.put("status", status());
-		stats.put("executionTime", executionTime());
+		stats.put("userWaitTime", userWaitTime());
+		stats.put("totalExecTime", totalExecTime());
 		stats.put("notAccessedFor", notAccessedFor());
-		stats.put("pausedFor", pausedFor());
+		stats.put("pausedFor", currentPauseLength());
 		stats.put("createdBy", shortUserId());
 		stats.put("refsToJob", refsToJob - 1); // (- 1 because the cache always references it)
 		stats.put("waitingForJobs", waitingFor.size());
@@ -402,7 +508,9 @@ public abstract class Job implements Comparable<Job> {
 			dbg.put("startedAt", startedAt);
 			dbg.put("finishedAt", finishedAt);
 			dbg.put("lastAccessed", lastAccessed);
-			dbg.put("pausedAt", pausedAt);
+			dbg.put("pausedTime", pausedTime);
+			dbg.put("setLevelPausedAt", setLevelPausedAt);
+			dbg.put("setLevelRunningAt", setLevelRunningAt);
 			dbg.put("performCalled", performCalled);
 			dbg.put("cancelJobCalled", cancelJobCalled);
 			dbg.put("priorityLevel", level.toString());
@@ -449,7 +557,7 @@ public abstract class Job implements Comparable<Job> {
 			return "(level == NULL!)";
 		switch(level) {
 		case PAUSED: return "paused";
-		case LOW:    return "lowprio";
+		case RUNNING_LOW_PRIO:    return "lowprio";
 		default: return "running";
 		}
 	}
@@ -511,11 +619,15 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	/**
-	 * How long this job took to execute (so far).
+	 * How long the user has waited for this job.
+	 * 
+	 * For finished searches, this is from the start time
+	 * to the finish time. For other searches, from the start
+	 * time until now.
 	 * 
 	 * @return execution time in ms
 	 */
-	public double executionTime() {
+	public double userWaitTime() {
 		if (startedAt < 0)
 			return -1;
 		if (finishedAt < 0)
@@ -541,13 +653,51 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	/**
-	 * How long has this job been paused for?
+	 * How long has this job been paused for currently?
+	 * 
+	 * This does not include any previous pauses.
+	 * 
 	 * @return number of ms since the job was paused, or 0 if not paused
 	 */
-	public double pausedFor() {
+	public double currentPauseLength() {
 		if (level != Level.PAUSED)
 			return 0;
-		return (System.currentTimeMillis() - pausedAt) / 1000.0;
+		return (System.currentTimeMillis() - setLevelPausedAt) / 1000.0;
+	}
+
+	/**
+	 * How long has this job been running currently?
+	 * 
+	 * This does not include any previous running phases.
+	 * 
+	 * @return number of ms since the job was set to running, or 0 if not running
+	 */
+	public double currentRunPhaseLength() {
+		if (level == Level.PAUSED)
+			return 0;
+		return (System.currentTimeMillis() - setLevelRunningAt) / 1000.0;
+	}
+
+	/**
+	 * How long has this job been paused in total?
+	 * 
+	 * @return total number of ms the job has been paused
+	 */
+	public double pausedTotal() {
+		if (finished() || level != Level.PAUSED)
+			return pausedTime / 1000.0;
+		return (pausedTime + System.currentTimeMillis() - setLevelPausedAt) / 1000.0;
+	}
+
+	/**
+	 * How long has this job actually been running in total?
+	 * 
+	 * Running time is the total time minus the paused time.
+	 * 
+	 * @return total number of ms the job has actually been running
+	 */
+	public double totalExecTime() {
+		return userWaitTime() - pausedTotal();
 	}
 	
 	/**
@@ -568,8 +718,16 @@ public abstract class Job implements Comparable<Job> {
 	 */
 	public void setPriorityLevel(ThreadPriority.Level level) {
 		if (this.level != level) {
-			if (level == Level.PAUSED)
-				pausedAt = System.currentTimeMillis();
+			if (this.level == Level.PAUSED) {
+				// Keep track of total paused time
+				pausedTime += System.currentTimeMillis() - setLevelPausedAt;
+			} else if (level == Level.PAUSED) {
+				// Make sure we can keep track of total paused time
+				setLevelPausedAt = System.currentTimeMillis();
+			}
+			if (level != Level.PAUSED) {
+				setLevelRunningAt = System.currentTimeMillis();
+			}
 			this.level = level;
 		}
 		setPriorityInternal();
@@ -618,6 +776,18 @@ public abstract class Job implements Comparable<Job> {
 	protected void setDocsPriority(DocResults docResults) {
 		if (docResults != null) {
 			docResults.setPriorityLevel(level);
+		}
+	}
+
+	public void setFinished() {
+		finishedAt = System.currentTimeMillis();
+		if (level != Level.RUNNING) {
+			// Don't confuse the system by still being in PAUSED
+			// (possible because this is cooperative multitasking,
+			//  so PAUSED doesn't necessarily mean the thread isn't
+			//  running right now and it might actually finish while
+			//  "PAUSED")
+			setPriorityLevel(Level.RUNNING);
 		}
 	}
 

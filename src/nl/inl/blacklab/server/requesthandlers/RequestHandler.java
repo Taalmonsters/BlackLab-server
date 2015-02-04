@@ -132,7 +132,13 @@ public abstract class RequestHandler {
 				if (indexName.length() == 0 && !resourceOrPathGiven) {
 					// POST to /blacklab-server/ : create private index
 					requestHandler = new RequestHandlerCreateIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
-				} else if (indexName.equals("cache-clear") && !resourceOrPathGiven && debugMode) {
+				} else if (indexName.equals("cache-clear")) {
+					if (resourceOrPathGiven) {
+						return Response.badRequest("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
+					}
+					if (!debugMode) {
+						return Response.unauthorized("You are not authorized to do this.");
+					}
 					requestHandler = new RequestHandlerClearCache(servlet, request, user, indexName, urlResource, urlPathInfo);
 				} else {
 					if (!isPrivateIndex)
@@ -148,7 +154,13 @@ public abstract class RequestHandler {
 					}
 				}
 			} else if (method.equals("GET")) {
-				if (indexName.equals("cache-info") && !resourceOrPathGiven && debugMode) {
+				if (indexName.equals("cache-info")) {
+					if (resourceOrPathGiven) {
+						return Response.badRequest("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
+					}
+					if (!debugMode) {
+						return Response.unauthorized("You are not authorized to see this information.");
+					}
 					requestHandler = new RequestHandlerCacheInfo(servlet, request, user, indexName, urlResource, urlPathInfo);
 				} else if (indexName.equals("help")) {
 					requestHandler = new RequestHandlerBlsHelp(servlet, request, user, indexName, urlResource, urlPathInfo);
@@ -180,6 +192,8 @@ public abstract class RequestHandler {
 								handlerName = "doc-contents";
 							} else if (urlPathInfo.endsWith("/snippet")) {
 								handlerName = "doc-snippet";
+							} else {
+								return Response.badRequest("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
 							}
 						}
 						else if (handlerName.equals("hits") || handlerName.equals("docs")) {

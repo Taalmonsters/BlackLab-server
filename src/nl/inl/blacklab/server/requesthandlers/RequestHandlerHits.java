@@ -231,9 +231,9 @@ public class RequestHandlerHits extends RequestHandler {
 			Hits hits = searchWindow != null ? hits = searchWindow.getWindow().getOriginalHits() : group.getHits();
 			boolean done = hits.doneFetchingHits();
 			summary.put("searchParam", searchParam.toDataObject());
-			summary.put("searchTime", (int)(search.executionTime() * 1000));
+			summary.put("searchTime", (int)(search.userWaitTime() * 1000));
 			if (total != null)
-				summary.put("countTime", (int)(total.executionTime() * 1000));
+				summary.put("countTime", (int)(total.userWaitTime() * 1000));
 			summary.put("stillCounting", !done);
 			int totalHitsCounted = hits.countSoFarHitsCounted();
 			if (total != null && total.threwException()) {

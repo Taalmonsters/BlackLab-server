@@ -66,7 +66,7 @@ public class JobHitsWindow extends Job {
 
 	@Override
 	public Level getPriorityOfResultsObject() {
-		return hitsWindow == null ? Level.NORMAL : hitsWindow.getPriorityLevel();
+		return hitsWindow == null ? Level.RUNNING : hitsWindow.getPriorityLevel();
 	}
 
 	@Override

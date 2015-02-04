@@ -75,7 +75,7 @@ public class RequestHandlerHitsGrouped extends RequestHandler {
 			DataObjectMapElement summary = new DataObjectMapElement();
 			Hits hits = search.getHits();
 			summary.put("searchParam", searchParam.toDataObject());
-			summary.put("searchTime", (int)(search.executionTime() * 1000));
+			summary.put("searchTime", (int)(search.userWaitTime() * 1000));
 			summary.put("stillCounting", false);
 			summary.put("numberOfHits", hits.countSoFarHitsCounted());
 			summary.put("numberOfHitsRetrieved", hits.countSoFarHitsRetrieved());

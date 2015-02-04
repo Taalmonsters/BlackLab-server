@@ -153,6 +153,8 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 			} finally {
 				searchMan.setIndexStatus(indexName, null, "available");
 			}
+		} catch (BlsException ex) {
+			throw ex;
 		} catch (Exception ex) {
 			return Response.internalError(ex, debugMode, 26);
 		}

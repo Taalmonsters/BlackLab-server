@@ -65,7 +65,7 @@ public class JobDocsSorted extends JobWithDocs {
 
 	@Override
 	public Level getPriorityOfResultsObject() {
-		return sourceResults == null ? Level.NORMAL : sourceResults.getPriorityLevel();
+		return sourceResults == null ? Level.RUNNING : sourceResults.getPriorityLevel();
 	}
 
 	@Override

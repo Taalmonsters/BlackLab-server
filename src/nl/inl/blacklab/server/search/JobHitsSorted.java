@@ -64,7 +64,7 @@ public class JobHitsSorted extends JobWithHits {
 
 	@Override
 	public Level getPriorityOfResultsObject() {
-		return hits == null ? Level.NORMAL : hits.getPriorityLevel();
+		return hits == null ? Level.RUNNING : hits.getPriorityLevel();
 	}
 
 	@Override

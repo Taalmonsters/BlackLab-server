@@ -56,7 +56,7 @@ public class JobDocsWindow extends Job {
 
 	@Override
 	public Level getPriorityOfResultsObject() {
-		return sourceResults == null ? Level.NORMAL : sourceResults.getPriorityLevel();
+		return sourceResults == null ? Level.RUNNING : sourceResults.getPriorityLevel();
 	}
 
 	public DocResultsWindow getWindow() {

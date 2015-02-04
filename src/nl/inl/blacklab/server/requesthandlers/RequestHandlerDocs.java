@@ -213,9 +213,9 @@ public class RequestHandlerDocs extends RequestHandler {
 			Hits hits = docs.getOriginalHits();
 			boolean done = hits == null ? true : hits.doneFetchingHits();
 			summary.put("searchParam", searchParam.toDataObject());
-			summary.put("searchTime", (int)(search.executionTime() * 1000));
+			summary.put("searchTime", (int)(search.userWaitTime() * 1000));
 			if (total != null)
-				summary.put("countTime", (int)(total.executionTime() * 1000));
+				summary.put("countTime", (int)(total.userWaitTime() * 1000));
 			summary.put("stillCounting", !done);
 			if (searchGrouped == null && hits != null) {
 				int numberOfHitsCounted = hits.countSoFarHitsCounted();

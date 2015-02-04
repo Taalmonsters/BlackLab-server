@@ -10,6 +10,8 @@ import nl.inl.blacklab.index.DocIndexer;
 import nl.inl.blacklab.index.IndexListener;
 import nl.inl.blacklab.index.IndexListenerDecorator;
 import nl.inl.blacklab.index.Indexer;
+import nl.inl.blacklab.search.indexstructure.IndexStructure;
+import nl.inl.blacklab.server.exceptions.NotAuthorized;
 import nl.inl.blacklab.tools.DocumentFormats;
 
 import org.apache.log4j.Logger;
@@ -17,6 +19,8 @@ import org.apache.log4j.Logger;
 public class IndexTask {
 
 	private static final Logger logger = Logger.getLogger(IndexTask.class);
+
+	private static final long MAX_TOKEN_COUNT = 500000;
 
 	/** The data we're indexing. We're responsible for closing the stream when
 	 *  we're done with it. */
@@ -72,7 +76,11 @@ public class IndexTask {
 			// We created the Indexer with a null DocIndexer class.
 			// Now we figure out what the indices' own document format is,
 			// resolve it to a DocIndexer class and update the Indexer with it.
-			String docFormat = indexer.getSearcher().getIndexStructure().getDocumentFormat();
+			IndexStructure indexStructure = indexer.getSearcher().getIndexStructure();
+			if (indexStructure.getTokenCount() > MAX_TOKEN_COUNT) {
+				throw new NotAuthorized("Sorry, this index is already larger than the maximum of " + MAX_TOKEN_COUNT + ". Cannot add any more data to it.");
+			}
+			String docFormat = indexStructure.getDocumentFormat();
 			Class<? extends DocIndexer> docIndexerClass;
 			docIndexerClass = DocumentFormats.getIndexerClass(docFormat);
 			indexer.setDocIndexer(docIndexerClass);
