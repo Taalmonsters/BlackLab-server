@@ -192,6 +192,8 @@ public abstract class RequestHandler {
 								handlerName = "doc-contents";
 							} else if (urlPathInfo.endsWith("/snippet")) {
 								handlerName = "doc-snippet";
+							} else if (!p.contains("/")) {
+								// OK, retrieving metadata
 							} else {
 								return Response.badRequest("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
 							}
