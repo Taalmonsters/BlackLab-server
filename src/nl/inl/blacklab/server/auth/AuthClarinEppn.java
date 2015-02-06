@@ -1,5 +1,7 @@
 package nl.inl.blacklab.server.auth;
 
+import java.util.Map;
+
 import javax.servlet.http.HttpServletRequest;
 
 /**
@@ -11,18 +13,20 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class AuthClarinEppn extends AuthRequestAttribute {
 	
-	public AuthClarinEppn() {
+	public AuthClarinEppn(Map<String, Object> dummy) {
 		super("eppn");
 	}
 
 	@Override
 	protected String getUserId(HttpServletRequest request) {
 		String userId = super.getUserId(request);
-		String[] parts = userId.split(";", 2);
-		if (parts.length == 2 && parts[0].equals(parts[1])) {
-			// The user id string is of the form "USERID;USERID".
-			// Only return it once.
-			return parts[0];
+		if (userId != null) {
+			String[] parts = userId.split(";", 2);
+			if (parts.length == 2 && parts[0].equals(parts[1])) {
+				// The user id string is of the form "USERID;USERID".
+				// Only return it once.
+				return parts[0];
+			}
 		}
 		return userId;
 	}

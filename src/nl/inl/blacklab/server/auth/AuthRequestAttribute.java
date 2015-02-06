@@ -52,7 +52,8 @@ public class AuthRequestAttribute {
 	}
 
 	protected String getUserId(HttpServletRequest request) {
-		return request.getAttribute(attributeName).toString();
+		Object attribute = request.getAttribute(attributeName);
+		return attribute == null ? null : attribute.toString();
 	}
 
 }
