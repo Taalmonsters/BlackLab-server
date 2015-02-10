@@ -797,7 +797,8 @@ public class SearchManager {
 			throw new InternalServerError("Could not create index. Cannot write in user dir: " + userDir, 16);
 
 		File indexDir = new File(userDir, indexNameWithoutUsePrefix);
-		Searcher searcher = Searcher.createIndex(indexDir, displayName, documentFormat);
+		boolean contentViewable = true; // user may view his own private corpus documents
+		Searcher searcher = Searcher.createIndex(indexDir, displayName, documentFormat, contentViewable);
 		searcher.close();
 	}
 
