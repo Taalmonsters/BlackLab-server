@@ -650,6 +650,7 @@ public class SearchManager {
 		if (searchers.containsKey(indexName)) {
 			searchers.get(indexName).close();
 			searchers.remove(indexName);
+			indexStatus.remove(indexName);
 			cache.clearCacheForIndex(indexName);
 		}
 	}
@@ -670,71 +671,72 @@ public class SearchManager {
 		//logger.debug("@PERF getSearcher");
 		try {
 			
-		if (!isValidIndexName(indexName))
-			throw new IllegalIndexName(indexName);
-
-		if (searchers.containsKey(indexName)) {
-			Searcher searcher = searchers.get(indexName);
-			if (searcher.getIndexDirectory().canRead())
-				return searcher;
-			// Index was (re)moved; remove Searcher from cache.
-			searchers.remove(indexName);
-			cache.clearCacheForIndex(indexName);
-			// Maybe we can find an index with this name elsewhere?
-		}
-		IndexParam par = getIndexParam(indexName);
-		if (par == null) {
-			throw new IndexNotFound(indexName);
-		}
-		File indexDir = par.getDir();
-		Searcher searcher;
-		try {
-			logger.debug("Opening index '" + indexName + "', dir = " + indexDir);
-			searcher = Searcher.open(indexDir);
-		} catch (Exception e) {
-			throw new InternalServerError("Could not open index '" + indexName
-					+ "'", 27, e);
-		}
-		searchers.put(indexName, searcher);
-
-		// Figure out the pid from the index metadata and/or BLS config.
-		String indexPid = searcher.getIndexStructure().pidField();
-		if (indexPid == null)
-			indexPid = "";
-		String configPid = par.getPidField();
-		if (indexPid.length() > 0 && !configPid.equals(indexPid)) {
-			if (configPid.length() > 0) {
-				logger.error("Different pid field configured in blacklab-server.json than in index metadata! ("
-						+ configPid + "/" + indexPid + "); using the latter");
+			if (!isValidIndexName(indexName))
+				throw new IllegalIndexName(indexName);
+	
+			if (searchers.containsKey(indexName)) {
+				Searcher searcher = searchers.get(indexName);
+				if (searcher.getIndexDirectory().canRead())
+					return searcher;
+				// Index was (re)moved; remove Searcher from cache.
+				searchers.remove(indexName);
+				indexStatus.remove(indexName);
+				cache.clearCacheForIndex(indexName);
+				// Maybe we can find an index with this name elsewhere?
 			}
-			// Update index parameters with the pid field found in the metadata
-			par.setPidField(indexPid);
-		} else {
-			// No pid configured in index, only in blacklab-server.json. We want
-			// to get rid
-			// of this (prints an error on startup), but it should still work
-			// for now. Inject
-			// the setting into the searcher.
-			if (configPid.length() > 0)
-				searcher.getIndexStructure()._setPidField(configPid);
-		}
-		if (indexPid.length() == 0 && configPid.length() == 0) {
-			logger.warn("No pid given for index '" + indexName
-					+ "'; using Lucene doc ids.");
-		}
-
-		// Look for the contentViewable setting in the index metadata
-		boolean contentViewable = searcher.getIndexStructure()
-				.contentViewable();
-		boolean blsConfigContentViewable = par.mayViewContents();
-		if (par.mayViewContentsSpecified()
-				&& contentViewable != blsConfigContentViewable) {
-			logger.error("Index metadata and blacklab-server.json configuration disagree on content view settings! Disallowing free content viewing.");
-			par.setMayViewContent(false);
-			searcher.getIndexStructure()._setContentViewable(false);
-		}
-
-		return searcher;
+			IndexParam par = getIndexParam(indexName);
+			if (par == null) {
+				throw new IndexNotFound(indexName);
+			}
+			File indexDir = par.getDir();
+			Searcher searcher;
+			try {
+				logger.debug("Opening index '" + indexName + "', dir = " + indexDir);
+				searcher = Searcher.open(indexDir);
+			} catch (Exception e) {
+				throw new InternalServerError("Could not open index '" + indexName
+						+ "'", 27, e);
+			}
+			searchers.put(indexName, searcher);
+	
+			// Figure out the pid from the index metadata and/or BLS config.
+			String indexPid = searcher.getIndexStructure().pidField();
+			if (indexPid == null)
+				indexPid = "";
+			String configPid = par.getPidField();
+			if (indexPid.length() > 0 && !configPid.equals(indexPid)) {
+				if (configPid.length() > 0) {
+					logger.error("Different pid field configured in blacklab-server.json than in index metadata! ("
+							+ configPid + "/" + indexPid + "); using the latter");
+				}
+				// Update index parameters with the pid field found in the metadata
+				par.setPidField(indexPid);
+			} else {
+				// No pid configured in index, only in blacklab-server.json. We want
+				// to get rid
+				// of this (prints an error on startup), but it should still work
+				// for now. Inject
+				// the setting into the searcher.
+				if (configPid.length() > 0)
+					searcher.getIndexStructure()._setPidField(configPid);
+			}
+			if (indexPid.length() == 0 && configPid.length() == 0) {
+				logger.warn("No pid given for index '" + indexName
+						+ "'; using Lucene doc ids.");
+			}
+	
+			// Look for the contentViewable setting in the index metadata
+			boolean contentViewable = searcher.getIndexStructure()
+					.contentViewable();
+			boolean blsConfigContentViewable = par.mayViewContents();
+			if (par.mayViewContentsSpecified()
+					&& contentViewable != blsConfigContentViewable) {
+				logger.error("Index metadata and blacklab-server.json configuration disagree on content view settings! Disallowing free content viewing.");
+				par.setMayViewContent(false);
+				searcher.getIndexStructure()._setContentViewable(false);
+			}
+	
+			return searcher;
 		
 		} finally {
 			//logger.debug("@PERF getSearcher EXIT");
@@ -850,6 +852,15 @@ public class SearchManager {
 			}
 		} catch (IOException e1) {
 			throw new InternalServerError(13);
+		}
+		
+		// Remove stuff from the cache, close Searcher
+		cache.clearCacheForIndex(indexName);
+		Searcher searcher = getSearcher(indexName);
+		if (searcher != null) {
+			searchers.remove(indexName);
+			indexStatus.remove(indexName);
+			searcher.close();
 		}
 
 		// Can we even delete the whole tree? If not, don't even try.
