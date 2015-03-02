@@ -103,7 +103,7 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 							return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. File should be uploaded using the 'data' field.");
 						
 						if (fi.getSize() > MAX_UPLOAD_SIZE)
-							return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. Too large.");
+							return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. It is larger than the maximum of " + (MAX_UPLOAD_SIZE / 1024 / 1024) + " MB.");
 						
 						if (filesDone != 0)
 							return Response.internalError("Tried to upload more than one file.", debugMode, 14);

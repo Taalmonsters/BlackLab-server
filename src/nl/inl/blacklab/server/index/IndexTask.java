@@ -7,12 +7,12 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 
 import nl.inl.blacklab.index.DocIndexer;
+import nl.inl.blacklab.index.DocumentFormats;
 import nl.inl.blacklab.index.IndexListener;
 import nl.inl.blacklab.index.IndexListenerDecorator;
 import nl.inl.blacklab.index.Indexer;
 import nl.inl.blacklab.search.indexstructure.IndexStructure;
 import nl.inl.blacklab.server.exceptions.NotAuthorized;
-import nl.inl.blacklab.tools.DocumentFormats;
 
 import org.apache.log4j.Logger;
 
@@ -95,6 +95,9 @@ public class IndexTask {
 				} else if (name.endsWith(".tar.gz") || name.endsWith(".tgz")) {
 					// Tar gzipped data; read directly from stream.
 					indexer.indexTarGzip(name, data, "*.xml", true);
+				} else if (name.endsWith(".gz")) {
+					// Tar gzipped data; read directly from stream.
+					indexer.indexGzip(name, data);
 				} else {
 					// Straight XML data. Read as UTF-8.
 					Reader reader = new BufferedReader(new InputStreamReader(data, "utf-8"));
