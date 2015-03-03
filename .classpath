@@ -4,7 +4,11 @@
 	<classpathentry kind="src" path="test"/>
 	<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.web.container"/>
 	<classpathentry kind="con" path="org.eclipse.jst.j2ee.internal.module.container"/>
-	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/BlackLab"/>
+	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/BlackLab">
+		<attributes>
+			<attribute name="org.eclipse.jst.component.dependency" value="/WEB-INF/lib"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.jst.server.core.container/org.eclipse.jst.server.tomcat.runtimeTarget/Apache Tomcat v7.0">
 		<attributes>
 			<attribute name="owner.project.facets" value="jst.web"/>
