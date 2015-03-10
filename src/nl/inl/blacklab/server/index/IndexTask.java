@@ -56,14 +56,23 @@ public class IndexTask {
 		this.name = name;
 		setListener(listener);
 	}
+	
+	boolean anyDocsFound = false;
 
 	private void setListener(IndexListener listener) {
 		this.decoratedListener = new IndexListenerDecorator(listener) {
+			
 			@Override
 			public boolean errorOccurred(String error, String unitType,
 					File unit, File subunit) {
 				indexError = error;
 				return super.errorOccurred(error, unitType, unit, subunit);
+			}
+			
+			@Override
+			public synchronized void documentStarted(String name) {
+				super.documentStarted(name);
+				anyDocsFound = true;
 			}
 		};
 	}
@@ -86,6 +95,7 @@ public class IndexTask {
 			indexer.setDocIndexer(docIndexerClass);
 			
 			indexer.setListener(decoratedListener);
+			anyDocsFound = false;
 			indexer.setContinueAfterInputError(false);
 			indexer.setRethrowInputError(false);
 			try {
@@ -105,6 +115,9 @@ public class IndexTask {
 						logger.debug("Starting indexing");
 						indexer.index(name, reader);
 						logger.debug("Done indexing");
+						if (!anyDocsFound) {
+							indexError = "The file contained no documents in the selected format. Do the corpus and file formats match?";
+						}
 					} finally {
 						reader.close();
 					}
@@ -120,7 +133,6 @@ public class IndexTask {
 					if (indexer != null)
 						indexer.rollback();
 					indexer = null;
-					indexError = null;
 				} else {
 					if (indexer != null)
 						indexer.close();
@@ -132,5 +144,9 @@ public class IndexTask {
 				data.close();
 			data = null;
 		}
+	}
+
+	public String getIndexError() {
+		return indexError;
 	}
 }

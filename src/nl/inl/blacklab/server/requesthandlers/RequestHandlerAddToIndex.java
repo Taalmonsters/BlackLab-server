@@ -140,6 +140,9 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 								task = new IndexTask(indexDir, data, fileName, listener);
 							}
 							task.run();
+							if (task.getIndexError() != null) {
+								return Response.internalError(task.getIndexError(), true, 30);
+							}
 						} finally {
 							if (tmpFile != null)
 								tmpFile.delete();
