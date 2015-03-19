@@ -46,8 +46,9 @@ public class BlackLabServer extends HttpServlet {
 		// Read JSON config file, either from the servlet context directory's parent,
 		// from /etc/blacklab/ or from the classpath.
 		String configFileName = "blacklab-server.json";
-		logger.debug("Running from dir: " + getServletContext().getRealPath("."));
-		File configFile = new File(getServletContext().getRealPath("/../" + configFileName));
+		String realPath = getServletContext().getRealPath(".");
+		logger.debug("Running from dir: " + realPath);
+		File configFile = new File(realPath + "/../" + configFileName);
 		InputStream is;
 		if (configFile.exists()) {
 			// Read from webapps dir
