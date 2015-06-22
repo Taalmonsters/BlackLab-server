@@ -5,6 +5,8 @@ import java.util.Map;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 
+import nl.inl.blacklab.server.BlackLabServer;
+import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.User;
 
 import org.apache.log4j.Logger;
@@ -42,7 +44,7 @@ public class AuthRequestAttribute {
 		}
 		
 		// See if there's a logged-in user or not
-		String userId = getUserId(request);
+		String userId = getUserId(servlet, request);
 		
 		// Return the appropriate User object
 		if (userId == null || userId.length() == 0) {
@@ -51,9 +53,23 @@ public class AuthRequestAttribute {
 		return User.loggedIn(userId, sessionId);
 	}
 
-	protected String getUserId(HttpServletRequest request) {
-		Object attribute = request.getAttribute(attributeName);
-		return attribute == null ? null : attribute.toString();
+	protected String getUserId(HttpServlet servlet, HttpServletRequest request) {
+		
+		String userId = null;
+		
+		// Overridden in URL?
+		SearchManager searchMan = ((BlackLabServer)servlet).getSearchManager();
+		if (searchMan.mayOverrideUserId(request.getRemoteAddr()) && request.getParameter("userid") != null) {
+			userId = request.getParameter("userid");
+		}
+		
+		if (userId == null) {
+			Object attribute = request.getAttribute(attributeName);
+			if (attribute != null)
+				userId = attribute.toString();
+		}
+		
+		return userId;
 	}
 
 }
