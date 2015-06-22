@@ -1,3 +1,5 @@
-/build
-/antbuild/
-/dist/
+target
+*.swp
+.settings
+.project
+.classpath

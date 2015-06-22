@@ -3,7 +3,7 @@ BlackLab Server
 
 A webservice that allows you to use corpus search engine BlackLab from any programming language.
 
-**NOTE: this is a beta version of BlackLab Server. It works well, but there may be occasional bugs. Please report any problems you encounter using the issue tracker. **
+**WARNING: This is not yet production-ready software! This is an alpha version, available for review and testing. There are likely still be bugs and the protocol may change slightly. **
 
 Please see the [full overview](https://github.com/INL/BlackLab-server/wiki/BlackLab-Server-overview) of the webservice for more information.
 

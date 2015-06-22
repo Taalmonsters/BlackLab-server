@@ -1,122 +1,13 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!DOCTYPE project>
 <project name="blacklab-server" default="dist" basedir=".">
-	<!-- Project info -->
-	<property name="project.name" value="blacklab-server" />
-	<property name="project.version" value="1.0" />
-
-	<!-- Directories -->
-	<property name="src" value="src" />
-	<property name="build" value="antbuild" />
-	<property name="dist" value="dist" />
-	<property name="lib" value="WebContent/WEB-INF/lib" />
 	
-	<!-- Access environment variables with ${ENV.name} -->
-	<property environment="ENV" />
-	
-    <!-- Fail with an error if BlackLab dir was not configured -->
-	<fail unless="ENV.BLACKLAB_PROJECT_DIR">
-	    Please set the BLACKLAB_PROJECT_DIR environment variable!
-	    (Should point to the directory where you checked out the BlackLab
-	     project, so this build script can call BlackLab's build script)
-	</fail>
-	
-    <!-- Set BlackLab dir from environment variable -->
-    <property name="BlackLabDir" value="${ENV.BLACKLAB_PROJECT_DIR}" />
+    <fail>
+        This project has switched over to Maven builds.
+        Please install Maven and type "mvn package".
+    </fail>
     
-	<!-- Build the BlackLab JAR -->
-	<target name="build-blacklab">
-		<ant dir="${BlackLabDir}" inheritall="false" />
-	</target>
-
-	<!-- Build BlackLab and initialise the BlackLab Server build -->
-	<target name="init" depends="build-blacklab">
-		<echo message="----- Building ${project.name} -----" />
-		<tstamp />
-		<mkdir dir="${build}/WEB-INF/classes" />
-	</target>
-	
-	<!-- Compile the sources -->
-	<target name="compile" depends="init">
-		<javac includeantruntime="false" encoding="utf-8" debug="true" debuglevel="lines,vars,source" srcdir="${src}" destdir="${build}/WEB-INF/classes">
-			<!-- Het te gebruiken classpath voor compileren -->
-			<classpath>
-				<pathelement path="${java.class.path}/"/>
-				<pathelement path="${lib}/junit-4.8.jar" />
-				<pathelement path="${lib}/log4j-1.2.15.jar" />
-				<pathelement path="${lib}/tomcat7/servlet-api.jar" />
-				<pathelement path="${lib}/tomcat7/jsp-api.jar" />
-				<pathelement path="${lib}/tomcat7/jasper.jar" />
-				<pathelement path="${lib}/lucene-core-4.2.1.jar" />
-				<pathelement path="${lib}/lucene-analyzers-common-4.2.1.jar" />
-		        <pathelement path="${lib}/lucene-highlighter-4.2.1.jar" />
-		        <pathelement path="${lib}/lucene-queries-4.2.1.jar" />
-		        <pathelement path="${lib}/lucene-queryparser-4.2.1.jar" />
-				<pathelement path="${lib}/commons-fileupload-1.3.1.jar" />
-				<pathelement path="${BlackLabDir}/dist/BlackLab.jar" />
-			</classpath>
-		</javac>
-		
-		<!-- Remove old libraries from build dir -->
-		<delete dir="${build}/WEB-INF/lib" />
-	
-		<!-- Copy BlackLab.jar to our build dir -->
-		<copy todir="${build}/WEB-INF/lib">
-            <fileset dir="${BlackLabDir}/dist" includes="BlackLab.jar" />
-		</copy>
-		
-		<!-- Copy blacklab-server-defaults.json to classes dir -->
-		<copy todir="${build}/WEB-INF/classes">
-            <fileset dir="src" includes="blacklab-server-defaults.json" />
-		</copy>
-		
-		<!-- Copy resources to build dir -->
-		<copy todir="${build}">
-			<fileset dir="WebContent" includes="META-INF/*" />
-			<fileset dir="WebContent" includes="WEB-INF/lib/*" />
-			<fileset dir="WebContent" includes="WEB-INF/lib/tomcat7/*" />
-		</copy>
-		
-	</target>
-	
-    <!-- Build .war file from the build directory -->
-    <target name="dist" depends="compile">
-        <mkdir dir="${dist}" />
-        <war manifest="WebContent/META-INF/MANIFEST.MF" warfile="${dist}/${project.name}.war" webxml="WebContent/WEB-INF/web.xml" basedir="${build}" />
+    <target name="dist">
     </target>
-	
-	<!-- Delete all generated files -->
-	<target name="clean">
-		<delete dir="${build}" />
-		<delete dir="${dist}" />
-	</target>
-	
-	
-	<!-- Read Tomcat deployment settings -->
-	<property file="tomcat-deploy.properties" />
 
-	<!-- Set classpath for Tomcat Ant tasks -->
-	<path id="tomcat.lib.classpath">
-		<fileset dir="${catalina.home}/bin">
-			<include name="*.jar" />
-		</fileset>
-		<fileset dir="${catalina.home}/lib">
-			<include name="*.jar" />
-		</fileset>
-	</path>
-
-	<!-- Import the Tomcat Ant tasks -->
-	<taskdef resource="org/apache/catalina/ant/catalina.tasks"
-			classpathref="tomcat.lib.classpath" />
-
-	<!-- Build and deploy the web application -->
-	<target name="deploy" depends="dist">
-		<deploy 
-			url="${tomcat.manager.url}" 
-			username="${tomcat.manager.username}"
-			password="${tomcat.manager.password}"
-			path="/${project.name}"
-			war="file://${basedir}/${dist}/${project.name}.war" />
-	</target>
-	
 </project>
