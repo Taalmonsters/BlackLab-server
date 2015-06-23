@@ -8,7 +8,6 @@ import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.blacklab.server.exceptions.InternalServerError;
 import nl.inl.blacklab.server.exceptions.NotFound;
 
-import org.apache.log4j.Logger;
 import org.apache.lucene.search.BooleanQuery.TooManyClauses;
 import org.apache.lucene.search.Filter;
 import org.apache.lucene.search.Query;
@@ -18,7 +17,6 @@ import org.apache.lucene.search.QueryWrapperFilter;
  * Represents a hit search operation.
  */
 public class JobHits extends JobWithHits {
-	protected static final Logger logger = Logger.getLogger(JobHits.class);
 
 	/** The parsed pattern */
 	protected TextPattern textPattern;

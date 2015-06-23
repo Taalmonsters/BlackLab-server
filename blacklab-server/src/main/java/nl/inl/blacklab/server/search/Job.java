@@ -21,6 +21,8 @@ import org.apache.log4j.Logger;
 
 public abstract class Job implements Comparable<Job> {
 	
+	protected static final Logger logger = Logger.getLogger(Job.class);
+	
 	private static final double ALMOST_ZERO = 0.0001;
 
 	private static final int RUN_PAUSE_PHASE_JUST_STARTED = 5;
@@ -33,8 +35,6 @@ public abstract class Job implements Comparable<Job> {
 
 	private static final int REFS_INVALID = -9999;
 
-	protected static final Logger logger = Logger.getLogger(Job.class);
-	
 	/** If true (as it should be for production use), we call cleanup() on jobs that 
 	 *  aren't referred to anymore in an effor to assist the Java garbage collector.
 	 *  EXPERIMENTAL
@@ -323,6 +323,9 @@ public abstract class Job implements Comparable<Job> {
 		waitUntilFinished(waitTimeMs);
 	}
 
+	/**
+	 * @throws BlsException on error 
+	 */
 	protected void performSearch() throws BlsException {
 		// (to override)
 	}

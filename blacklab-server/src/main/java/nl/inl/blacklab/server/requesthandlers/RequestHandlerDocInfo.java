@@ -12,15 +12,12 @@ import nl.inl.blacklab.server.exceptions.NotFound;
 import nl.inl.blacklab.server.search.SearchManager;
 import nl.inl.blacklab.server.search.User;
 
-import org.apache.log4j.Logger;
 import org.apache.lucene.document.Document;
 
 /**
  * Get information about the structure of an index.
  */
 public class RequestHandlerDocInfo extends RequestHandler {
-
-	private static final Logger logger = Logger.getLogger(RequestHandlerDocInfo.class);
 
 	public RequestHandlerDocInfo(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, user, indexName, urlResource, urlPathPart);

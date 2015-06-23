@@ -6,13 +6,10 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 import nl.inl.blacklab.server.exceptions.BlsException;
 import nl.inl.util.ThreadPriority.Level;
 
-import org.apache.log4j.Logger;
-
 /**
  * Represents searching for a window in a larger set of hits.
  */
 public class JobDocsWindow extends Job {
-	protected static final Logger logger = Logger.getLogger(JobDocsWindow.class);
 
 	private DocResults sourceResults;
 
