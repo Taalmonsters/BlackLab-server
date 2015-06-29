@@ -91,7 +91,7 @@ public class BlackLabServer extends HttpServlet {
 				is.close();
 			}
 		} catch (Exception e) {
-			throw new ServletException("Error reading JSON config file: " + e.getMessage(), e);
+			throw new ServletException("Error initializing SearchManager: " + e.getMessage(), e);
 		}
 		logger.info("BlackLab Server ready.");
 
