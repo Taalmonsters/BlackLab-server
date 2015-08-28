@@ -1,7 +1,17 @@
 <project>
 
+	<publishDate position="right" />
+	<version position="right" />
+	
+	<bannerLeft>
+		<name>BlackLab Server</name>
+		<src>images/logo-blacklab.png</src>
+	</bannerLeft>
+
 	<bannerRight>
+		<name>INL</name>
 		<src>images/logo-inl.png</src>
+		<href>http://www.inl.nl/</href>
 	</bannerRight>
 
 	<skin>
@@ -11,6 +21,21 @@
 	</skin>
 
 	<body>
+	
+		<head>
+			<link href='http://fonts.googleapis.com/css?family=Nunito:300' rel='stylesheet' type='text/css' />
+		</head>
+	
+		<breadcrumbs>
+			<item name="INL" href="http://www.inl.nl/"/>
+			<item name="BlackLab" href="../index.html"/>
+			<item name="BlackLab Server" href="index.html"/>
+	    </breadcrumbs>
+	
+		<menu name="BlackLab Server">
+			<item name="Introduction" href="index.html" />
+			<item name="Using from different languages" href="from-different-languages.html" />
+		</menu>
 
 		<menu ref="reports" />
 
@@ -18,10 +43,7 @@
 	
 	<custom>
 		<fluidoSkin>
-			<sourceLineNumbersEnabled>true</sourceLineNumbersEnabled>
-			<!-- <googleSearch>
-				<sitesearch/>
-			</googleSearch> -->
+			<sourceLineNumbersEnabled>false</sourceLineNumbersEnabled>
 		</fluidoSkin>
 		<gitHub>
 			<projectId>INL/BlackLab-server</projectId>
