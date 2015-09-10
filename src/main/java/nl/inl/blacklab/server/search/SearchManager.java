@@ -24,7 +24,6 @@ import nl.inl.blacklab.queryParser.contextql.ContextualQueryLanguageParser;
 import nl.inl.blacklab.queryParser.corpusql.CorpusQueryLanguageParser;
 import nl.inl.blacklab.queryParser.corpusql.ParseException;
 import nl.inl.blacklab.queryParser.corpusql.TokenMgrError;
-import nl.inl.blacklab.queryParser.lucene.LuceneQueryParser;
 import nl.inl.blacklab.search.CompleteQuery;
 import nl.inl.blacklab.search.Hits;
 import nl.inl.blacklab.search.Searcher;
@@ -1316,7 +1315,7 @@ public class SearchManager {
 				throw new BadRequest("PATT_SYNTAX_ERROR",
 						"Syntax error in ContextQL pattern: " + e.getMessage());
 			}
-		} else if (language.equals("luceneql")) {
+		} /*else if (language.equals("luceneql")) {
 			try {
 				String field = searcher.getIndexStructure()
 						.getMainContentsField().getName();
@@ -1330,7 +1329,7 @@ public class SearchManager {
 				throw new BadRequest("PATT_SYNTAX_ERROR",
 						"Syntax error in LuceneQL pattern: " + e.getMessage());
 			}
-		}
+		}*/
 
 		throw new BadRequest("UNKNOWN_PATT_LANG",
 				"Unknown pattern language '" + language
