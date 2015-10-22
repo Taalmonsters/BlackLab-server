@@ -313,6 +313,8 @@ public class SearchManager {
 					jsonServerLoad = perfProp.getJSONObject("serverLoad");
 				}
 				cache.setServerLoadOptions(jsonServerLoad);
+			} else {
+				cache = new SearchCache(); // default settings
 			}
 
 			// Find the indices

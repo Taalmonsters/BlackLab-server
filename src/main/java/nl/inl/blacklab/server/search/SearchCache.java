@@ -72,6 +72,15 @@ public class SearchCache {
 		numberOfJobsToPurgeWhenBelowTargetMem = JsonUtil.getIntProp(settings, "numberOfJobsToPurgeWhenBelowTargetMem", 100);
 	}
 
+	public SearchCache() {
+		cachedSearches = new HashMap<SearchParameters, Job>();
+		maxJobAgeSec = 3600;
+		maxNumberOfJobs = 20;
+		maxSizeMegs = -1;
+		minFreeMemTargetMegs = 100;
+		numberOfJobsToPurgeWhenBelowTargetMem = 100;
+	}
+
 	/**
 	 * Get a search from the cache if present.
 	 *
