@@ -190,7 +190,7 @@ public class SearchManager {
 	private long maxRunningJobsPerUser;
 
 	/** IP addresses for which debug mode will be turned on. */
-	private Set<String> debugModeIps;
+	private Set<String> debugModeIps = new HashSet<String>();
 
 	/** The default output type, JSON or XML. */
 	private DataFormat defaultOutputType;
@@ -234,7 +234,6 @@ public class SearchManager {
 			if (properties.has("debugModeIps")) {
 				JSONArray jsonDebugModeIps = properties
 						.getJSONArray("debugModeIps");
-				debugModeIps = new HashSet<String>();
 				for (int i = 0; i < jsonDebugModeIps.length(); i++) {
 					debugModeIps.add(jsonDebugModeIps.getString(i));
 				}
