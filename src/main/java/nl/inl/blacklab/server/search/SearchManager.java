@@ -56,7 +56,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.util.Version;
 
 public class SearchManager {
 	private static final Logger logger = Logger.getLogger(SearchManager.class);
@@ -64,7 +63,7 @@ public class SearchManager {
 	private static final int MAX_USER_INDICES = 10;
 
 	public static final String ILLEGAL_NAME_ERROR = "is not a valid index name (only letters, digits, underscores and dashes allowed, and must start with a letter)";
-	
+
 	/**
 	 * If enabled, this makes sure the SearchCache will follow the behaviour
 	 * rules set in blacklab-server.json to lowprio/pause searches in certain
@@ -216,7 +215,7 @@ public class SearchManager {
 	/** The authentication system, giving information about the currently logged-in user
         (or at least a session id) */
 	private Object authSystem;
-	
+
 	/** The method to invoke for determining the current user. */
 	private Method authMethodDetermineCurrentUser;
 
@@ -225,7 +224,7 @@ public class SearchManager {
 	 * to ensure load management continues even if no new requests are coming in.
 	 */
 	private Thread loadManagerThread;
-	
+
 	public SearchManager(JSONObject properties) throws ConfigurationException {
 		logger.debug("SearchManager created");
 
@@ -301,15 +300,15 @@ public class SearchManager {
 
 				// Start with empty cache
 				cache = new SearchCache(cacheProp);
-				
+
 				JSONObject jsonServerLoad = null;
 				if (perfProp.has("serverLoad")) {
 					// Load manager stuff (experimental)
-					
+
 					// Make sure long operations yield their thread occasionally,
 					// and automatically abort really long operations.
 					ThreadPriority.setEnabled(ENABLE_THREAD_PRIORITY);
-					
+
 					jsonServerLoad = perfProp.getJSONObject("serverLoad");
 				}
 				cache.setServerLoadOptions(jsonServerLoad);
@@ -399,7 +398,7 @@ public class SearchManager {
 					                     // could in the future
 				}
 			}
-			
+
 			if (!indicesFound) {
 				throw new ConfigurationException(
 					"Configuration error: no index locations found. Create " +
@@ -443,7 +442,7 @@ public class SearchManager {
 			e.printStackTrace();
 			throw new ConfigurationException("Invalid JSON in blacklab-server.json; please validate: " + e.getMessage());
 		}
-		
+
 		// Keep a list of searchparameters.
 		searchParameterNames = Arrays.asList("resultsType", "patt", "pattlang",
 				"pattfield", "filter", "filterlang", "sort", "group",
@@ -477,15 +476,15 @@ public class SearchManager {
 				"" + Hits.getDefaultMaxHitsToCount());
 		defaultParameterValues.put("sensitive", "no");
 		defaultParameterValues.put("property", "word");
-		
+
 		loadManagerThread = new LoadManagerThread(this);
 		loadManagerThread.start();
-		
+
 	}
-	
+
 	/**
 	 * Clean up resources.
-	 * 
+	 *
 	 * In particular, stops the load manager thread and
 	 * cancels any running searches.
 	 */
@@ -493,7 +492,7 @@ public class SearchManager {
 		// Stop the load manager thread
 		loadManagerThread.interrupt();
 		loadManagerThread = null;
-		
+
 		// Stop any running searches
 		cache.clearCache(true);
 	}
@@ -509,7 +508,7 @@ public class SearchManager {
 			//logger.debug("No auth system, user = " + user);
 			return user;
 		}
-		
+
 		// Let auth system determine the current user.
 		try {
 			User user = (User)authMethodDetermineCurrentUser.invoke(authSystem, servlet, request);
@@ -519,12 +518,12 @@ public class SearchManager {
 			throw new RuntimeException("Error determining current user", e);
 		}
 	}
-	
+
 	/**
 	 * Return the specified user's collection dir.
-	 * 
+	 *
 	 * @param userId the user
-	 * 
+	 *
 	 * @return the user's collection dir, or null if none
 	 */
 	private File getUserCollectionDir(String userId) {
@@ -547,12 +546,12 @@ public class SearchManager {
 
 	/**
 	 * Find an index given its name.
-	 * 
+	 *
 	 * Looks at explicitly configured indices as well as collections.
-	 * 
+	 *
 	 * If a user is logged in, only looks in the user's private index
 	 * collection.
-	 * 
+	 *
 	 * @param indexName
 	 *            the index name
 	 * @return the index dir and mayViewContents setting
@@ -573,7 +572,7 @@ public class SearchManager {
 			indexParam.remove(indexName);
 			cache.clearCacheForIndex(indexName);
 		}
-		
+
 		// Is it a private index?
 		if (indexName.contains(":")) {
 			// Yes; look in user's private index collection.
@@ -590,21 +589,21 @@ public class SearchManager {
 		}
 
 		return null;
-		
+
 		} finally {
 			//logger.debug("@PERF getIndexParam EXIT");
 		}
 	}
-	
+
 	public File getIndexDir(String indexName) {
 		return getIndexParam(indexName).getDir();
 	}
 
 	/**
 	 * Search a collection for an index name.
-	 * 
+	 *
 	 * Adds index parameters to the cache if found.
-	 * 
+	 *
 	 * @param name
 	 *            name of the index, without user prefix (if any)
 	 * @param collection
@@ -612,7 +611,7 @@ public class SearchManager {
 	 * @param addToCache
 	 *            if true, add parameters to the cache if found
 	 * @param userIdPrefix what to prefix the name with when putting it in the cache
-	 * @param parts 
+	 * @param parts
 	 * @return the index parameters if found.
 	 */
 	private synchronized IndexParam findIndexInCollection(String name, File collection,
@@ -632,7 +631,7 @@ public class SearchManager {
 	/**
 	 * Check the index name part (not the user id part, if any)
 	 * of the specified index name.
-	 * 
+	 *
 	 * @param indexName the index name, possibly including user id prefix
 	 * @return whether or not the index name part is valid
 	 */
@@ -654,10 +653,10 @@ public class SearchManager {
 			cache.clearCacheForIndex(indexName);
 		}
 	}
-	
+
 	/**
 	 * Get the Searcher object for the specified index.
-	 * 
+	 *
 	 * @param indexName
 	 *            the index we want to search
 	 * @return the Searcher object for that index
@@ -670,10 +669,10 @@ public class SearchManager {
 			throws BlsException {
 		//logger.debug("@PERF getSearcher");
 		try {
-			
+
 			if (!isValidIndexName(indexName))
 				throw new IllegalIndexName(indexName);
-	
+
 			if (searchers.containsKey(indexName)) {
 				Searcher searcher = searchers.get(indexName);
 				if (searcher.getIndexDirectory().canRead())
@@ -698,7 +697,7 @@ public class SearchManager {
 						+ "'", 27, e);
 			}
 			searchers.put(indexName, searcher);
-	
+
 			// Figure out the pid from the index metadata and/or BLS config.
 			String indexPid = searcher.getIndexStructure().pidField();
 			if (indexPid == null)
@@ -724,7 +723,7 @@ public class SearchManager {
 				logger.warn("No pid given for index '" + indexName
 						+ "'; using Lucene doc ids.");
 			}
-	
+
 			// Look for the contentViewable setting in the index metadata
 			boolean contentViewable = searcher.getIndexStructure()
 					.contentViewable();
@@ -735,9 +734,9 @@ public class SearchManager {
 				par.setMayViewContent(false);
 				searcher.getIndexStructure()._setContentViewable(false);
 			}
-	
+
 			return searcher;
-		
+
 		} finally {
 			//logger.debug("@PERF getSearcher EXIT");
 		}
@@ -745,7 +744,7 @@ public class SearchManager {
 
 	/**
 	 * Does the specified index exist?
-	 * 
+	 *
 	 * @param indexName
 	 *            the index we want to check for
 	 * @return true iff the index exists
@@ -764,13 +763,13 @@ public class SearchManager {
 
 	/**
 	 * Create an empty user index.
-	 * 
+	 *
 	 * Indices may only be created by a logged-in user in his own private area.
 	 * The index name is strictly validated, disallowing any weird input.
-	 * 
+	 *
 	 * @param indexName
 	 *            the index name, including user prefix
-	 * @param displayName 
+	 * @param displayName
 	 * @param documentFormat the document format identifier (e.g. tei, folia, ..)
 	 * @throws BlsException
 	 *             if we're not allowed to create the index for whatever reason
@@ -810,14 +809,14 @@ public class SearchManager {
 
 	/**
 	 * Delete a user index.
-	 * 
+	 *
 	 * Only user indices are deletable. The owner must be logged in. The index
 	 * name is strictly validated, disallowing any weird input. Many other
 	 * checks are done to root out all kinds of special cases.
-	 * 
+	 *
 	 * @param indexName
 	 *            the index name
-	 * 
+	 *
 	 * @throws BlsException
 	 *             if we're not allowed to delete the index
 	 */
@@ -853,7 +852,7 @@ public class SearchManager {
 		} catch (IOException e1) {
 			throw new InternalServerError(13);
 		}
-		
+
 		// Remove stuff from the cache, close Searcher
 		cache.clearCacheForIndex(indexName);
 		Searcher searcher = getSearcher(indexName);
@@ -897,7 +896,7 @@ public class SearchManager {
 
 	/**
 	 * Delete an entire tree with files, subdirectories, etc.
-	 * 
+	 *
 	 * CAREFUL, DANGEROUS!
 	 *
 	 * @param root
@@ -917,7 +916,7 @@ public class SearchManager {
 
 	/**
 	 * Get the Lucene Document id given the pid
-	 * 
+	 *
 	 * @param searcher
 	 *            our index
 	 * @param pid
@@ -928,7 +927,7 @@ public class SearchManager {
 			{
 		//logger.debug("@PERF getLuceneDocIdFromPid");
 		try {
-		
+
 		String pidField = searcher.getIndexStructure().pidField(); // getIndexParam(indexName,
 																	// user).getPidField();
 		// Searcher searcher = getSearcher(indexName, user);
@@ -970,7 +969,7 @@ public class SearchManager {
 			}
 		}
 		return docResults.get(0).getDocId();
-		
+
 		} finally {
 			//logger.debug("@PERF getLuceneDocIdFromPid EXIT");
 		}
@@ -978,7 +977,7 @@ public class SearchManager {
 
 	/**
 	 * Return the list of private indices available for searching.
-	 * 
+	 *
 	 * @param userId the user
 	 * @return the list of index names
 	 */
@@ -996,12 +995,12 @@ public class SearchManager {
 
 	/**
 	 * Return the list of public indices available for searching.
-	 * 
+	 *
 	 * @return the list of index names
 	 */
 	public synchronized Collection<String> getAvailablePublicIndices() {
 		Set<String> indices = new HashSet<String>();
-		
+
 		// Scan collections for any new indices
 		for (File dir : collectionsDirs) {
 			for (File f : dir.listFiles(readableDirFilter)) {
@@ -1012,7 +1011,7 @@ public class SearchManager {
 			}
 		}
 
-		// Gather list of public indices, and 
+		// Gather list of public indices, and
 		// remove indices that are no longer available
 		List<String> remove = new ArrayList<String>();
 		for (Map.Entry<String, IndexParam> e : indexParam.entrySet()) {
@@ -1155,7 +1154,7 @@ public class SearchManager {
 				search = cache.get(searchParameters);
 				if (search == null) {
 					// Not found in cache
-	
+
 					// Do we have enough memory to start a new search?
 					long freeMegs = MemoryUtil.getFree() / 1000000;
 					if (freeMegs < minFreeMemForSearchMegs) {
@@ -1167,7 +1166,7 @@ public class SearchManager {
 						throw new ServiceUnavailable("The server seems to be under heavy load right now. Please try again later.");
 					}
 					// logger.debug("Enough free memory: " + freeMegs + "M");
-	
+
 					// Is this user allowed to start another search?
 					int numRunningJobs = 0;
 					String uniqueId = user.uniqueId();
@@ -1190,7 +1189,7 @@ public class SearchManager {
 								+ numRunningJobs + " jobs running.");
 						throw new TooManyRequests("You already have too many running searches. Please wait for some previous searches to complete before starting new ones.");
 					}
-	
+
 					// Create a new search object with these parameters and place it
 					// in the cache
 					search = Job.create(this, user, searchParameters);
@@ -1198,15 +1197,15 @@ public class SearchManager {
 						logger.error("search == null, unpossiblez!!!");
 					}
 					cache.put(search);
-	
+
 					// Update running jobs
 					newRunningJobs.add(search);
 					runningJobsPerUser.put(uniqueId, newRunningJobs);
-	
+
 					performSearch = true;
 				}
 			}
-	
+
 			if (performSearch) {
 				// Start the search, waiting a short time in case it's a fast search
 				search.perform(waitTimeInNonblockingModeMs);
@@ -1214,15 +1213,15 @@ public class SearchManager {
 //			else {
 //				search.incrementClientsWaiting();
 //			}
-	
+
 			// If the search thread threw an exception, rethrow it now.
 			if (search.threwException()) {
 				search.rethrowException();
 			}
-	
+
 			search.incrRef();
 			return search;
-		
+
 		} finally {
 			//logger.debug("@PERF search EXIT");
 		}
@@ -1354,8 +1353,7 @@ public class SearchManager {
 		Analyzer analyzer = searcher.getAnalyzer();
 		if (filterLang.equals("luceneql")) {
 			try {
-				QueryParser parser = new QueryParser(Version.LUCENE_42, "",
-						analyzer);
+				QueryParser parser = new QueryParser("", analyzer);
 				parser.setAllowLeadingWildcard(true);
 				Query query = parser.parse(filter);
 				return query;
@@ -1440,7 +1438,7 @@ public class SearchManager {
 
 	/**
 	 * Give advice for how long to wait to check the status of a search.
-	 * 
+	 *
 	 * @param search
 	 *            the search you want to check the status of
 	 * @return how long you should wait before asking again
@@ -1458,7 +1456,7 @@ public class SearchManager {
 
 	/**
 	 * Get maximum allowed value for maxretrieve parameter.
-	 * 
+	 *
 	 * @return the maximum, or -1 if there's no limit
 	 */
 	public int getMaxHitsToRetrieveAllowed() {
@@ -1467,7 +1465,7 @@ public class SearchManager {
 
 	/**
 	 * Get maximum allowed value for maxcount parameter.
-	 * 
+	 *
 	 * @return the maximum, or -1 if there's no limit
 	 */
 	public int getMaxHitsToCountAllowed() {
@@ -1484,11 +1482,11 @@ public class SearchManager {
 
 	/**
 	 * Check the current status of an index
-	 * 
+	 *
 	 * @param indexName
 	 *            the index
 	 * @return the current status
-	 * @throws BlsException 
+	 * @throws BlsException
 	 */
 	public String getIndexStatus(String indexName) throws BlsException {
 		synchronized (indexStatus) {
@@ -1507,10 +1505,10 @@ public class SearchManager {
 	/**
 	 * Check if the index status is (still) the specified status, and if so,
 	 * update the status to the new one.
-	 * 
+	 *
 	 * To check if setting was succesful, see if the returned value equals the
 	 * requested status.
-	 * 
+	 *
 	 * @param indexName
 	 *            the index to set the status for
 	 * @param checkOldStatus
@@ -1519,7 +1517,7 @@ public class SearchManager {
 	 * @param status
 	 *            the new status
 	 * @return the resulting status of the index
-	 * @throws BlsException 
+	 * @throws BlsException
 	 */
 	public String setIndexStatus(String indexName, String checkOldStatus,
 			String status) throws BlsException {
@@ -1545,7 +1543,7 @@ public class SearchManager {
 				boolean o2priv = o2.contains(":");
 				if (o1priv != o2priv)
 					return o1priv ? 1 : -1;
-				
+
 				// Sort rest case-insensitively
 	            return o1.toLowerCase().compareTo(o2.toLowerCase());
 			}
@@ -1568,7 +1566,7 @@ public class SearchManager {
 
 	/**
 	 * Remove a cancelled job from the cache.
-	 * 
+	 *
 	 * @param job the job to remove
 	 */
 	public void removeFromCache(Job job) {
