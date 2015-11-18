@@ -156,6 +156,7 @@
 
 	<dependencies>
 
+		<!-- 
 		<dependency>
 			<groupId>org.apache.lucene</groupId>
 			<artifactId>lucene-analyzers-common</artifactId>
@@ -190,6 +191,7 @@
 			<version>4.2.1</version>
 			<scope>compile</scope>
 		</dependency>
+		 -->
 
 		<dependency>
 			<groupId>log4j</groupId>
