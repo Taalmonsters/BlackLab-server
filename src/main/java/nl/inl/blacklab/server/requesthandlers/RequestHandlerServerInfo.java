@@ -40,7 +40,7 @@ public class RequestHandlerServerInfo extends RequestHandler {
 				doIndex.put("tokenCount", struct.getTokenCount());
 			doIndices.put(indexName, doIndex);
 		}
-		
+
 		DataObjectMapElement doUser = new DataObjectMapElement();
 		doUser.put("loggedIn", user.isLoggedIn());
 		if (user.isLoggedIn())

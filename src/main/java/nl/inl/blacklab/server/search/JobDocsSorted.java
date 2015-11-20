@@ -24,7 +24,7 @@ public class JobDocsSorted extends JobWithDocs {
 		JobWithDocs search = searchMan.searchDocs(user, parNoSort);
 		try {
 			waitForJobToFinish(search);
-	
+
 			// Now, sort the docs.
 			sourceResults = search.getDocResults();
 			setPriorityInternal();

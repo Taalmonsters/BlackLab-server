@@ -29,7 +29,7 @@ public class JobHitsGrouped extends Job {
 		JobWithHits hitsSearch = searchMan.searchHits(user, parNoGroup);
 		try {
 			waitForJobToFinish(hitsSearch);
-	
+
 			// Now, group the hits.
 			hits = hitsSearch.getHits();
 			setPriorityInternal();

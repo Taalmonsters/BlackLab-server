@@ -28,7 +28,7 @@ public class Response {
 	/**
 	 * Construct a simple status response.
 	 *
-	 * Status response may indicate success, or e.g. that the 
+	 * Status response may indicate success, or e.g. that the
 	 * server is carrying out the request and will have results later.
 	 *
 	 * @param code (string) status code
@@ -45,7 +45,7 @@ public class Response {
 	/**
 	 * Construct a simple status response.
 	 *
-	 * Status response may indicate success, or e.g. that the 
+	 * Status response may indicate success, or e.g. that the
 	 * server is carrying out the request and will have results later.
 	 *
 	 * @param code (string) BLS status code
@@ -58,7 +58,7 @@ public class Response {
 		r.setCacheAllowed(false); // (error)status should never be cached
 		return r;
 	}
-	
+
 	// Highest internal error code so far: 30
 
 	public static Response internalError(Exception e, boolean debugMode, int code) {
@@ -82,7 +82,7 @@ public class Response {
 		r.setCacheAllowed(false); // (error)status should never be cached
 		return r;
 	}
-	
+
 	public static Response success(String msg) {
 		return status("SUCCESS", msg, HttpServletResponse.SC_OK);
 	}
@@ -130,7 +130,7 @@ public class Response {
 
 	/** HTTP response status code to use. */
 	int httpStatusCode = 200;
-	
+
 	/** The response data */
 	DataObject dataObject;
 
@@ -139,16 +139,16 @@ public class Response {
 
 	/** If true, the client may cache this response. If false, it should never cache this. */
 	boolean cacheAllowed = true;
-	
+
 	public Response(DataObject dataObject, int httpStatusCode) {
 		this.dataObject = dataObject;
 		this.httpStatusCode = httpStatusCode;
 	}
-	
+
 	public Response(DataObject dataObject) {
 		this(dataObject, 200);
 	}
-	
+
 	public int getHttpStatusCode() {
 		return httpStatusCode;
 	}

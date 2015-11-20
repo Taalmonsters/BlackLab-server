@@ -94,7 +94,7 @@ public abstract class DataObject {
 	 * @param outputType the output format: XML or JSON
 	 * @param prettyPrint whether or not to include newline and indents
 	 * @param jsonpCallback the callback function name (only used for JSON, in which case the
-	 *   response is JSONP, i.e. a Javascript consisting of a single function call with a JSON 
+	 *   response is JSONP, i.e. a Javascript consisting of a single function call with a JSON
 	 *   object as parameter)
 	 * @throws IOException
 	 */
@@ -134,7 +134,7 @@ public abstract class DataObject {
 	/**
 	 * Construct a simple status response object.
 	 *
-	 * Status response may indicate success, or e.g. that the 
+	 * Status response may indicate success, or e.g. that the
 	 * server is carrying out the request and will have results later.
 	 *
 	 * @param code (string) status code
@@ -156,7 +156,7 @@ public abstract class DataObject {
 	/**
 	 * Construct a simple status response object.
 	 *
-	 * Status response may indicate success, or e.g. that the 
+	 * Status response may indicate success, or e.g. that the
 	 * server is carrying out the request and will have results later.
 	 *
 	 * @param code (string) status code
@@ -182,7 +182,7 @@ public abstract class DataObject {
 		rv.put("error", error);
 		return rv;
 	}
-	
+
 	public static DataObjectMapElement internalError(Exception e, boolean debugMode, int code) {
 		return errorObject("INTERNAL_ERROR", ServletUtil.internalErrorMessage(e, debugMode, code));
 	}
@@ -214,7 +214,7 @@ public abstract class DataObject {
 	public static DataObject from(boolean value) {
 		return value ? DataObjectBoolean.TRUE : DataObjectBoolean.FALSE;
 	}
-	
+
 	/**
 	 * Remove map keys with empty values anywhere inside this object.
 	 */

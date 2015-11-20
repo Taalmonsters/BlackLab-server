@@ -33,7 +33,7 @@ public class JobFacets extends Job {
 		JobWithDocs docsSearch = searchMan.searchDocs(user, parNoGroup);
 		try {
 			waitForJobToFinish(docsSearch);
-	
+
 			// Now, group the docs according to the requested facets.
 			docResults = docsSearch.getDocResults();
 		} finally {

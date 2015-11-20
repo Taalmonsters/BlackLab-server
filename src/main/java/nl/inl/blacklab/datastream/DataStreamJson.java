@@ -7,15 +7,15 @@ import nl.inl.util.StringUtil;
 
 /**
  * Class to stream out JSON data.
- * 
+ *
  * This is faster than building a full object tree first.
  * Intended to replace the DataObject classes.
  */
 public class DataStreamJson extends DataStream {
-	
+
 	/** JSONP callback function name, or null for none */
 	String jsonpCallback;
-	
+
 	/** First entry in map/list: don't print separator */
 	boolean firstEntry = true;
 
@@ -28,7 +28,7 @@ public class DataStreamJson extends DataStream {
 		firstEntry = true;
 		return print(str).upindent();
 	}
-	
+
 	DataStream closebl(String str) {
 		firstEntry = false;
 		return downindent().newlineIndent().print(str);
@@ -41,7 +41,7 @@ public class DataStreamJson extends DataStream {
 		}
 		return openbl("{");
 	}
-	
+
 	@Override
 	public DataStream endDocument() {
 		closebl("}");
@@ -80,7 +80,7 @@ public class DataStreamJson extends DataStream {
 	public DataStream endMap() {
 		return closebl("}");
 	}
-	
+
 	DataStream optSep() {
 		if (!firstEntry)
 			return print(",");
@@ -139,7 +139,7 @@ public class DataStreamJson extends DataStream {
 
 	@Override
 	public DataStream value(String value) {
-		return value == null ? print("null") : 
+		return value == null ? print("null") :
 			print("\"").print(StringUtil.escapeDoubleQuotedString(value)).print("\"");
 	}
 

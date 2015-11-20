@@ -25,7 +25,7 @@ public class IndexTask {
 	/** The data we're indexing. We're responsible for closing the stream when
 	 *  we're done with it. */
 	private InputStream data;
-	
+
 	private String name;
 
 	private File indexDir;
@@ -33,7 +33,7 @@ public class IndexTask {
 	private File dataFile;
 
 	private IndexListener decoratedListener;
-	
+
 	String indexError = null;
 
 	/**
@@ -56,19 +56,19 @@ public class IndexTask {
 		this.name = name;
 		setListener(listener);
 	}
-	
+
 	boolean anyDocsFound = false;
 
 	private void setListener(IndexListener listener) {
 		this.decoratedListener = new IndexListenerDecorator(listener) {
-			
+
 			@Override
 			public boolean errorOccurred(String error, String unitType,
 					File unit, File subunit) {
 				indexError = error;
 				return super.errorOccurred(error, unitType, unit, subunit);
 			}
-			
+
 			@Override
 			public synchronized void documentStarted(String name) {
 				super.documentStarted(name);
@@ -81,7 +81,7 @@ public class IndexTask {
 		Indexer indexer = null;
 		try {
 			indexer = new Indexer(indexDir, false, null);
-			
+
 			// We created the Indexer with a null DocIndexer class.
 			// Now we figure out what the indices' own document format is,
 			// resolve it to a DocIndexer class and update the Indexer with it.
@@ -93,7 +93,7 @@ public class IndexTask {
 			Class<? extends DocIndexer> docIndexerClass;
 			docIndexerClass = DocumentFormats.getIndexerClass(docFormat);
 			indexer.setDocIndexer(docIndexerClass);
-			
+
 			indexer.setListener(decoratedListener);
 			anyDocsFound = false;
 			indexer.setContinueAfterInputError(false);

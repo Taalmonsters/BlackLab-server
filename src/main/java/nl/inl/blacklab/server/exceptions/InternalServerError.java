@@ -8,7 +8,7 @@ import org.apache.log4j.Logger;
 
 public class InternalServerError extends BlsException {
 	static final Logger logger = Logger.getLogger(Response.class);
-	
+
 	private int internalErrorCode;
 
 	public int getInternalErrorCode() {

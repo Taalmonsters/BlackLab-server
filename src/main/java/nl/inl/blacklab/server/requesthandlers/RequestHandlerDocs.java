@@ -57,9 +57,9 @@ public class RequestHandlerDocs extends RequestHandler {
 			DocGroup group = null;
 			boolean block = getBoolParameter("block");
 			if (groupBy.length() > 0 && viewGroup.length() > 0) {
-	
+
 				// TODO: clean up, do using JobHitsGroupedViewGroup or something (also cache sorted group!)
-	
+
 				// Yes. Group, then show hits from the specified group
 				searchGrouped = searchMan.searchDocsGrouped(user, searchParam);
 				search = searchGrouped;
@@ -69,24 +69,24 @@ public class RequestHandlerDocs extends RequestHandler {
 					if (!search.finished())
 						return Response.searchTimedOut();
 				}
-	
+
 				// If search is not done yet, indicate this to the user
 				if (!search.finished()) {
 					return Response.busy(servlet);
 				}
-	
+
 				// Search is done; construct the results object
 				DocGroups groups = searchGrouped.getGroups();
-	
+
 				HitPropValue viewGroupVal = null;
 				viewGroupVal = HitPropValue.deserialize(groups.getOriginalDocResults().getOriginalHits(), viewGroup);
 				if (viewGroupVal == null)
 					return Response.badRequest("ERROR_IN_GROUP_VALUE", "Parameter 'viewgroup' has an illegal value: " + viewGroup);
-	
+
 				group = groups.getGroup(viewGroupVal);
 				if (group == null)
 					return Response.badRequest("GROUP_NOT_FOUND", "Group not found: " + viewGroup);
-	
+
 				String sortBy = searchParam.getString("sort");
 				DocProperty sortProp = sortBy != null && sortBy.length() > 0 ? DocProperty.deserialize(sortBy) : null;
 				DocResults docsSorted;
@@ -95,7 +95,7 @@ public class RequestHandlerDocs extends RequestHandler {
 					docsSorted.sort(sortProp, false);
 				} else
 					docsSorted = group.getResults();
-	
+
 				int first = searchParam.getInteger("first");
 				if (first < 0)
 					first = 0;
@@ -103,10 +103,10 @@ public class RequestHandlerDocs extends RequestHandler {
 				if (number < 0 || number > searchMan.getMaxPageSize())
 					number = searchMan.getDefaultPageSize();
 				window = docsSorted.window(first, number);
-	
+
 			} else {
 				// Regular set of docs (no grouping first)
-	
+
 				searchWindow = searchMan.searchDocsWindow(user, searchParam);
 				search = searchWindow;
 				search.incrRef();
@@ -115,7 +115,7 @@ public class RequestHandlerDocs extends RequestHandler {
 					if (!search.finished())
 						return Response.searchTimedOut();
 				}
-	
+
 				// Also determine the total number of hits
 				// (usually nonblocking, unless "waitfortotal=yes" was passed)
 				total = searchMan.searchDocsTotal(user, searchParam);
@@ -124,15 +124,15 @@ public class RequestHandlerDocs extends RequestHandler {
 					if (!total.finished())
 						return Response.searchTimedOut();
 				}
-	
+
 				// If search is not done yet, indicate this to the user
 				if (!search.finished()) {
 					return Response.busy(servlet);
 				}
-	
+
 				window = searchWindow.getWindow();
 			}
-	
+
 			String parFacets = searchParam.getString("facets");
 			DataObjectMapAttribute doFacets = null;
 			if (parFacets != null && parFacets.length() > 0) {
@@ -141,9 +141,9 @@ public class RequestHandlerDocs extends RequestHandler {
 				DocResults docsToFacet = window.getOriginalDocs();
 				doFacets = getFacets(docsToFacet, parFacets);
 			}
-			
+
 			Searcher searcher = search.getSearcher();
-			
+
 			boolean includeTokenCount = searchParam.getBoolean("includetokencount");
 			int totalTokens = -1;
 			if (includeTokenCount) {
@@ -153,25 +153,25 @@ public class RequestHandlerDocs extends RequestHandler {
 				DocProperty propTokens = new DocPropertyComplexFieldLength(fieldName);
 				totalTokens = window.getOriginalDocs().intSum(propTokens);
 			}
-	
+
 			// Search is done; construct the results object
-	
+
 			// The hits and document info
 			DataObjectList docList = new DataObjectList("doc");
 			for (DocResult result: window) {
 				// Doc info (metadata, etc.)
 				Document document = result.getDocument();
 				DataObjectMapElement docInfo = getDocumentInfo(searcher, document);
-	
+
 				// Snippets
 				Hits hits = result.getHits(5); // TODO: make num. snippets configurable
 				DataObjectList doSnippetList = null;
 				if (hits.sizeAtLeast(1)) {
 					doSnippetList = new DataObjectList("snippet");
 					for (Hit hit: hits) {
-						
+
 						// TODO: use RequestHandlerDocSnippet.getHitOrFragmentInfo()
-						
+
 						DataObjectMapElement hitMap = new DataObjectMapElement();
 						if (searchParam.getString("usecontent").equals("orig")) {
 							// Add concordance from original XML
@@ -190,10 +190,10 @@ public class RequestHandlerDocs extends RequestHandler {
 						}
 					}
 				}
-	
+
 				// Find pid
 				String pid = getDocumentPid(searcher, result.getDocId(), document);
-	
+
 				// Combine all
 				DataObjectMapElement docMap = new DataObjectMapElement();
 				docMap.put("docPid", pid);
@@ -203,10 +203,10 @@ public class RequestHandlerDocs extends RequestHandler {
 				docMap.put("docInfo", docInfo);
 				if (doSnippetList != null)
 					docMap.put("snippets", doSnippetList);
-	
+
 				docList.add(docMap);
 			}
-	
+
 			// The summary (done last because the count might be done by this time)
 			DataObjectMapElement summary = new DataObjectMapElement();
 			DocResults docs = searchWindow != null ? total.getDocResults() : group.getResults();
@@ -244,14 +244,14 @@ public class RequestHandlerDocs extends RequestHandler {
 			if (includeTokenCount)
 				summary.put("tokensInMatchingDocuments", totalTokens);
 			summary.put("docFields", RequestHandler.getDocFields(searcher.getIndexStructure()));
-	
+
 			// Assemble all the parts
 			DataObjectMapElement response = new DataObjectMapElement();
 			response.put("summary", summary);
 			response.put("docs", docList);
 			if (doFacets != null)
 				response.put("facets", doFacets);
-	
+
 			return new Response(response);
 		} finally {
 			if (search != null)

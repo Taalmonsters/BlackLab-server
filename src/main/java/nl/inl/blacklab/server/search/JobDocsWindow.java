@@ -27,7 +27,7 @@ public class JobDocsWindow extends Job {
 		JobWithDocs docsSearch = searchMan.searchDocs(user, par);
 		try {
 			waitForJobToFinish(docsSearch);
-	
+
 			// Now, create a HitsWindow on these hits.
 			sourceResults = docsSearch.getDocResults();
 			setPriorityInternal(); // make sure sourceResults has the right priority

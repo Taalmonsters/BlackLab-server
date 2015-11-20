@@ -73,12 +73,12 @@ public class RequestHandlerDocContents extends RequestHandler {
 		if (startAtWord < -1 || endAtWord < -1 || (startAtWord >= 0 && endAtWord >= 0 && endAtWord <= startAtWord) ) {
 			throw new BadRequest("ILLEGAL_BOUNDARIES", "Illegal word boundaries specified. Please check parameters.");
 		}
-		
+
 		// Note: we use the highlighter regardless of whether there's hits because
 		// it makes sure our document fragment is well-formed.
 		Hits hitsInDoc = hits == null ? null : hits.getHitsInDoc(luceneDocId);
 		content = searcher.highlightContent(luceneDocId, searcher.getMainContentsFieldName(), hitsInDoc, startAtWord, endAtWord);
-		
+
 		DataObjectPlain docContents = new DataObjectPlain(content, type);
 		if (startAtWord == -1 && endAtWord == -1) {
 			// Full document; no need for another root element

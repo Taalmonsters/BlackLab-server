@@ -20,9 +20,9 @@ import nl.inl.util.ThreadPriority.Level;
 import org.apache.log4j.Logger;
 
 public abstract class Job implements Comparable<Job> {
-	
+
 	protected static final Logger logger = Logger.getLogger(Job.class);
-	
+
 	private static final double ALMOST_ZERO = 0.0001;
 
 	private static final int RUN_PAUSE_PHASE_JUST_STARTED = 5;
@@ -35,7 +35,7 @@ public abstract class Job implements Comparable<Job> {
 
 	private static final int REFS_INVALID = -9999;
 
-	/** If true (as it should be for production use), we call cleanup() on jobs that 
+	/** If true (as it should be for production use), we call cleanup() on jobs that
 	 *  aren't referred to anymore in an effor to assist the Java garbage collector.
 	 *  EXPERIMENTAL
 	 */
@@ -80,24 +80,24 @@ public abstract class Job implements Comparable<Job> {
 			search = new JobDocsGrouped(searchMan, user, par);
 		} else
 			throw new InternalServerError(1);
-	
+
 		return search;
 	}
 
 	/** Unique job id */
 	long id = nextJobId++;
-	
+
 	/**
 	 * Number of references to this Job. If this reaches 0, and the thread
 	 * is not running, we can safely call cleanup().
-	 * 
+	 *
 	 * Note that the cache itself also counts as a reference to the job,
 	 * so if refsToJob == 1, it is only in the cache, not currently referenced
 	 * by another job or search request. We can use this to decide when a
 	 * search can safely be removed from the cache.
 	 */
 	int refsToJob = 0;
-	
+
 	/**
 	 * The jobs we're waiting for, so we can notify them in case we get cancelled,
 	 * and our "load scheduler" knows we're not currently using the CPU.
@@ -138,7 +138,7 @@ public abstract class Job implements Comparable<Job> {
 
 	/** When this job was finished (or -1 if not finished yet) */
 	protected long finishedAt;
-	
+
 	/** If the search thread threw an exception, it's stored here. */
 	protected Throwable thrownException;
 
@@ -193,7 +193,7 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * Compare based on 'worthiness' (descending).
-	 * 
+	 *
 	 * 'Worthiness' is a measure indicating how important a
 	 * job is, and determines what jobs get the CPU and what jobs
 	 * are paused or aborted. It also determines what finished
@@ -227,7 +227,7 @@ public abstract class Job implements Comparable<Job> {
 			return notAccessedFor() < o.notAccessedFor() ? WORTHY1 : WORTHY2;
 		}
 		// Both searches are unfinished.
-		
+
 		// Rules to make sure jobs aren't oscillating between
 		// running and not running too much.
 		// First, check if job just started running, and if so,
@@ -253,7 +253,7 @@ public abstract class Job implements Comparable<Job> {
 			return pause1 > pause2 ? WORTHY1 : WORTHY2;
 		}
 		// Neither job just started running or were just paused.
-		
+
 		// Are these jobs relatively young or relatively old?
 		// Young jobs get the CPU in the hope that they will complete
 		// quickly; older jobs are paused sooner because they eat up
@@ -273,16 +273,16 @@ public abstract class Job implements Comparable<Job> {
 			// (so light jobs get a fair chance to complete)
 			return exec1 > exec2 ? WORTHY1 : WORTHY2;
 		}
-		
+
 		// Both jobs are old.
 		// Are they searching or counting?
 		boolean count1 = this instanceof JobHitsTotal || this instanceof JobDocsTotal;
 		boolean count2 = this instanceof JobHitsTotal || this instanceof JobDocsTotal;
 		if (count1 != count2) {
 			// One is counting, the other is searching: search is worthiest.
-			return count2 ? WORTHY1 : WORTHY2; 
+			return count2 ? WORTHY1 : WORTHY2;
 		}
-		
+
 		// Both searching or both counting; the youngest is worthiest.
 		// (so heavy jobs don't crowd out the lighter ones)
 		return exec1 < exec2 ? WORTHY1 : WORTHY2;
@@ -324,7 +324,7 @@ public abstract class Job implements Comparable<Job> {
 	}
 
 	/**
-	 * @throws BlsException on error 
+	 * @throws BlsException on error
 	 */
 	protected void performSearch() throws BlsException {
 		// (to override)
@@ -421,7 +421,7 @@ public abstract class Job implements Comparable<Job> {
 		if (cancelJobCalled)
 			return; // don't call this twice!
 		cancelJobCalled = true;
-		
+
 		searchThread.interrupt();
 		searchThread = null; // ensure garbage collection
 
@@ -486,17 +486,17 @@ public abstract class Job implements Comparable<Job> {
 		stats.put("createdBy", shortUserId());
 		stats.put("refsToJob", refsToJob - 1); // (- 1 because the cache always references it)
 		stats.put("waitingForJobs", waitingFor.size());
-		
+
 		DataObjectMapElement d = new DataObjectMapElement();
 		d.put("id", id);
 		d.put("class", getClass().getSimpleName());
 		d.put("searchParam", par.toDataObject());
 		d.put("stats", stats);
-		
+
 		if (debugInfo) {
 			// Add extra debug info.
 			DataObjectMapElement dbg = new DataObjectMapElement();
-			
+
 			// Ids of the jobs this thread is waiting for, if any
 			DataObjectList wfIds = new DataObjectList("jobId");
 			if (waitingFor.size() > 0) {
@@ -505,7 +505,7 @@ public abstract class Job implements Comparable<Job> {
 				}
 			}
 			dbg.put("waitingForIds", wfIds);
-			
+
 			// More information about job state
 			dbg.put("startedAt", startedAt);
 			dbg.put("finishedAt", finishedAt);
@@ -517,7 +517,7 @@ public abstract class Job implements Comparable<Job> {
 			dbg.put("cancelJobCalled", cancelJobCalled);
 			dbg.put("priorityLevel", level.toString());
 			dbg.put("resultsPriorityLevel", getPriorityOfResultsObject().toString());
-			
+
 			// Information about thrown exception, if any
 			DataObjectMapElement ex = new DataObjectMapElement();
 			if (thrownException != null) {
@@ -528,7 +528,7 @@ public abstract class Job implements Comparable<Job> {
 				ex.put("stackTrace", st.toString());
 			}
 			dbg.put("thrownException", ex);
-			
+
 			// Information about thread object, if any
 			DataObjectMapElement thr = new DataObjectMapElement();
 			if (searchThread != null) {
@@ -551,7 +551,7 @@ public abstract class Job implements Comparable<Job> {
 
 		return d;
 	}
-	
+
 	private String status() {
 		if (finished())
 			return "finished";
@@ -579,7 +579,7 @@ public abstract class Job implements Comparable<Job> {
 		searchThread = null;
 		refsToJob = REFS_INVALID;
 	}
-	
+
 	public synchronized void incrRef() {
 		if (refsToJob == REFS_INVALID)
 			throw new RuntimeException("Cannot add ref, job was already cleaned up!");
@@ -594,7 +594,7 @@ public abstract class Job implements Comparable<Job> {
 			resetLastAccessed();
 		} else if (refsToJob == 0) {
 			// No references to this job, not even in the cache.
-			// We can safely cancel it if it was still 
+			// We can safely cancel it if it was still
 			// running. We optionally call cleanup to
 			// assist with garbage collection.
 			cancelJob();
@@ -608,8 +608,8 @@ public abstract class Job implements Comparable<Job> {
 	 *
 	 * Cache age is defined as the time between now and the last time
 	 * it was accessed (for finished searches only).
-	 * 
-	 * Running searches always have a zero age. Check executionTime() 
+	 *
+	 * Running searches always have a zero age. Check executionTime()
 	 * for search time.
 	 *
 	 * @return the age in seconds
@@ -622,11 +622,11 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * How long the user has waited for this job.
-	 * 
+	 *
 	 * For finished searches, this is from the start time
 	 * to the finish time. For other searches, from the start
 	 * time until now.
-	 * 
+	 *
 	 * @return execution time in ms
 	 */
 	public double userWaitTime() {
@@ -639,9 +639,9 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * Returns how long ago this job was last accessed.
-	 * 
+	 *
 	 * Note that if a client is waiting for this job to complete, this always returns 0.
-	 * 
+	 *
 	 * @return how long ago this job was last accessed.
 	 */
 	public double notAccessedFor() {
@@ -656,9 +656,9 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * How long has this job been paused for currently?
-	 * 
+	 *
 	 * This does not include any previous pauses.
-	 * 
+	 *
 	 * @return number of ms since the job was paused, or 0 if not paused
 	 */
 	public double currentPauseLength() {
@@ -669,9 +669,9 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * How long has this job been running currently?
-	 * 
+	 *
 	 * This does not include any previous running phases.
-	 * 
+	 *
 	 * @return number of ms since the job was set to running, or 0 if not running
 	 */
 	public double currentRunPhaseLength() {
@@ -682,7 +682,7 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * How long has this job been paused in total?
-	 * 
+	 *
 	 * @return total number of ms the job has been paused
 	 */
 	public double pausedTotal() {
@@ -693,15 +693,15 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * How long has this job actually been running in total?
-	 * 
+	 *
 	 * Running time is the total time minus the paused time.
-	 * 
+	 *
 	 * @return total number of ms the job has actually been running
 	 */
 	public double totalExecTime() {
 		return userWaitTime() - pausedTotal();
 	}
-	
+
 	/**
 	 * Is this job waiting for another job or jobs, and
 	 * therefore not using the CPU?
@@ -715,7 +715,7 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * Set the thread priority level.
-	 * 
+	 *
 	 * @param level the desired priority level.
 	 */
 	public void setPriorityLevel(ThreadPriority.Level level) {
@@ -737,7 +737,7 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * Get the thread priority level.
-	 * 
+	 *
 	 * @return the current priority level.
 	 */
 	public ThreadPriority.Level getPriorityLevel() {
@@ -746,7 +746,7 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * Set the operation to be normal priority, low priority or paused.
-	 * 
+	 *
 	 * Depends on the lowPrio and paused variables.
 	 */
 	protected void setPriorityInternal() {
@@ -761,7 +761,7 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * Set the priority/paused status of a Hits object.
-	 * 
+	 *
 	 * @param h the Hits object
 	 */
 	protected void setHitsPriority(Hits h) {
@@ -772,7 +772,7 @@ public abstract class Job implements Comparable<Job> {
 
 	/**
 	 * Set the priority/paused status of a DocResults object.
-	 * 
+	 *
 	 * @param docResults the DocResults object
 	 */
 	protected void setDocsPriority(DocResults docResults) {

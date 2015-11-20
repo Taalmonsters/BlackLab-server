@@ -4,18 +4,18 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-/** Represents either a unique (logged-in) user, or a unique session 
+/** Represents either a unique (logged-in) user, or a unique session
  *  (when not logged in). */
 public class User {
 	/** The user id if logged in; null otherwise */
 	private String userId;
-	
+
 	/** The session id */
 	private String sessionId;
-	
+
 	/**
 	 * Create a new logged-in user.
-	 * 
+	 *
 	 * @param userId unique id identifying this user
 	 * @param sessionId the session id
 	 * @return the new user
@@ -23,17 +23,17 @@ public class User {
 	public static User loggedIn(String userId, String sessionId) {
 		return new User(userId, sessionId);
 	}
-	
+
 	/**
 	 * Create a new anonymous user.
-	 * 
+	 *
 	 * @param sessionId the session id
 	 * @return the new user
 	 */
 	public static User anonymous(String sessionId) {
 		return new User(null, sessionId);
 	}
-	
+
 	private User(String userId, String sessionId) {
 		this.userId = null;
 		if (userId != null) {
@@ -43,7 +43,7 @@ public class User {
 			userId = userId.replaceAll("[^a-zA-Z0-9\\-\\._!\\$&'\\(\\)\\*\\+,;=@]", "_");
 			if (userId.length() == 0)
 				userId = null;
-			this.userId = userId; 
+			this.userId = userId;
 		}
 		this.sessionId = sessionId;
 	}
@@ -52,7 +52,7 @@ public class User {
 	public String toString() {
 		return userId != null ? userId : "SESSION:" + sessionId;
 	}
-	
+
 	public String uniqueId() {
 		return userId != null ? userId : "S:" + sessionId;
 	}
@@ -61,11 +61,11 @@ public class User {
 		String str = uniqueId();
 		return str.length() > 6 ? str.substring(0, 6) : str;
 	}
-	
+
 	public boolean isLoggedIn() {
 		return userId != null;
 	}
-	
+
 	public String getUserId() {
 		return userId;
 	}
@@ -102,5 +102,5 @@ public class User {
 		//return FileUtil.sanitizeFilename(userId);
 	}
 
-	
+
 }

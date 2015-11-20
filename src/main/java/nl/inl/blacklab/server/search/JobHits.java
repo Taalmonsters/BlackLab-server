@@ -49,7 +49,7 @@ public class JobHits extends JobWithHits {
 			}
 			try {
 				hits = searcher.find(textPattern, filterQuery);
-				
+
 				// Set the max retrieve/count value
 				int maxRetrieve = par.getInteger("maxretrieve");
 				if (searchMan.getMaxHitsToRetrieveAllowed() >= 0 && maxRetrieve > searchMan.getMaxHitsToRetrieveAllowed()) {
@@ -61,7 +61,7 @@ public class JobHits extends JobWithHits {
 				}
 				hits.setMaxHitsToRetrieve(maxRetrieve);
 				hits.setMaxHitsToCount(maxCount);
-				
+
 			} catch (RuntimeException e) {
 				// TODO: catch a more specific exception!
 				e.printStackTrace();

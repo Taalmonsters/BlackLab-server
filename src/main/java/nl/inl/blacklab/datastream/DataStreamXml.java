@@ -8,14 +8,14 @@ import nl.inl.util.StringUtil;
 
 /**
  * Class to stream out XML data.
- * 
+ *
  * This is faster than building a full object tree first.
  * Intended to replace the DataObject classes.
  */
 public class DataStreamXml extends DataStream {
-	
+
 	List<String> tagStack = new ArrayList<String>();
-	
+
 	public DataStreamXml(PrintWriter out, boolean prettyPrint) {
 		super(out, prettyPrint);
 	}
@@ -24,32 +24,32 @@ public class DataStreamXml extends DataStream {
 		tagStack.add(name);
 		return indent().print("<").print(name);
 	}
-	
+
 	private DataStream attr(String key, String value) {
 		return print(" ").print(key).print("=\"").print(StringUtil.escapeXmlChars(value)).print("\"");
 	}
-	
+
 	private DataStream endOpenEl() {
 		return print(">").upindent().newline();
 	}
-	
+
 	private DataStream openEl(String name) {
 		startOpenEl(name);
 		return endOpenEl();
 	}
-	
+
 	private DataStream closeEl() {
 		String name = tagStack.remove(tagStack.size() - 1);
 		return downindent().indent().print("</").print(name).print(">").newline();
 	}
-	
+
 	@Override
 	public DataStream startDocument(String rootEl) {
 		print("<?xml version=\"1.0\" encoding=\"utf-8\" ?>").newline();
 		startOpenEl(rootEl);
 		return endOpenEl();
 	}
-	
+
 	@Override
 	public DataStream endDocument() {
 		startCompact();
@@ -70,22 +70,22 @@ public class DataStreamXml extends DataStream {
 	public DataStream item(String name, String value) {
 		return indent().startCompact().startItem(name).value(value).endItem().endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream item(String name, int value) {
 		return indent().startCompact().startItem(name).value(value).endItem().endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream item(String name, double value) {
 		return indent().startCompact().startItem(name).value(value).endItem().endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream item(String name, boolean value) {
 		return indent().startCompact().startItem(name).value(value).endItem().endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream startItem(String name) {
 		return openEl(name);
@@ -110,22 +110,22 @@ public class DataStreamXml extends DataStream {
 	public DataStream entry(String key, String value) {
 		return indent().startCompact().startEntry(key).value(value).endEntry().endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream entry(String key, int value) {
 		return indent().startCompact().startEntry(key).value(value).endEntry().endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream entry(String key, double value) {
 		return indent().startCompact().startEntry(key).value(value).endEntry().endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream entry(String key, boolean value) {
 		return indent().startCompact().startEntry(key).value(value).endEntry().endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream startEntry(String key) {
 		return openEl(key);
@@ -142,21 +142,21 @@ public class DataStreamXml extends DataStream {
 			.startAttrEntry(elementName, attrName, key).value(value).endAttrEntry()
 			.endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream attrEntry(String elementName, String attrName, String key, int value) {
 		return indent().startCompact()
 				.startAttrEntry(elementName, attrName, key).value(value).endAttrEntry()
 				.endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream attrEntry(String elementName, String attrName, String key, double value) {
 		return indent().startCompact()
 				.startAttrEntry(elementName, attrName, key).value(value).endAttrEntry()
 				.endCompact().newline();
 	}
-	
+
 	@Override
 	public DataStream attrEntry(String elementName, String attrName, String key, boolean value) {
 		return indent().startCompact()
@@ -212,7 +212,7 @@ public class DataStreamXml extends DataStream {
 	public DataStream value(String value) {
 		indent();
 		if (value == null)
-			print("(null)"); 
+			print("(null)");
 		else
 			print(StringUtil.escapeXmlChars(value));
 		return newline();
@@ -232,5 +232,5 @@ public class DataStreamXml extends DataStream {
 	public DataStream value(boolean value) {
 		return indent().print(value).newline();
 	}
-	
+
 }

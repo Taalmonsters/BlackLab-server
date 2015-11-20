@@ -29,7 +29,7 @@ public class JobDocsGrouped extends Job {
 		JobWithDocs docsSearch = searchMan.searchDocs(user, parNoGroup);
 		try {
 			waitForJobToFinish(docsSearch);
-	
+
 			// Now, group the docs.
 			docResults = docsSearch.getDocResults();
 			setPriorityInternal();
@@ -93,7 +93,7 @@ public class JobDocsGrouped extends Job {
 		docResults = null;
 		super.cleanup();
 	}
-	
-	
+
+
 
 }

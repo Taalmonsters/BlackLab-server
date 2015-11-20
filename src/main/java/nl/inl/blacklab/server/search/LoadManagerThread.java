@@ -10,13 +10,13 @@ import org.apache.log4j.Logger;
  */
 public class LoadManagerThread extends Thread implements UncaughtExceptionHandler {
 	private static final Logger logger = Logger.getLogger(LoadManagerThread.class);
-	
+
 	private SearchManager searchMan;
 
 	/**
 	 * Construct the load manager thread object.
-	 * 
-	 * @param searchMan the search manager, for calling load management function 
+	 *
+	 * @param searchMan the search manager, for calling load management function
 	 */
 	public LoadManagerThread(SearchManager searchMan) {
 		logger.debug("Creating LOADMGR thread...");
@@ -35,7 +35,7 @@ public class LoadManagerThread extends Thread implements UncaughtExceptionHandle
 			} catch (InterruptedException e) {
 				return;
 			}
-			
+
 			searchMan.performLoadManagement();
 		}
 	}

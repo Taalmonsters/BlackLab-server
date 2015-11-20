@@ -46,7 +46,7 @@ public class RequestHandlerHits extends RequestHandler {
 	@Override
 	public Response handle() throws BlsException {
 		//logger.debug("@PERF RHHits: START");
-		
+
 		// Do we want to view a single group after grouping?
 		String groupBy = searchParam.getString("group");
 		if (groupBy == null)
@@ -63,9 +63,9 @@ public class RequestHandlerHits extends RequestHandler {
 			HitGroup group = null;
 			boolean block = getBoolParameter("block");
 			if (groupBy.length() > 0 && viewGroup.length() > 0) {
-	
+
 				// TODO: clean up, do using JobHitsGroupedViewGroup or something (also cache sorted group!)
-	
+
 				// Yes. Group, then show hits from the specified group
 				searchGrouped = searchMan.searchHitsGrouped(user, searchParam);
 				search = searchGrouped;
@@ -79,24 +79,24 @@ public class RequestHandlerHits extends RequestHandler {
 					}
 					//logger.debug("@PERF RHHits: block, finished");
 				}
-	
+
 				// If search is not done yet, indicate this to the user
 				if (!search.finished()) {
 					return Response.busy(servlet);
 				}
-	
+
 				// Search is done; construct the results object
 				HitGroups groups = searchGrouped.getGroups();
-	
+
 				HitPropValue viewGroupVal = null;
 				viewGroupVal = HitPropValue.deserialize(searchGrouped.getHits(), viewGroup);
 				if (viewGroupVal == null)
 					return Response.badRequest("ERROR_IN_GROUP_VALUE", "Cannot deserialize group value: " + viewGroup);
-	
+
 				group = groups.getGroup(viewGroupVal);
 				if (group == null)
 					return Response.badRequest("GROUP_NOT_FOUND", "Group not found: " + viewGroup);
-	
+
 				String sortBy = searchParam.getString("sort");
 				HitProperty sortProp = sortBy != null && sortBy.length() > 0 ? HitProperty.deserialize(group.getHits(), sortBy) : null;
 				Hits hitsSorted;
@@ -104,7 +104,7 @@ public class RequestHandlerHits extends RequestHandler {
 					hitsSorted = group.getHits().sortedBy(sortProp);
 				else
 					hitsSorted = group.getHits();
-	
+
 				int first = searchParam.getInteger("first");
 				if (first < 0)
 					first = 0;
@@ -114,10 +114,10 @@ public class RequestHandlerHits extends RequestHandler {
 				if (!hitsSorted.sizeAtLeast(first))
 					return Response.badRequest("HIT_NUMBER_OUT_OF_RANGE", "Non-existent hit number specified.");
 				window = hitsSorted.window(first, number);
-	
+
 			} else {
 				// Regular set of hits (no grouping first)
-	
+
 				searchWindow = searchMan.searchHitsWindow(user, searchParam);
 				search = searchWindow;
 				search.incrRef();
@@ -127,7 +127,7 @@ public class RequestHandlerHits extends RequestHandler {
 						return Response.searchTimedOut();
 					}
 				}
-	
+
 				// Also determine the total number of hits
 				// (usually nonblocking, unless "waitfortotal=yes" was passed)
 				total = searchMan.searchHitsTotal(user, searchParam);
@@ -140,23 +140,23 @@ public class RequestHandlerHits extends RequestHandler {
 					}
 					//logger.debug("@PERF RHHits: waitfortotal finished");
 				}
-	
+
 				// If search is not done yet, indicate this to the user
 				if (!search.finished()) {
 					//logger.debug("@PERF RHHits: busy");
 					return Response.busy(servlet);
 				}
-	
+
 				//logger.debug("@PERF RHHits: get Window");
 				window = searchWindow.getWindow();
 				//logger.debug("@PERF RHHits: got Window");
 			}
-			
+
 			if (searchParam.getString("calc").equals("colloc")) {
 				//logger.debug("@PERF RHHits: colloc");
 				return new Response(getCollocations(window.getOriginalHits()));
 			}
-			
+
 			String parFacets = searchParam.getString("facets");
 			DataObjectMapAttribute doFacets = null;
 			DocResults perDocResults = null;
@@ -166,9 +166,9 @@ public class RequestHandlerHits extends RequestHandler {
 				perDocResults = window.getOriginalHits().perDocResults();
 				doFacets = getFacets(perDocResults, parFacets);
 			}
-	
+
 			Searcher searcher = search.getSearcher();
-	
+
 			boolean includeTokenCount = searchParam.getBoolean("includetokencount");
 			int totalTokens = -1;
 			IndexStructure struct = searcher.getIndexStructure();
@@ -181,29 +181,29 @@ public class RequestHandlerHits extends RequestHandler {
 				DocProperty propTokens = new DocPropertyComplexFieldLength(fieldName);
 				totalTokens = perDocResults.intSum(propTokens);
 			}
-	
+
 			// Search is done; construct the results object
-	
+
 			// The hits and document info
 			DataObjectList hitList = new DataObjectList("hit");
 			DataObjectMapAttribute docInfos = new DataObjectMapAttribute("docInfo", "pid");
 			//logger.debug("@PERF RHHits: construct results");
 			for (Hit hit: window) {
 				DataObjectMapElement hitMap = new DataObjectMapElement();
-	
+
 				// Find pid
 				Document document = searcher.document(hit.doc);
 				String pid = getDocumentPid(searcher, hit.doc, document);
-	
+
 				boolean useOrigContent = searchParam.getString("usecontent").equals("orig");
-				
+
 				// TODO: use RequestHandlerDocSnippet.getHitOrFragmentInfo()
-				
+
 				// Add basic hit info
 				hitMap.put("docPid", pid);
 				hitMap.put("start", hit.start);
 				hitMap.put("end", hit.end);
-	
+
 				if (useOrigContent) {
 					// Add concordance from original XML
 					Concordance c = window.getConcordance(hit);
@@ -218,14 +218,14 @@ public class RequestHandlerHits extends RequestHandler {
 					hitMap.put("right", new DataObjectContextList(c.getProperties(), c.getRight()));
 				}
 				hitList.add(hitMap);
-	
+
 				// Add document info if we didn't already
 				if (!docInfos.containsKey(hit.doc)) {
 					docInfos.put(pid, getDocumentInfo(searcher, searcher.document(hit.doc)));
 				}
 			}
 			//logger.debug("@PERF RHHits: construct results DONE");
-	
+
 			// The summary (done last because the count might be done by this time)
 			DataObjectMapElement summary = new DataObjectMapElement();
 			Hits hits = searchWindow != null ? hits = searchWindow.getWindow().getOriginalHits() : group.getHits();
@@ -255,7 +255,7 @@ public class RequestHandlerHits extends RequestHandler {
 			if (includeTokenCount)
 				summary.put("tokensInMatchingDocuments", totalTokens);
 			summary.put("docFields", RequestHandler.getDocFields(struct));
-	
+
 			// Assemble all the parts
 			DataObjectMapElement response = new DataObjectMapElement();
 			response.put("summary", summary);
@@ -263,7 +263,7 @@ public class RequestHandlerHits extends RequestHandler {
 			response.put("docInfos", docInfos);
 			if (doFacets != null)
 				response.put("facets", doFacets);
-	
+
 			return new Response(response);
 		} finally {
 			if (search != null)
@@ -285,7 +285,7 @@ public class RequestHandlerHits extends RequestHandler {
 		for (TermFrequency tf: tfl) {
 			doTokenFreq.put(tf.term, tf.frequency);
 		}
-		
+
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("tokenFrequencies", doTokenFreq);
 		return response;

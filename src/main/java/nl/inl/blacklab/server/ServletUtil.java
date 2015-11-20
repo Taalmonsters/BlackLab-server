@@ -264,8 +264,8 @@ public class ServletUtil {
 
 	/**
 	 * Returns the path info and query string (if any) of the request URL
-	 * 
-	 * @param request the servlet request 
+	 *
+	 * @param request the servlet request
 	 *
 	 * @return the path and query string (if any)
 	 */
@@ -283,8 +283,8 @@ public class ServletUtil {
 
 	/**
 	 * Returns the servlte's base URL, including the context path
-	 * 
-	 * @param request the servlet request 
+	 *
+	 * @param request the servlet request
 	 *
 	 * @return the base URL, e.g. http://myserver:8080/myroot
 	 */
@@ -296,8 +296,8 @@ public class ServletUtil {
 
 	/**
 	 * Returns the complete request URL
-	 * 
-	 * @param request the servlet request 
+	 *
+	 * @param request the servlet request
 	 *
 	 * @return the complete request URL
 	 */

@@ -62,7 +62,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 			doMetaField.put("group", fd.getGroup());
 			doMetaFields.put(name, doMetaField);
 		}
-		
+
 		DataObjectMapElement doVersionInfo = new DataObjectMapElement();
 		doVersionInfo.put("blackLabBuildTime", struct.getIndexBlackLabBuildTime());
 		doVersionInfo.put("indexFormat", struct.getIndexFormat());
@@ -76,7 +76,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 		doFieldInfo.put("dateField", StringUtil.nullToEmpty(struct.dateField()));
 		doFieldInfo.put("complexFields", doComplexFields);
 		doFieldInfo.put("metadataFields", doMetaFields);
-		
+
 		// Assemble response
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("indexName", indexName);
@@ -91,7 +91,7 @@ public class RequestHandlerIndexStructure extends RequestHandler {
 			response.put("tokenCount", struct.getTokenCount());
 		response.put("versionInfo", doVersionInfo);
 		response.put("fieldInfo", doFieldInfo);
-		
+
 		// Remove any empty settings
 		response.removeEmptyMapValues();
 

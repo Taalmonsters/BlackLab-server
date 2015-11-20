@@ -2,7 +2,7 @@ package nl.inl.blacklab.server.exceptions;
 
 
 public class ConfigurationException extends InternalServerError {
-	
+
 	public ConfigurationException() {
 		super("Configuration exception", 29, null);
 	}

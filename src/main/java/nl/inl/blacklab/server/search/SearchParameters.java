@@ -17,7 +17,7 @@ import org.apache.log4j.Logger;
  */
 public class SearchParameters extends TreeMap<String, String> {
 	private static final Logger logger = Logger.getLogger(SearchParameters.class);
-	
+
 	/** The search manager, for querying default value for missing parameters */
 	private SearchManager searchManager;
 

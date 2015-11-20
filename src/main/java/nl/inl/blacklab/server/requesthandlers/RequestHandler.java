@@ -95,7 +95,7 @@ public abstract class RequestHandler {
 		String urlResource = parts.length >= 2 ? parts[1] : "";
 		String urlPathInfo = parts.length >= 3 ? parts[2] : "";
 		boolean resourceOrPathGiven = urlResource.length() > 0 || urlPathInfo.length() > 0;
-		
+
 		// If we're doing something with a private index, it must be our own.
 		boolean isPrivateIndex = false;
 		//logger.debug("Got indexName = \"" + indexName + "\" (len=" + indexName.length() + ")");
@@ -112,10 +112,10 @@ public abstract class RequestHandler {
 			if (!user.getUserId().equals(userAndIndexName[0]))
 				return Response.unauthorized("You cannot access another user's private indices.");
 		}
-		
+
 		// Choose the RequestHandler subclass
 		RequestHandler requestHandler;
-		
+
 		String method = request.getMethod();
 		if (method.equals("DELETE")) {
 			// Index given and nothing else?
@@ -146,7 +146,7 @@ public abstract class RequestHandler {
 					if (urlResource.equals("docs") && urlPathInfo.length() == 0) {
 						if (!SearchManager.isValidIndexName(indexName))
 							return Response.illegalIndexName(shortName);
-						
+
 						// POST to /blacklab-server/indexName/docs/ : add data to index
 						requestHandler = new RequestHandlerAddToIndex(servlet, request, user, indexName, urlResource, urlPathInfo);
 					} else {
@@ -176,7 +176,7 @@ public abstract class RequestHandler {
 						if (!status.equals("available") && handlerName.length() > 0 && !handlerName.equals("debug") && !handlerName.equals("fields") && !handlerName.equals("status")) {
 							return Response.unavailable(indexName, status);
 						}
-						
+
 						if (debugMode && handlerName.length() > 0 && !handlerName.equals("hits") && !handlerName.equals("docs") && !handlerName.equals("fields") && !handlerName.equals("termfreq") && !handlerName.equals("status")) {
 							handlerName = "debug";
 						}
@@ -205,7 +205,7 @@ public abstract class RequestHandler {
 									handlerName += "-grouped"; // list of groups instead of contents
 							}
 						}
-						
+
 						if (!availableHandlers.containsKey(handlerName))
 							return Response.badRequest("UNKNOWN_OPERATION", "Unknown operation. Check your URL.");
 						Class<? extends RequestHandler> handlerClass = availableHandlers.get(handlerName);
@@ -413,7 +413,7 @@ public abstract class RequestHandler {
 			// Just a single facet requested
 			props.add(propMultipleFacets);
 		}
-	
+
 		doFacets = new DataObjectMapAttribute("facet", "name");
 		for (DocProperty facetBy: props) {
 			DocCounts facetCounts = docsToFacet.countBy(facetBy);
@@ -461,7 +461,7 @@ public abstract class RequestHandler {
 
 	/**
 	 * Get the pid for the specified document
-	 * 
+	 *
 	 * @param searcher where we got this document from
 	 * @param luceneDocId
 	 *            Lucene document id

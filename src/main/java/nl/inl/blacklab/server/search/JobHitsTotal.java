@@ -23,7 +23,7 @@ public class JobHitsTotal extends Job {
 		JobWithHits hitsSearch = searchMan.searchHits(user, par);
 		try {
 			waitForJobToFinish(hitsSearch);
-	
+
 			// Get the total number of hits (we ignore the value because you can monitor progress
 			// and get the final total through the getHits() method yourself.
 			hits = hitsSearch.getHits();

@@ -23,7 +23,7 @@ public class JobHitsSorted extends JobWithHits {
 		Hits hitsUnsorted;
 		try {
 			waitForJobToFinish(hitsSearch);
-	
+
 			// Now, sort the hits.
 			hitsUnsorted = hitsSearch.getHits();
 		} finally {

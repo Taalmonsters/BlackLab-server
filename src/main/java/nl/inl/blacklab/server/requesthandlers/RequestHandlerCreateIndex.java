@@ -30,9 +30,9 @@ public class RequestHandlerCreateIndex extends RequestHandler {
 				logger.debug("(forbidden, cannot create index in another user's area)");
 				return Response.forbidden("You can only create indices in your own private area.");
 			}
-			
+
 			searchMan.createIndex(newIndexName, displayName, documentFormat);
-			
+
 			return Response.status("SUCCESS", "Index created succesfully.", HttpServletResponse.SC_CREATED);
 			//DataObjectMapElement response = DataObject.statusObject("SUCCESS", "Index created succesfully.");
 			//response.put("url", ServletUtil.getServletBaseUrl(request) + "/" + indexName);

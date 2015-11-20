@@ -82,7 +82,7 @@ public class BlackLabServer extends HttpServlet {
 			}
 		}
 		JSONObject config;
-		
+
 		try {
 			try {
 				config = Json.read(is);
@@ -96,10 +96,10 @@ public class BlackLabServer extends HttpServlet {
 		logger.info("BlackLab Server ready.");
 
 	}
-	
+
 	/**
 	 * Process POST requests (add data to index)
-	 * @throws ServletException 
+	 * @throws ServletException
 	 */
 	@Override
 	protected void doPost(HttpServletRequest request, HttpServletResponse responseObject) throws ServletException {
@@ -108,7 +108,7 @@ public class BlackLabServer extends HttpServlet {
 
 	/**
 	 * Process PUT requests (create index)
-	 * @throws ServletException 
+	 * @throws ServletException
 	 */
 	@Override
 	protected void doPut(HttpServletRequest request, HttpServletResponse responseObject) throws ServletException {
@@ -117,14 +117,14 @@ public class BlackLabServer extends HttpServlet {
 
 	/**
 	 * Process DELETE requests (create a index, add data to one)
-	 * 
-	 * @throws ServletException 
+	 *
+	 * @throws ServletException
 	 */
 	@Override
 	protected void doDelete(HttpServletRequest request, HttpServletResponse responseObject) throws ServletException {
 		writeResponse(request, responseObject, RequestHandler.handle(this, request));
 	}
-	
+
 	/**
 	 * Process GET requests (information retrieval)
 	 *
@@ -139,9 +139,9 @@ public class BlackLabServer extends HttpServlet {
 	private void writeResponse(HttpServletRequest request,
 			HttpServletResponse responseObject,
 			Response response) {
-		
+
 		boolean debugMode = searchManager.isDebugMode(request.getRemoteAddr());
-		
+
 		// Determine response type
 		DataFormat outputType = response.getOverrideType(); // some responses override the user's request (i.e. article XML)
 		if (outputType == null) {
@@ -167,7 +167,7 @@ public class BlackLabServer extends HttpServlet {
 			String rootEl = "blacklabResponse";
 			DataObject dataObject = response.getDataObject();
 			if (dataObject instanceof DataObjectPlain && !((DataObjectPlain) dataObject).shouldAddRootElement()) {
-				// Plain objects sometimes don't want root objects (e.g. because they're 
+				// Plain objects sometimes don't want root objects (e.g. because they're
 				// full XML documents already)
 				rootEl = null;
 			}
@@ -185,10 +185,10 @@ public class BlackLabServer extends HttpServlet {
 
 	@Override
 	public void destroy() {
-		
+
 		// Stops the load management thread
 		searchManager.cleanup();
-		
+
 		super.destroy();
 	}
 

@@ -46,7 +46,7 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 		Document document = searcher.document(luceneDocId);
 		if (document == null)
 			throw new InternalServerError("Couldn't fetch document with pid '" + docId + "'.", 24);
-		
+
 		Hit hit;
 		int wordsAroundHit;
 		int start, end;
@@ -77,9 +77,9 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 	}
 
 	/**
-	 * Get a DataObject representation of a hit 
+	 * Get a DataObject representation of a hit
 	 * (or just a document fragment with no hit in it)
-	 * 
+	 *
 	 * @param hits the hits object the hit occurs in
 	 * @param hit the hit (or fragment)
 	 * @param wordsAroundHit number of words around the hit we want
@@ -91,14 +91,14 @@ public class RequestHandlerDocSnippet extends RequestHandler {
 	public static DataObject getHitOrFragmentInfo(Hits hits, Hit hit, int wordsAroundHit,
 			boolean useOrigContent, boolean isFragment, String docPid) {
 		DataObjectMapElement fragInfo = new DataObjectMapElement();
-		
+
 		if (docPid != null) {
 			// Add basic hit info
 			fragInfo.put("docPid", docPid);
 			fragInfo.put("start", hit.start);
 			fragInfo.put("end", hit.end);
 		}
-		
+
 		if (useOrigContent) {
 			Concordance c = hits.getConcordance(hit, wordsAroundHit);
 			if (!isFragment) {

@@ -11,29 +11,29 @@ import nl.inl.blacklab.server.search.User;
 
 /**
  * Authentication system used for debugging.
- * 
- * Requests from debug IPs (specified in config file) may fake logged-in 
+ *
+ * Requests from debug IPs (specified in config file) may fake logged-in
  * user by passing "userid" parameter.
  */
 public class AuthDebugFixed {
-	
+
 	private String userId;
 
 	public AuthDebugFixed(Map<String, Object> parameters) {
 		this.userId = parameters.get("userId").toString();
 	}
-	
+
 	public User determineCurrentUser(HttpServlet servlet,
 			HttpServletRequest request) {
-		
+
 		String sessionId = request.getSession().getId();
-		
+
 		// Is client on debug IP?
 		SearchManager searchMan = ((BlackLabServer)servlet).getSearchManager();
 		if (!searchMan.mayOverrideUserId(request.getRemoteAddr())) {
 			return User.anonymous(sessionId);
 		}
-		
+
 		// Return the appropriate User object
 		return User.loggedIn(userId, sessionId);
 	}

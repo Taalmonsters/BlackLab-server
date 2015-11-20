@@ -30,10 +30,10 @@ final public class IndexThread extends Thread implements UncaughtExceptionHandle
 	@Override
 	public void run() {
 		try {
-			
+
 			// ... index the data...
 			job.run();
-			
+
 		} catch (Throwable e) {
 			// NOTE: we catch Throwable here (while it's normally good practice to
 			//  catch only Exception and derived classes) because we need to know if

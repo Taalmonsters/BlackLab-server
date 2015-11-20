@@ -10,7 +10,7 @@ public class BlsException extends Exception {
 	 * The HTTP error code to send.
 	 */
 	protected int httpStatusCode;
-	
+
 	/**
 	 * A symbolic error code that the client can recognize and show a custom
 	 * message for.

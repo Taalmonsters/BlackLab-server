@@ -9,7 +9,7 @@ import java.io.Writer;
 public class DataObjectPlain extends DataObject {
 
 	String value;
-	
+
 	/** If this is the top-level object we're returning,
 	 *  should we add a root element or leave this as-is?
 	 *  (i.e. original XML input documents shouldn't get additional

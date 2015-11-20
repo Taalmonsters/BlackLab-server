@@ -38,7 +38,7 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 
 		Searcher searcher = getSearcher();
 		IndexStructure struct = searcher.getIndexStructure();
-		
+
 		DataObjectMapElement response = new DataObjectMapElement();
 		if (struct.getComplexFields().contains(fieldName)) {
 			ComplexFieldDesc fieldDesc = struct.getComplexFieldDesc(fieldName);
@@ -65,7 +65,7 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 			MetadataFieldDesc fd = struct.getMetadataFieldDesc(fieldName);
 			Map<String, Integer> values = fd.getValueDistribution();
 			boolean valueListComplete = fd.isValueListComplete();
-	
+
 			// Assemble response
 			DataObjectMapAttribute doFieldValues = new DataObjectMapAttribute("value", "text");
 			for (Map.Entry<String, Integer> e: values.entrySet()) {
@@ -84,10 +84,10 @@ public class RequestHandlerFieldInfo extends RequestHandler {
 			response.put("fieldValues", doFieldValues);
 			response.put("valueListComplete", valueListComplete);
 		}
-		
+
 		// Remove any empty settings
 		response.removeEmptyMapValues();
-		
+
 		Response responseObj = new Response(response);
 		responseObj.setCacheAllowed(false); // Because reindexing might change something
 		return responseObj;

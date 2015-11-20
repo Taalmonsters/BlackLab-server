@@ -11,7 +11,7 @@ import nl.inl.blacklab.server.search.User;
  * Get information about the structure of an index.
  */
 public class RequestHandlerIndexStatus extends RequestHandler {
-	
+
 	public RequestHandlerIndexStatus(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
@@ -25,7 +25,7 @@ public class RequestHandlerIndexStatus extends RequestHandler {
 		DataObjectMapElement response = new DataObjectMapElement();
 		response.put("indexName", indexName);
 		response.put("status", searchMan.getIndexStatus(indexName));
-		
+
 		// Remove any empty settings
 		response.removeEmptyMapValues();
 

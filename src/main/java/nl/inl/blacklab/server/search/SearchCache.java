@@ -107,9 +107,9 @@ public class SearchCache {
 	public void put(Job search) {
 		if (maxNumberOfJobs <= 0)
 			return;
-		
+
 		removeOldSearches();
-		
+
 		performLoadManagement(search);
 
 		// Search already in cache?
@@ -128,10 +128,10 @@ public class SearchCache {
 		cachedSearches.put(searchParameters, search);
 		search.incrRef();
 	}
-	
+
 	/**
 	 * Remove all cache entries for the specified index.
-	 * 
+	 *
 	 * @param indexName the index
 	 */
 	public void clearCacheForIndex(String indexName) {
@@ -155,7 +155,7 @@ public class SearchCache {
 
 	/**
 	 * Get rid of all the cached Searches.
-	 * 
+	 *
 	 * @param cancelRunning if true, cancels all running searches as well.
 	 */
 	public void clearCache(boolean cancelRunning) {
@@ -167,19 +167,19 @@ public class SearchCache {
 		cachedSearches.clear();
 		logger.debug("Cache cleared.");
 	}
-	
+
 	/**
 	 * If the cache exceeds the given parameters, clean it up by
 	 * removing less recently used searches.
 	 */
 	void removeOldSearches() {
-		
+
 		// Sort cache by last access time
 		List<Job> lastAccessOrder = new ArrayList<Job>(cachedSearches.values());
 		Collections.sort(lastAccessOrder); // sort on worthiness
-		
+
 		calculateSizeBytes(lastAccessOrder);
-		
+
 		// If we're low on memory, always remove a few searches from cache.
 		int minSearchesToRemove = 0;
 		long freeMegs = MemoryUtil.getFree() / 1000000;
@@ -193,7 +193,7 @@ public class SearchCache {
 		boolean lookAtCacheSizeAndSearchAccessTime = true;
 		for (int i = lastAccessOrder.size() - 1; i >= 0; i--) {
 			Job search = lastAccessOrder.get(i);
-			
+
 			if (!search.finished() && search.userWaitTime() > maxSearchTimeSec) {
 				// Search is taking too long. Cancel it.
 				logger.debug("Search is taking too long, cancelling: " + search);
@@ -212,7 +212,7 @@ public class SearchCache {
 					// Search is too old or cache is too big. Keep removing searches until that's no longer the case
 					//logger.debug("Remove from cache: " + search);
 					removeFromCache(search);
-					
+
 					minSearchesToRemove--;
 				} else {
 					// Cache is no longer too big and these searches are not too old. Stop checking that,
@@ -343,7 +343,7 @@ public class SearchCache {
 		}
 		return n;
 	}
-	
+
 //	private int numberOfPausedSearches() {
 //		int n = 0;
 //		for (Job job: cachedSearches.values()) {
@@ -375,7 +375,7 @@ public class SearchCache {
 		}
 		return doCacheContents;
 	}
-	
+
 	/**
 	 * What we can do to a query in response to the server load.
 	 */
@@ -385,15 +385,15 @@ public class SearchCache {
 		ABORT,             // abort search / refuse to start new search
 		REMOVE_FROM_CACHE, // discard results from cache
 	}
-	
+
 	/**
-	 * Evaluate what we need to do (if anything) with each search given the 
+	 * Evaluate what we need to do (if anything) with each search given the
 	 * current server load.
-	 * 
+	 *
 	 * @param newSearch the new search just started, or null if none.
 	 */
 	void performLoadManagement(Job newSearch) {
-		
+
 		if (autoDetectMaxConcurrent) {
 			// Autodetect number of CPUs
 			int n = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
@@ -402,12 +402,12 @@ public class SearchCache {
 				maxConcurrentSearches = n;
 			}
 		}
-		
+
 		List<Job> searches = new ArrayList<Job>(cachedSearches.values());
-		
+
 		// Sort the searches based on descending "worthiness"
 		Collections.sort(searches);
-		
+
 		int coresLeft = maxConcurrentSearches;
 		int pauseSlotsLeft = maxPausedSearches;
 		//logger.debug("=== LOADMGR: START. cores=" + coresLeft + ", pauseSlots=" + pauseSlotsLeft);
@@ -418,7 +418,7 @@ public class SearchCache {
 
 				// NOTE: we'll leave this to removeOldSearches() for now.
 				// Later we'll integrate the two.
-				
+
 			} else if (search.isWaitingForOtherJob()) {
 				// Waiting, not taking up any CPU. Can run normally, but doesn't take a core.
 				applyAction(search, ServerLoadQueryAction.RUN_NORMALLY);
@@ -445,8 +445,8 @@ public class SearchCache {
 
 	/**
 	 * Apply one of the load managing actions to a search.
-	 * @param m 
-	 * 
+	 * @param m
+	 *
 	 * @param search the search
 	 * @param action the action to apply
 	 */
@@ -479,7 +479,7 @@ public class SearchCache {
 			break;
 		}
 	}
-	
+
 	private void removeFromCache(Job search) {
 		cachedSearches.remove(search.getParameters());
 		search.decrRef();
@@ -500,7 +500,7 @@ public class SearchCache {
 			maxConcurrentSearches = Math.max(Runtime.getRuntime().availableProcessors() - 1, 1);
 			logger.debug("Autodetect maxConcurrentSearches: " + maxConcurrentSearches);
 		}
-		
+
 		maxPausedSearches = 10;
 		if (jsonServerLoad != null)
 			maxPausedSearches = JsonUtil.getIntProp(jsonServerLoad, "maxPausedSearches", 10);

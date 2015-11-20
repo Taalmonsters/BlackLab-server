@@ -26,7 +26,7 @@ public class JobHitsWindow extends Job {
 		JobWithHits hitsSearch = searchMan.searchHits(user, par);
 		try {
 			waitForJobToFinish(hitsSearch);
-	
+
 			// Now, create a HitsWindow on these hits.
 			Hits hits = hitsSearch.getHits();
 			setPriorityInternal(); // make sure hits has the right priority

@@ -12,7 +12,7 @@ import nl.inl.util.ThreadPriority.Level;
 public class JobDocsTotal extends Job {
 
 	//private JobWithDocs docsSearch;
-	
+
 	private DocResults docResults = null;
 
 	public JobDocsTotal(SearchManager searchMan, User user, SearchParameters par) throws BlsException {
@@ -25,7 +25,7 @@ public class JobDocsTotal extends Job {
 		JobWithDocs docsSearch = searchMan.searchDocs(user, par);
 		try {
 			waitForJobToFinish(docsSearch);
-	
+
 			// Get the total number of docs (we ignore the return value because you can monitor progress
 			// and get the final total through the getDocResults() method yourself.
 			docResults = docsSearch.getDocResults();

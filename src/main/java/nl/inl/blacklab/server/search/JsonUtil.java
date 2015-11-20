@@ -50,7 +50,7 @@ public class JsonUtil {
 	/**
 	 * Performs a deep conversion from JSONObject to
 	 * Java Map.
-	 * 
+	 *
 	 * @param jsonObject the JSON array to convert
 	 * @return the Java equivalent
 	 */
@@ -66,7 +66,7 @@ public class JsonUtil {
 	/**
 	 * Performs a deep conversion from JSONArray to
 	 * Java List.
-	 * 
+	 *
 	 * @param jsonArray the JSON array to convert
 	 * @return the Java equivalent
 	 */
@@ -81,7 +81,7 @@ public class JsonUtil {
 	/**
 	 * Performs a deep conversion from JSON object/array to
 	 * Java Map/List. Passes String unchanged.
-	 * 
+	 *
 	 * @param jsonStruct the JSON structure to convert
 	 * @return the Java equivalent
 	 */

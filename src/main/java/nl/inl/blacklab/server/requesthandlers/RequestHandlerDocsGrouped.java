@@ -32,15 +32,15 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 				if (!search.finished())
 					return Response.searchTimedOut();
 			}
-	
+
 			// If search is not done yet, indicate this to the user
 			if (!search.finished()) {
 				return Response.busy(servlet);
 			}
-	
+
 			// Search is done; construct the results object
 			DocGroups groups = search.getGroups();
-	
+
 			DataObjectList doGroups = null;
 			// The list of groups found
 			// TODO paging..?
@@ -62,7 +62,7 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 				}
 				i++;
 			}
-	
+
 			// The summary
 			DataObjectMapElement summary = new DataObjectMapElement();
 			DocResults docResults = search.getDocResults();
@@ -85,12 +85,12 @@ public class RequestHandlerDocsGrouped extends RequestHandler {
 			summary.put("windowHasPrevious", first > 0);
 			summary.put("windowHasNext", first + number < groups.numberOfGroups());
 			summary.put("largestGroupSize", groups.getLargestGroupSize());
-	
+
 			// Assemble all the parts
 			DataObjectMapElement response = new DataObjectMapElement();
 			response.put("summary", summary);
 			response.put("docGroups", doGroups);
-	
+
 			return new Response(response);
 		} finally {
 			search.decrRef();

@@ -29,7 +29,7 @@ public class RequestHandlerDeleteIndex extends RequestHandler {
 				return Response.internalError(e, debugMode, 12);
 			}
 		}
-		
+
 		return Response.badRequest("CANNOT_CREATE_INDEX", "Could not create index '" + indexName + "'. Specify a valid name.");
 	}
 

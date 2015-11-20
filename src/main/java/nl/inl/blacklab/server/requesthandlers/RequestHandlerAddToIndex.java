@@ -26,13 +26,13 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
  * Display the contents of the cache.
  */
 public class RequestHandlerAddToIndex extends RequestHandler {
-	
+
 	private static final long MAX_UPLOAD_SIZE = 25 * 1024 * 1024;
 
 	private static final int MAX_MEM_UPLOAD_SIZE = 5 * 1024 * 1024;
-	
+
 	private static final File TMP_DIR = new File(System.getProperty("java.io.tmpdir"));
-	
+
 	String indexError = null;
 
 	public RequestHandlerAddToIndex(BlackLabServer servlet,
@@ -44,12 +44,12 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 	@Override
 	public Response handle() throws BlsException {
 		debug(logger, "REQ add data: " + indexName);
-		
+
 		if (!indexName.contains(":"))
 			throw new NotAuthorized("Can only add to private indices.");
 		if (!searchMan.indexExists(indexName))
 			throw new IndexNotFound(indexName);
-		
+
 		String status = searchMan.getIndexStatus(indexName);
 		if (!status.equals("available") && !status.equals("empty"))
 			return Response.unavailable(indexName, status);
@@ -60,7 +60,7 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 			return Response.badRequest("NO_FILE", "Upload a file to add to the index.");
 		}
 		DiskFileItemFactory factory = new DiskFileItemFactory();
-		
+
 		// maximum size that will be stored in memory
 		factory.setSizeThreshold(MAX_MEM_UPLOAD_SIZE);
 		// Location to save data that is larger than maxMemSize.
@@ -98,26 +98,26 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 				while (i.hasNext()) {
 					FileItem fi = i.next();
 					if (!fi.isFormField()) {
-						
+
 						if (!fi.getFieldName().equals("data"))
 							return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. File should be uploaded using the 'data' field.");
-						
+
 						if (fi.getSize() > MAX_UPLOAD_SIZE)
 							return Response.badRequest("CANNOT_UPLOAD_FILE", "Cannot upload file. It is larger than the maximum of " + (MAX_UPLOAD_SIZE / 1024 / 1024) + " MB.");
-						
+
 						if (filesDone != 0)
 							return Response.internalError("Tried to upload more than one file.", debugMode, 14);
-						
+
 						// Get the uploaded file parameters
 						String fileName = fi.getName();
-						
+
 						File tmpFile = null;
 						IndexTask task;
 						IndexListener listener = new IndexListenerReportConsole() {
 							@Override
 							public boolean errorOccurred(String error,
 									String unitType, File unit, File subunit) {
-								indexError = error + " in " + unit + 
+								indexError = error + " in " + unit +
 										(subunit == null ? "" : " (" + subunit + ")");
 								super.errorOccurred(error, unitType, unit, subunit);
 								return false; // Don't continue indexing
@@ -131,7 +131,7 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 								task = new IndexTask(indexDir, tmpFile, fileName, listener);
 							} else {
 								InputStream data = fi.getInputStream();
-								
+
 								// TODO: do this in the background
 								// TODO: lock the index while indexing
 								// TODO: re-open Searcher after indexing
@@ -147,9 +147,9 @@ public class RequestHandlerAddToIndex extends RequestHandler {
 							if (tmpFile != null)
 								tmpFile.delete();
 						}
-						
+
 						//searchMan.addIndexTask(indexName, new IndexTask(is, fileName));
-						
+
 						filesDone++;
 					}
 				}

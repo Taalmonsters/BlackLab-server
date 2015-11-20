@@ -22,7 +22,7 @@ import org.apache.lucene.search.Query;
  * Request handler for term frequencies for a set of documents.
  */
 public class RequestHandlerTermFreq extends RequestHandler {
-	
+
 	public RequestHandlerTermFreq(BlackLabServer servlet, HttpServletRequest request, User user, String indexName, String urlResource, String urlPathPart) {
 		super(servlet, request, user, indexName, urlResource, urlPathPart);
 	}
@@ -38,13 +38,13 @@ public class RequestHandlerTermFreq extends RequestHandler {
 		boolean sensitive = searchParam.getBoolean("sensitive");
 		Query q = SearchManager.parseFilter(searcher, searchParam.getString("filter"), searchParam.getString("filterlang"));
 		Map<String, Integer> freq = searcher.termFrequencies(q, cfd.getName(), propName, sensitive ? "s" : "i");
-		
+
 		TermFrequencyList tfl = new TermFrequencyList(freq.size());
 		for (Map.Entry<String, Integer> e: freq.entrySet()) {
 			tfl.add(new TermFrequency(e.getKey(), e.getValue()));
 		}
 		tfl.sort();
-		
+
 		int first = searchParam.getInteger("first");
 		if (first < 0 || first >= tfl.size())
 			first = 0;
