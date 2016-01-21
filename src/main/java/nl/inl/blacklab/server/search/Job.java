@@ -102,7 +102,7 @@ public abstract class Job implements Comparable<Job> {
 	 * The jobs we're waiting for, so we can notify them in case we get cancelled,
 	 * and our "load scheduler" knows we're not currently using the CPU.
 	 */
-	Set<Job> waitingFor = new HashSet<Job>();
+	Set<Job> waitingFor = new HashSet<>();
 
 	/**
 	 * Wait for the specified job to finish

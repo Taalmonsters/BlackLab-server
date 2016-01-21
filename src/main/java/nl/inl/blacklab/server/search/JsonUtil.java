@@ -55,7 +55,7 @@ public class JsonUtil {
 	 * @return the Java equivalent
 	 */
 	public static Map<String, Object> mapFromJsonObject(JSONObject jsonObject) {
-		Map<String, Object> result = new HashMap<String, Object>();
+		Map<String, Object> result = new HashMap<>();
 		for (Object oKey: jsonObject.keySet()) {
 			String key = oKey.toString();
 			result.put(key, fromJsonStruct(jsonObject.get(key)));
@@ -71,7 +71,7 @@ public class JsonUtil {
 	 * @return the Java equivalent
 	 */
 	private static List<Object> listFromJsonArray(JSONArray jsonArray) {
-		List<Object> result = new ArrayList<Object>();
+		List<Object> result = new ArrayList<>();
 		for (int i = 0; i < jsonArray.length(); i++) {
 			result.add(fromJsonStruct(jsonArray.get(i)));
 		}

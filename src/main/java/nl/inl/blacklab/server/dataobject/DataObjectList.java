@@ -14,7 +14,7 @@ import java.util.ListIterator;
  */
 public class DataObjectList extends DataObject {
 
-	List<DataObject> list = new ArrayList<DataObject>();
+	List<DataObject> list = new ArrayList<>();
 
 	String xmlElementName;
 

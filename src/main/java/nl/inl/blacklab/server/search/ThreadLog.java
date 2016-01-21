@@ -19,7 +19,7 @@ import nl.inl.blacklab.server.dataobject.DataObjectMapElement;
 public class ThreadLog {
 
 	/** Thread logs for all our threads */
-	static Map<Long, ThreadLog> threadLogs = new HashMap<Long, ThreadLog>();
+	static Map<Long, ThreadLog> threadLogs = new HashMap<>();
 
 	/**
 	 * Get (or create) thread log for current thread.
@@ -73,9 +73,9 @@ public class ThreadLog {
 		get().changeCounter(name, delta);
 	}
 
-	List<String> messages = new ArrayList<String>();
+	List<String> messages = new ArrayList<>();
 
-	Map<String, Integer> counters = new LinkedHashMap<String, Integer>();
+	Map<String, Integer> counters = new LinkedHashMap<>();
 
 	/**
 	 * Add a message to the sequential log.

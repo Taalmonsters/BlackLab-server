@@ -46,7 +46,7 @@ public class JobFacets extends Job {
 			throw new RuntimeException("facets == null");
 		}
 		DocProperty propMultipleFacets = DocProperty.deserialize(facets);
-		List<DocProperty> props = new ArrayList<DocProperty>();
+		List<DocProperty> props = new ArrayList<>();
 		if (propMultipleFacets instanceof DocPropertyMultiple) {
 			// Multiple facets requested
 			for (DocProperty prop: (DocPropertyMultiple)propMultipleFacets) {
@@ -57,7 +57,7 @@ public class JobFacets extends Job {
 			props.add(propMultipleFacets);
 		}
 
-		Map<String, DocCounts> theCounts = new HashMap<String, DocCounts>();
+		Map<String, DocCounts> theCounts = new HashMap<>();
 		for (DocProperty facetBy: props) {
 			DocCounts facetCounts = docResults.countBy(facetBy);
 			counts.put(facetBy.serialize(), facetCounts);

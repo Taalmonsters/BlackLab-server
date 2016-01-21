@@ -64,7 +64,7 @@ public class SearchCache {
 	 * @param settings cache settings
 	 */
 	public SearchCache(JSONObject settings) {
-		cachedSearches = new HashMap<SearchParameters, Job>();
+		cachedSearches = new HashMap<>();
 		maxJobAgeSec = JsonUtil.getIntProp(settings, "maxJobAgeSec", 3600);
 		maxNumberOfJobs = JsonUtil.getIntProp(settings, "maxNumberOfJobs", 20);
 		maxSizeMegs = JsonUtil.getIntProp(settings, "maxSizeMegs", -1);
@@ -73,7 +73,7 @@ public class SearchCache {
 	}
 
 	public SearchCache() {
-		cachedSearches = new HashMap<SearchParameters, Job>();
+		cachedSearches = new HashMap<>();
 		maxJobAgeSec = 3600;
 		maxNumberOfJobs = 20;
 		maxSizeMegs = -1;
@@ -175,7 +175,7 @@ public class SearchCache {
 	void removeOldSearches() {
 
 		// Sort cache by last access time
-		List<Job> lastAccessOrder = new ArrayList<Job>(cachedSearches.values());
+		List<Job> lastAccessOrder = new ArrayList<>(cachedSearches.values());
 		Collections.sort(lastAccessOrder); // sort on worthiness
 
 		calculateSizeBytes(lastAccessOrder);
@@ -403,7 +403,7 @@ public class SearchCache {
 			}
 		}
 
-		List<Job> searches = new ArrayList<Job>(cachedSearches.values());
+		List<Job> searches = new ArrayList<>(cachedSearches.values());
 
 		// Sort the searches based on descending "worthiness"
 		Collections.sort(searches);
