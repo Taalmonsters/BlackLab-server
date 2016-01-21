@@ -222,7 +222,7 @@ public class ServletUtil {
 	 *            if true, outputs headers to make sure the page isn't cached.
 	 */
 	@SuppressWarnings("unused")
-	private void writeResponseHeaders(HttpServletRequest request, HttpServletResponse response, DataFormat defaultFormat) {
+	private static void writeResponseHeaders(HttpServletRequest request, HttpServletResponse response, DataFormat defaultFormat) {
 		boolean noCache = false;
 
 		// For the login page: set the no-cache headers for the response,
