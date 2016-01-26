@@ -145,7 +145,7 @@ public class SearchManager {
 	Map<String, String> indexStatus;
 
 	/** The Searcher objects, one for each of the indices we can search. */
-	private Map<String, Searcher> searchers = new HashMap<String, Searcher>();
+	private Map<String, Searcher> searchers = new HashMap<>();
 
 //	/** The IndexJob objects, one for each of the indices we're adding to. */
 //	private Map<String, IndexJob> indexJobs = new HashMap<String, IndexJob>();
@@ -163,7 +163,7 @@ public class SearchManager {
 	private SearchCache cache;
 
 	/** Keeps track of running jobs per user, so we can limit this. */
-	private Map<String, Set<Job>> runningJobsPerUser = new HashMap<String, Set<Job>>();
+	private Map<String, Set<Job>> runningJobsPerUser = new HashMap<>();
 
 	/** Default pattern language to use. [corpusql] */
 	private String defaultPatternLanguage;
@@ -189,7 +189,7 @@ public class SearchManager {
 	private long maxRunningJobsPerUser;
 
 	/** IP addresses for which debug mode will be turned on. */
-	private Set<String> debugModeIps = new HashSet<String>();
+	private Set<String> debugModeIps = new HashSet<>();
 
 	/** The default output type, JSON or XML. */
 	private DataFormat defaultOutputType;
@@ -273,7 +273,7 @@ public class SearchManager {
 						"maxHitsToCountAllowed", -1);
 				JSONArray jsonOverrideUserIdIps = reqProp
 						.getJSONArray("overrideUserIdIps");
-				overrideUserIdIps = new HashSet<String>();
+				overrideUserIdIps = new HashSet<>();
 				for (int i = 0; i < jsonOverrideUserIdIps.length(); i++) {
 					overrideUserIdIps.add(jsonOverrideUserIdIps.getString(i));
 				}
@@ -317,8 +317,8 @@ public class SearchManager {
 			}
 
 			// Find the indices
-			indexParam = new HashMap<String, IndexParam>();
-			indexStatus = new HashMap<String, String>();
+			indexParam = new HashMap<>();
+			indexStatus = new HashMap<>();
 			boolean indicesFound = false;
 			if (properties.has("indices")) {
 				JSONObject indicesMap = properties.getJSONObject("indices");
@@ -367,7 +367,7 @@ public class SearchManager {
 			}
 
 			// Collections
-			collectionsDirs = new ArrayList<File>();
+			collectionsDirs = new ArrayList<>();
 			if (properties.has("indexCollections")) {
 				JSONArray indexCollectionsList = properties
 						.getJSONArray("indexCollections");
@@ -420,7 +420,7 @@ public class SearchManager {
 					authClass = authParam.get("class").toString();
 				}
 			} else {
-				authParam = new HashMap<String, Object>();
+				authParam = new HashMap<>();
 			}
 			if (authClass.length() > 0) {
 				try {
@@ -452,7 +452,7 @@ public class SearchManager {
 				"calc", "maxretrieve", "maxcount", "property", "sensitive");
 
 		// Set up the parameter default values
-		defaultParameterValues = new HashMap<String, String>();
+		defaultParameterValues = new HashMap<>();
 		defaultParameterValues.put("filterlang", defaultFilterLanguage);
 		defaultParameterValues.put("pattlang", defaultPatternLanguage);
 		defaultParameterValues.put("sort", "");
@@ -984,7 +984,7 @@ public class SearchManager {
 	public Collection<String> getAvailablePrivateIndices(String userId) {
 
 		File userDir = getUserCollectionDir(userId);
-		Set<String> indices = new HashSet<String>();
+		Set<String> indices = new HashSet<>();
 		if (userDir != null) {
 			for (File f : userDir.listFiles(readableDirFilter)) {
 				indices.add(userId + ":" + f.getName());
@@ -999,7 +999,7 @@ public class SearchManager {
 	 * @return the list of index names
 	 */
 	public synchronized Collection<String> getAvailablePublicIndices() {
-		Set<String> indices = new HashSet<String>();
+		Set<String> indices = new HashSet<>();
 
 		// Scan collections for any new indices
 		for (File dir : collectionsDirs) {
@@ -1013,7 +1013,7 @@ public class SearchManager {
 
 		// Gather list of public indices, and
 		// remove indices that are no longer available
-		List<String> remove = new ArrayList<String>();
+		List<String> remove = new ArrayList<>();
 		for (Map.Entry<String, IndexParam> e : indexParam.entrySet()) {
 			if (!e.getValue().getDir().canRead()) {
 				remove.add(e.getKey());
@@ -1171,7 +1171,7 @@ public class SearchManager {
 					int numRunningJobs = 0;
 					String uniqueId = user.uniqueId();
 					Set<Job> runningJobs = runningJobsPerUser.get(uniqueId);
-					Set<Job> newRunningJobs = new HashSet<Job>();
+					Set<Job> newRunningJobs = new HashSet<>();
 					if (runningJobs != null) {
 						for (Job job : runningJobs) {
 							if (!job.finished()) {
@@ -1531,7 +1531,7 @@ public class SearchManager {
 	}
 
 	public List<String> getAllAvailableIndices(String userId) {
-		List<String> indices = new ArrayList<String>();
+		List<String> indices = new ArrayList<>();
 		if (userId != null && userId.length() > 0)
 			indices.addAll(getAvailablePrivateIndices(userId));
 		indices.addAll(getAvailablePublicIndices());

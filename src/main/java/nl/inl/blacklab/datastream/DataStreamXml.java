@@ -14,7 +14,7 @@ import nl.inl.util.StringUtil;
  */
 public class DataStreamXml extends DataStream {
 
-	List<String> tagStack = new ArrayList<String>();
+	List<String> tagStack = new ArrayList<>();
 
 	public DataStreamXml(PrintWriter out, boolean prettyPrint) {
 		super(out, prettyPrint);

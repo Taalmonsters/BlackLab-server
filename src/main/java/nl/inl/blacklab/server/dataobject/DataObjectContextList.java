@@ -12,9 +12,9 @@ import nl.inl.util.StringUtil;
  */
 public class DataObjectContextList extends DataObject {
 
-	List<String> names = new ArrayList<String>();
+	List<String> names = new ArrayList<>();
 
-	List<String> values = new ArrayList<String>();
+	List<String> values = new ArrayList<>();
 
 	public DataObjectContextList(List<String> names, List<String> values) {
 		this.names = names;

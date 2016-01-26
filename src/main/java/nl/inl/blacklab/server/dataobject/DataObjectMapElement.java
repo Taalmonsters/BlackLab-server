@@ -17,7 +17,7 @@ import java.util.Set;
  */
 public class DataObjectMapElement extends DataObject {
 
-	Map<String, DataObject> map = new LinkedHashMap<String, DataObject>();
+	Map<String, DataObject> map = new LinkedHashMap<>();
 
 	@Override
 	public void serialize(Writer out, DataFormat fmt, boolean prettyPrint, int depth) throws IOException {
@@ -166,7 +166,7 @@ public class DataObjectMapElement extends DataObject {
 	 */
 	@Override
 	public void removeEmptyMapValues() {
-		List<String> toRemove = new ArrayList<String>();
+		List<String> toRemove = new ArrayList<>();
 		for (Map.Entry<String, DataObject> e: map.entrySet()) {
 			DataObject value = e.getValue();
 			value.removeEmptyMapValues();

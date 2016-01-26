@@ -45,7 +45,7 @@ public abstract class RequestHandler {
 
 	// Fill the map with all the handler classes
 	static {
-		availableHandlers = new HashMap<String, Class<? extends RequestHandler>>();
+		availableHandlers = new HashMap<>();
 		//availableHandlers.put("cache-info", RequestHandlerCacheInfo.class);
 		availableHandlers.put("debug", RequestHandlerDebug.class);
 		availableHandlers.put("docs", RequestHandlerDocs.class);
@@ -403,7 +403,7 @@ public abstract class RequestHandler {
 	protected DataObjectMapAttribute getFacets(DocResults docsToFacet, String facetSpec) {
 		DataObjectMapAttribute doFacets;
 		DocProperty propMultipleFacets = DocProperty.deserialize(facetSpec);
-		List<DocProperty> props = new ArrayList<DocProperty>();
+		List<DocProperty> props = new ArrayList<>();
 		if (propMultipleFacets instanceof DocPropertyMultiple) {
 			// Multiple facets requested
 			for (DocProperty prop: (DocPropertyMultiple)propMultipleFacets) {

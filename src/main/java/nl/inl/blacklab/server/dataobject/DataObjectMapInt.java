@@ -13,7 +13,7 @@ import java.util.Set;
  */
 public class DataObjectMapInt extends DataObject {
 
-	Map<Integer, DataObject> map = new LinkedHashMap<Integer, DataObject>();
+	Map<Integer, DataObject> map = new LinkedHashMap<>();
 
 	String xmlElementName;
 
