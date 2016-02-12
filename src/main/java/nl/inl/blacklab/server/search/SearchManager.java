@@ -19,6 +19,13 @@ import java.util.Set;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 
+import org.apache.log4j.Logger;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
+
 import nl.inl.blacklab.perdocument.DocResults;
 import nl.inl.blacklab.queryParser.contextql.ContextualQueryLanguageParser;
 import nl.inl.blacklab.queryParser.corpusql.CorpusQueryLanguageParser;
@@ -49,13 +56,6 @@ import nl.inl.util.ThreadPriority;
 import nl.inl.util.json.JSONArray;
 import nl.inl.util.json.JSONException;
 import nl.inl.util.json.JSONObject;
-
-import org.apache.log4j.Logger;
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TermQuery;
 
 public class SearchManager {
 	private static final Logger logger = Logger.getLogger(SearchManager.class);
@@ -168,6 +168,12 @@ public class SearchManager {
 	/** Default pattern language to use. [corpusql] */
 	private String defaultPatternLanguage;
 
+	/** Default case-sensitivity to use. [insensitive] */
+	private boolean defaultCaseSensitive;
+
+	/** Default diacritics-sensitivity to use. [insensitive] */
+	private boolean defaultDiacriticsSensitive;
+
 	/** Default filter language to use. [luceneql] */
 	private String defaultFilterLanguage;
 
@@ -253,6 +259,24 @@ public class SearchManager {
 				maxPageSize = JsonUtil.getIntProp(reqProp, "maxPageSize", 1000);
 				defaultPatternLanguage = JsonUtil.getProperty(reqProp,
 						"defaultPatternLanguage", "corpusql");
+				String defaultSearchSensitivity = JsonUtil.getProperty(reqProp,
+						"defaultSearchSensitivity", "insensitive");
+				switch(defaultSearchSensitivity) {
+				case "sensitive":
+					defaultCaseSensitive = defaultDiacriticsSensitive = true;
+					break;
+				case "case":
+					defaultCaseSensitive = true;
+					defaultDiacriticsSensitive = false;
+					break;
+				case "diacritics":
+					defaultDiacriticsSensitive = true;
+					defaultCaseSensitive = false;
+					break;
+				default:
+					defaultCaseSensitive = defaultDiacriticsSensitive = false;
+					break;
+				}
 				defaultFilterLanguage = JsonUtil.getProperty(reqProp,
 						"defaultFilterLanguage", "luceneql");
 				defaultBlockingMode = JsonUtil.getBooleanProp(reqProp,
@@ -474,7 +498,7 @@ public class SearchManager {
 				"" + Hits.getDefaultMaxHitsToRetrieve());
 		defaultParameterValues.put("maxcount",
 				"" + Hits.getDefaultMaxHitsToCount());
-		defaultParameterValues.put("sensitive", "no");
+		defaultParameterValues.put("sensitive", defaultCaseSensitive && defaultDiacriticsSensitive ? "yes" : "no");
 		defaultParameterValues.put("property", "word");
 
 		loadManagerThread = new LoadManagerThread(this);
@@ -692,6 +716,7 @@ public class SearchManager {
 			try {
 				logger.debug("Opening index '" + indexName + "', dir = " + indexDir);
 				searcher = Searcher.open(indexDir);
+				searcher.setDefaultSearchSensitive(defaultCaseSensitive, defaultDiacriticsSensitive);
 			} catch (Exception e) {
 				throw new InternalServerError("Could not open index '" + indexName
 						+ "'", 27, e);

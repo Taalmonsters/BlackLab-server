@@ -64,8 +64,18 @@
         "defaultPageSize": 20,
 
         // Default pattern language to use.
-        // The "pattlang" GET parameter override this value.
+        // The "pattlang" GET parameter overrides this value.
         "defaultPatternLanguage": "corpusql",
+
+        // Default sensitivity of searches:
+        // - sensitive (case- and diacritics-sensitive)
+        // - insensitive (case- and diacritics-insensitive)
+        // - case (case-sensitive, diacritics-insensitive)
+        // - diacritics (case-insensitive, diacritics-sensitive)
+        // The "sensitive" GET parameter overrides this value (yes or no only).
+        // You can also override this setting by specifying the desired sensitivity in the pattern:
+        // Insensitive search: [lemma="(?i)test"] Sensitive search: [word="(?-i)Test"]
+        "defaultSearchSensitivity": "insensitive",
 
         // Default filter language to use.
         // The "filterlang" GET parameter override this value.
