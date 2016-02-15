@@ -6,7 +6,7 @@
 
 	<groupId>nl.inl.blacklab</groupId>
 	<artifactId>blacklab-server</artifactId>
-	<version>1.4-SNAPSHOT</version>
+	<version>1.3.1</version>
 	<packaging>war</packaging>
 
 	<name>BlackLab Server</name>
@@ -239,7 +239,7 @@
 		<dependency>
 			<groupId>nl.inl.blacklab</groupId>
 			<artifactId>blacklab</artifactId>
-			<version>1.4-SNAPSHOT</version>
+			<version>1.3</version>
 			<scope>compile</scope>
 		</dependency>
 
