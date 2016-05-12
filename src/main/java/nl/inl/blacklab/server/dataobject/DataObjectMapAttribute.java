@@ -5,6 +5,7 @@ import java.io.Writer;
 import java.util.Map;
 
 import nl.inl.util.StringUtil;
+import nl.inl.util.json.JSONObject;
 
 /**
  * A collection of names mapping to DataObjects.
@@ -47,7 +48,7 @@ public class DataObjectMapAttribute extends DataObjectMapElement {
 					out.append("\n");
 					indent(out, depth);
 				}
-				out.append("\"").append(StringUtil.escapeDoubleQuotedString(key)).append("\":");
+				out.append(JSONObject.quote(key)).append(":");
 				if (prettyPrint)
 					out.append(" ");
 				value.serialize(out, fmt, prettyPrint, depth);

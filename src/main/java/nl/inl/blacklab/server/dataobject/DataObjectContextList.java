@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import nl.inl.util.StringUtil;
+import nl.inl.util.json.JSONObject;
 
 /**
  * A list of KWIC context values.
@@ -43,7 +44,7 @@ public class DataObjectContextList extends DataObject {
 					indent(out, depth);
 				}
 				String name = names.get(k);
-				out.append("\"").append(StringUtil.escapeDoubleQuotedString(name)).append("\":[");
+				out.append(JSONObject.quote(name)).append(":[");
 				for (int i = 0; i < numberOfWords; i++) {
 					if (i > 0)
 						out.append(",");
