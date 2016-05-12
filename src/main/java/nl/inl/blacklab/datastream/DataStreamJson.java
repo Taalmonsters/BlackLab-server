@@ -3,8 +3,6 @@ package nl.inl.blacklab.datastream;
 import java.io.PrintWriter;
 import java.util.List;
 
-import nl.inl.util.StringUtil;
-
 /**
  * Class to stream out JSON data.
  *
@@ -90,7 +88,7 @@ public class DataStreamJson extends DataStream {
 
 	@Override
 	public DataStream startEntry(String key) {
-		return optSep().newlineIndent().print("\"").print(StringUtil.escapeDoubleQuotedString(key)).print("\":").space();
+		return optSep().newlineIndent().print("\"").print(escapeString(key)).print("\":").space();
 	}
 
 	@Override
@@ -124,13 +122,13 @@ public class DataStreamJson extends DataStream {
 			optSep();
 			newlineIndent();
 			String name = names.get(k);
-			print("\"").print(StringUtil.escapeDoubleQuotedString(name)).print("\":[");
+			print("\"").print(escapeString(name)).print("\":[");
 			for (int i = 0; i < numberOfWords; i++) {
 				if (i > 0)
 					print(",");
 				int vIndex = i * valuesPerWord;
 				String value = values.get(vIndex + k);
-				print("\"").print(StringUtil.escapeDoubleQuotedString(value)).print("\"");
+				print("\"").print(escapeString(value)).print("\"");
 			}
 			out.append("]");
 		}
@@ -140,7 +138,7 @@ public class DataStreamJson extends DataStream {
 	@Override
 	public DataStream value(String value) {
 		return value == null ? print("null") :
-			print("\"").print(StringUtil.escapeDoubleQuotedString(value)).print("\"");
+			print("\"").print(escapeString(value)).print("\"");
 	}
 
 	@Override
@@ -156,6 +154,10 @@ public class DataStreamJson extends DataStream {
 	@Override
 	public DataStream value(boolean value) {
 		return print(value);
+	}
+	
+	private String escapeString(String str) {
+		return org.codehaus.jettison.json.JSONObject.quote("your string");
 	}
 
 }
