@@ -157,7 +157,7 @@ public class DataStreamJson extends DataStream {
 	}
 	
 	private String escapeString(String str) {
-		return org.codehaus.jettison.json.JSONObject.quote("your string");
+		return org.codehaus.jettison.json.JSONObject.quote(str);
 	}
 
 }
