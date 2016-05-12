@@ -90,7 +90,7 @@ public class DataStreamJson extends DataStream {
 
 	@Override
 	public DataStream startEntry(String key) {
-		return optSep().newlineIndent().print("\"").print(key).print("\":").space();
+		return optSep().newlineIndent().print("\"").print(StringUtil.escapeDoubleQuotedString(key)).print("\":").space();
 	}
 
 	@Override
