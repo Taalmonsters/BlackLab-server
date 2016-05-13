@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import nl.inl.util.StringUtil;
 import nl.inl.util.json.JSONArray;
 import nl.inl.util.json.JSONObject;
 
@@ -58,7 +59,7 @@ public class JsonUtil {
 		Map<String, Object> result = new HashMap<>();
 		for (Object oKey: jsonObject.keySet()) {
 			String key = oKey.toString();
-			result.put(key, fromJsonStruct(jsonObject.get(key)));
+			result.put(StringUtil.escapeDoubleQuotedString(key), fromJsonStruct(jsonObject.get(key)));
 		}
 		return result;
 	}
