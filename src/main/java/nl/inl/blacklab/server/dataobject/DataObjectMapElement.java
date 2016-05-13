@@ -8,10 +8,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import nl.inl.util.StringUtil;
-import nl.inl.util.json.JSONObject;
-
 import java.util.Set;
 
 /**
@@ -45,7 +41,7 @@ public class DataObjectMapElement extends DataObject {
 					out.append("\n");
 					indent(out, depth);
 				}
-				out.append(JSONObject.quote(key)).append(":");
+				out.append("\"").append(key).append("\":");
 				if (prettyPrint)
 					out.append(" ");
 				value.serialize(out, fmt, prettyPrint, depth);
