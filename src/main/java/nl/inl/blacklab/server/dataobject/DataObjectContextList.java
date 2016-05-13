@@ -43,7 +43,7 @@ public class DataObjectContextList extends DataObject {
 					indent(out, depth);
 				}
 				String name = names.get(k);
-				out.append("\"").append(name).append("\":[");
+				out.append("\"").append(StringUtil.escapeDoubleQuotedString(name)).append("\":[");
 				for (int i = 0; i < numberOfWords; i++) {
 					if (i > 0)
 						out.append(",");
