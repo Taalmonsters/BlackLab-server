@@ -47,7 +47,7 @@ public class DataObjectMapAttribute extends DataObjectMapElement {
 					out.append("\n");
 					indent(out, depth);
 				}
-				out.append("\"").append(key).append("\":");
+				out.append("\"").append(StringUtil.escapeDoubleQuotedString(key)).append("\":");
 				if (prettyPrint)
 					out.append(" ");
 				value.serialize(out, fmt, prettyPrint, depth);
