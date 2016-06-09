@@ -6,7 +6,7 @@
 
 	<groupId>nl.inl.blacklab</groupId>
 	<artifactId>blacklab-server</artifactId>
-	<version>1.3.3</version>
+	<version>1.4-SNAPSHOT</version>
 	<packaging>war</packaging>
 
 	<name>BlackLab Server</name>
