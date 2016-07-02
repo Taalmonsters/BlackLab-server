@@ -1188,6 +1188,7 @@ public class SearchManager {
 						logger.warn("Can't start new search, not enough memory ("
 								+ freeMegs + "M < " + minFreeMemForSearchMegs
 								+ "M)");
+						logger.warn("(NOTE: make sure Tomcat's max heap mem is set to an appropriate value!)");
 						throw new ServiceUnavailable("The server seems to be under heavy load right now. Please try again later.");
 					}
 					// logger.debug("Enough free memory: " + freeMegs + "M");
