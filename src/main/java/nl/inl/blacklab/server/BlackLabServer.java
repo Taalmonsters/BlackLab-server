@@ -148,8 +148,13 @@ public class BlackLabServer extends HttpServlet {
 			outputType = ServletUtil.getOutputType(request, searchManager.getDefaultOutputType());
 		}
 
-		// Write HTTP headers (sattus code, encoding, content type and cache)
-		responseObject.setStatus(response.getHttpStatusCode());
+		// Is this a JSONP request?
+		String callbackFunction = ServletUtil.getParameter(request, "jsonp", "");
+		boolean isJsonp = callbackFunction.length() > 0;
+
+		// Write HTTP headers (status code, encoding, content type and cache)
+		if (!isJsonp) // JSONP request always returns 200 OK because otherwise script doesn't load
+			responseObject.setStatus(response.getHttpStatusCode());
 		responseObject.setCharacterEncoding("utf-8");
 		responseObject.setContentType(ServletUtil.getContentType(outputType));
 		int cacheTime = response.isCacheAllowed() ? searchManager.getClientCacheTimeSec() : 0;
@@ -159,8 +164,7 @@ public class BlackLabServer extends HttpServlet {
 			// Write the response
 			OutputStreamWriter out = new OutputStreamWriter(responseObject.getOutputStream(), "utf-8");
 			boolean prettyPrint = ServletUtil.getParameter(request, "prettyprint", debugMode);
-			String callbackFunction = ServletUtil.getParameter(request, "jsonp", "");
-			if (callbackFunction.length() > 0 && !callbackFunction.matches("[_a-zA-Z][_a-zA-Z0-9]+")) {
+			if (isJsonp && !callbackFunction.matches("[_a-zA-Z][_a-zA-Z0-9]+")) {
 				response = Response.badRequest("JSONP_ILLEGAL_CALLBACK", "Illegal JSONP callback function name. Must be a valid Javascript name.");
 				callbackFunction = "";
 			}
